@@ -1,0 +1,69 @@
+CONFIGURAÇÃO DO GIT PARA O PROJETO KINGDOM CONFEITARIA
+========================================================
+
+Este projeto inclui configurações do Git para evitar problemas com caracteres especiais e encoding.
+
+ARQUIVOS CRIADOS:
+-----------------
+1. .gitignore - Ignora arquivos temporários, binários e de build
+2. .gitattributes - Define encoding e line endings para diferentes tipos de arquivo
+3. .gitconfig - Configurações do Git (referência - aplicar manualmente se necessário)
+
+CONFIGURAÇÕES APLICADAS:
+------------------------
+As seguintes configurações foram aplicadas automaticamente no repositório local:
+
+✓ core.autocrlf = true
+  - Converte automaticamente line endings entre Windows (CRLF) e Unix (LF)
+  
+✓ core.safecrlf = true
+  - Previne commits que possam causar problemas com line endings
+  
+✓ core.quotepath = false
+  - Exibe nomes de arquivos com caracteres especiais corretamente
+  
+✓ i18n.commitencoding = utf-8
+  - Força encoding UTF-8 para mensagens de commit
+  
+✓ i18n.logoutputencoding = utf-8
+  - Força encoding UTF-8 para saída do log
+
+COMO USAR:
+----------
+1. Os arquivos .gitignore e .gitattributes já estão prontos para uso
+2. As configurações do Git foram aplicadas automaticamente
+3. Se precisar aplicar manualmente as configurações do .gitconfig:
+   
+   git config --local core.autocrlf true
+   git config --local core.safecrlf true
+   git config --local core.quotepath false
+   git config --local i18n.commitencoding utf-8
+   git config --local i18n.logoutputencoding utf-8
+
+VERIFICAR CONFIGURAÇÕES:
+------------------------
+Para verificar se as configurações estão corretas, execute:
+
+git config --local --list
+
+PROBLEMAS COMUNS E SOLUÇÕES:
+-----------------------------
+1. Caracteres estranhos em commits:
+   - Verifique se o encoding está como UTF-8
+   - Execute: git config --local i18n.commitencoding utf-8
+
+2. Problemas com line endings:
+   - Execute: git config --local core.autocrlf true
+   - Re-normalize os arquivos: git add --renormalize .
+
+3. Arquivos binários sendo tratados como texto:
+   - Verifique o .gitattributes
+   - Adicione o tipo de arquivo se necessário
+
+NOTAS IMPORTANTES:
+------------------
+- O .gitignore ignora arquivos de build, binários e temporários
+- Arquivos de banco de dados (.mdf, .ldf) são ignorados por padrão
+- Arquivos de configuração sensíveis devem ser mantidos fora do repositório
+- Sempre verifique o que está sendo commitado antes de fazer push
+

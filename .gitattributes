@@ -1,0 +1,126 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Force LF line endings for text files
+*.cs text eol=lf
+*.aspx text eol=lf
+*.ascx text eol=lf
+*.master text eol=lf
+*.cshtml text eol=lf
+*.vbhtml text eol=lf
+*.html text eol=lf
+*.htm text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.xml text eol=lf
+*.config text eol=lf
+*.txt text eol=lf
+*.md text eol=lf
+*.sql text eol=lf
+*.csproj text eol=lf
+*.sln text eol=lf
+*.resx text eol=lf
+*.designer.cs text eol=lf
+*.asax text eol=lf
+*.ashx text eol=lf
+*.asmx text eol=lf
+*.svc text eol=lf
+
+# Force CRLF line endings for batch files (Windows)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files
+*.dll binary
+*.exe binary
+*.pdb binary
+*.mdf binary
+*.ldf binary
+*.ndf binary
+*.suo binary
+*.user binary
+*.sdf binary
+*.cache binary
+*.ico binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.bmp binary
+*.tiff binary
+*.tif binary
+*.pdf binary
+*.zip binary
+*.7z binary
+*.rar binary
+*.tar binary
+*.gz binary
+
+# Visual Studio files
+*.suo binary
+*.user binary
+*.userosscache binary
+*.sln.docstates binary
+
+# NuGet packages
+*.nupkg binary
+*.snupkg binary
+
+# Database files
+*.mdf binary
+*.ldf binary
+*.ndf binary
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.bmp binary
+*.ico binary
+*.svg binary
+*.webp binary
+
+# Fonts
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.eot binary
+
+# Archives
+*.zip binary
+*.7z binary
+*.rar binary
+*.tar binary
+*.gz binary
+
+# Office documents
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
+*.ppt binary
+*.pptx binary
+
+# Ensure consistent line endings for web.config
+web.config text eol=lf
+
+# Ensure consistent line endings for project files
+*.csproj text eol=lf
+*.vbproj text eol=lf
+*.fsproj text eol=lf
+
+# Ensure consistent line endings for solution files
+*.sln text eol=crlf
+
+# Package files
+packages.config text eol=lf
+
+# Designer files
+*.designer.cs text eol=lf
+*.designer.vb text eol=lf
+*.resx text eol=lf
+
