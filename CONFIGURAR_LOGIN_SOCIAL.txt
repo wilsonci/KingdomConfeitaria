@@ -1,0 +1,184 @@
+CONFIGURAÇÃO DE LOGIN SOCIAL - KINGDOM CONFEITARIA
+===================================================
+
+## ✅ CORREÇÕES APLICADAS
+
+1. ✅ Facebook SDK inicializado corretamente
+2. ✅ Google Sign-In inicializado corretamente
+3. ✅ Validação de configurações antes de usar
+4. ✅ Mensagens de erro claras
+5. ✅ Tratamento de erros melhorado
+6. ✅ WhatsApp funcionando (solicita número)
+7. ⚠️ Instagram: Não tem OAuth direto (comentado no código)
+
+---
+
+## 📋 CONFIGURAÇÃO NECESSÁRIA
+
+### 1. FACEBOOK LOGIN
+
+**Passo 1**: Criar App no Facebook
+1. Acesse: https://developers.facebook.com/
+2. Clique em "Meus Apps" → "Criar App"
+3. Escolha "Consumidor" ou "Negócios"
+4. Preencha nome do app e email de contato
+5. Anote o **App ID** e **App Secret**
+
+**Passo 2**: Configurar no web.config
+```xml
+<add key="FacebookAppId" value="SEU_APP_ID_AQUI" />
+<add key="FacebookAppSecret" value="SEU_APP_SECRET_AQUI" />
+```
+
+**Passo 3**: Configurar URLs no Facebook
+1. No painel do app, vá em "Configurações" → "Básico"
+2. Adicione "Domínios do App": seu dominio.com
+3. Em "Produtos", adicione "Facebook Login"
+4. Configure "URLs de Redirecionamento OAuth válidos":
+   - http://localhost/Login.aspx (desenvolvimento)
+   - https://seudominio.com/Login.aspx (produção)
+
+**Passo 4**: Testar
+- Acesse Login.aspx
+- Clique em "Continuar com Facebook"
+- Deve abrir popup do Facebook
+- Após autorizar, deve fazer login
+
+---
+
+### 2. GOOGLE LOGIN
+
+**Passo 1**: Criar Projeto no Google Cloud
+1. Acesse: https://console.cloud.google.com/
+2. Crie um novo projeto ou selecione existente
+3. Vá em "APIs e Serviços" → "Credenciais"
+4. Clique em "Criar Credenciais" → "ID do cliente OAuth"
+5. Tipo de aplicativo: "Aplicativo da Web"
+6. Nome: "Kingdom Confeitaria Login"
+7. URLs de redirecionamento autorizadas:
+   - http://localhost/Login.aspx (desenvolvimento)
+   - https://seudominio.com/Login.aspx (produção)
+8. Anote o **Client ID** e **Client Secret**
+
+**Passo 2**: Habilitar Google+ API
+1. Vá em "APIs e Serviços" → "Biblioteca"
+2. Procure por "Google+ API" ou "People API"
+3. Clique em "Ativar"
+
+**Passo 3**: Configurar no web.config
+```xml
+<add key="GoogleClientId" value="SEU_CLIENT_ID_AQUI.apps.googleusercontent.com" />
+<add key="GoogleClientSecret" value="SEU_CLIENT_SECRET_AQUI" />
+```
+
+**Passo 4**: Testar
+- Acesse Login.aspx
+- Clique em "Continuar com Google"
+- Deve abrir popup do Google
+- Após autorizar, deve fazer login
+
+---
+
+### 3. WHATSAPP LOGIN
+
+**Status**: ✅ Funcionando (não requer API externa)
+
+**Como funciona**:
+1. Cliente clica em "Continuar com WhatsApp"
+2. Sistema solicita número de telefone
+3. Cliente digita número (com DDD)
+4. Sistema cria/atualiza cliente com esse número
+5. Cliente é logado automaticamente
+
+**Nota**: Para enviar mensagens via WhatsApp, configure WhatsApp API (opcional):
+```xml
+<add key="WhatsAppApiUrl" value="https://api.whatsapp.com/send" />
+<add key="WhatsAppApiKey" value="SUA_CHAVE" />
+<add key="WhatsAppPhoneNumber" value="5511999999999" />
+```
+
+---
+
+### 4. INSTAGRAM LOGIN
+
+**Status**: ⚠️ Não implementado
+
+**Motivo**: Instagram não oferece OAuth direto para login de usuários.
+
+**Alternativas**:
+1. Usar Facebook Login (que dá acesso ao Instagram)
+2. Remover opção de login por Instagram
+3. Usar email/WhatsApp
+
+**Nota**: O código está comentado em Login.aspx. Se quiser, pode descomentar e usar Facebook.
+
+---
+
+## 🔍 TROUBLESHOOTING
+
+### Problema: "Facebook login não está configurado"
+**Solução**: Configure `FacebookAppId` no web.config
+
+### Problema: "Google login não está configurado"
+**Solução**: Configure `GoogleClientId` no web.config
+
+### Problema: "SDK não carregou"
+**Soluções**:
+- Verifique conexão com internet
+- Verifique se não há bloqueadores de popup
+- Recarregue a página
+- Verifique console do navegador (F12) para erros
+
+### Problema: Popup não abre
+**Soluções**:
+- Permita popups no navegador
+- Verifique se não há extensões bloqueando
+- Tente em outro navegador
+
+### Problema: "Erro ao obter informações"
+**Soluções**:
+- Verifique se App ID/Client ID estão corretos
+- Verifique se URLs de redirecionamento estão configuradas
+- Verifique console do navegador (F12) para erros detalhados
+
+---
+
+## ✅ TESTE COMPLETO
+
+1. **Facebook**:
+   - Configure App ID
+   - Clique em "Continuar com Facebook"
+   - Autorize no popup
+   - Deve fazer login e redirecionar
+
+2. **Google**:
+   - Configure Client ID
+   - Clique em "Continuar com Google"
+   - Selecione conta
+   - Autorize
+   - Deve fazer login e redirecionar
+
+3. **WhatsApp**:
+   - Clique em "Continuar com WhatsApp"
+   - Digite número
+   - Deve fazer login e redirecionar
+
+4. **Email**:
+   - Preencha email, nome, telefone
+   - Clique em "Continuar"
+   - Deve criar conta e fazer login
+
+---
+
+## 📝 NOTAS IMPORTANTES
+
+- ⚠️ Em produção, sempre use HTTPS
+- ⚠️ Configure URLs de redirecionamento corretas
+- ⚠️ Mantenha App Secrets e Client Secrets seguros
+- ⚠️ Teste em diferentes navegadores
+- ⚠️ Verifique permissões solicitadas (email, perfil)
+
+---
+
+**Status**: ✅ Código corrigido e pronto para configuração
+

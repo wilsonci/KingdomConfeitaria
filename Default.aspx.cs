@@ -33,6 +33,7 @@ namespace KingdomConfeitaria
                 CarregarProdutos();
                 CarregarDatasRetirada();
                 VerificarLogin();
+                AtualizarCarrinho(); // Atualizar carrinho na primeira carga
             }
 
             string eventTarget = Request["__EVENTTARGET"];
@@ -140,7 +141,7 @@ namespace KingdomConfeitaria
                         <div class='produto-card mb-3'>
                             <div class='row'>
                                 <div class='col-md-3'>
-                                    <img src='{0}' alt='{1}' class='produto-imagem' onerror='this.src=""https://via.placeholder.com/200x200?text={1}""' />
+                                    <img src='{0}' alt='{1}' class='produto-imagem' onerror='this.onerror=null; this.src=""Images/placeholder.png"";' />
                                 </div>
                                 <div class='col-md-9'>
                                     <h5>{1}</h5>
@@ -170,7 +171,7 @@ namespace KingdomConfeitaria
                                 </div>
                             </div>
                         </div>",
-                        produto.ImagemUrl,
+                        !string.IsNullOrEmpty(produto.ImagemUrl) ? produto.ImagemUrl : "Images/placeholder.png",
                         produto.Nome,
                         produto.Descricao,
                         produto.Id,
@@ -412,31 +413,126 @@ namespace KingdomConfeitaria
             carrinhoContainer.InnerHtml = html;
             totalPedido.InnerText = total.ToString("F2");
             totalContainer.Style["display"] = "block";
-            btnFazerReserva.Enabled = true;
+            
+            // Habilitar botão se houver itens
+            if (Carrinho.Count > 0)
+            {
+                btnFazerReserva.Enabled = true;
+                // Adicionar script para garantir que o botão esteja habilitado no cliente
+                // Usar um nome único para o script
+                string scriptKey = "HabilitarBotao_" + DateTime.Now.Ticks;
+                ScriptManager.RegisterStartupScript(this, GetType(), scriptKey, 
+                    "setTimeout(function() { " +
+                    "var btn = document.getElementById('" + btnFazerReserva.ClientID + "'); " +
+                    "if (btn) { " +
+                    "btn.disabled = false; " +
+                    "btn.removeAttribute('disabled'); " +
+                    "btn.style.opacity = '1'; " +
+                    "btn.style.cursor = 'pointer'; " +
+                    "btn.classList.remove('disabled'); " +
+                    "} " +
+                    "}, 100);", true);
+            }
+            else
+            {
+                btnFazerReserva.Enabled = false;
+            }
         }
 
         protected void btnFazerReserva_Click(object sender, EventArgs e)
         {
             if (Carrinho.Count == 0)
             {
+                ScriptManager.RegisterStartupScript(this, GetType(), "CarrinhoVazio", 
+                    "alert('Adicione produtos ao carrinho antes de fazer a reserva.');", true);
                 return;
             }
 
-            // Limpar campos do modal
-            txtNome.Text = "";
-            txtEmail.Text = "";
-            txtTelefone.Text = "";
+            // Preencher campos do modal se cliente estiver logado
+            if (Session["ClienteNome"] != null)
+            {
+                txtNome.Text = Session["ClienteNome"].ToString();
+            }
+            if (Session["ClienteEmail"] != null)
+            {
+                txtEmail.Text = Session["ClienteEmail"].ToString();
+            }
+            if (Session["ClienteTelefone"] != null)
+            {
+                txtTelefone.Text = Session["ClienteTelefone"].ToString();
+            }
+
+            // Limpar observações
             txtObservacoes.Text = "";
 
-            // Abrir modal via JavaScript
-            ScriptManager.RegisterStartupScript(this, GetType(), "AbrirModal", 
-                "var modal = new bootstrap.Modal(document.getElementById('modalReserva')); modal.show();", true);
+            // Abrir modal via JavaScript - múltiplas tentativas para garantir
+            string scriptAbrirModal = @"
+                setTimeout(function() { 
+                    try { 
+                        var modalElement = document.getElementById('modalReserva'); 
+                        if (modalElement) { 
+                            // Tentar usar Bootstrap 5
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                                modal.show();
+                            } else {
+                                // Fallback: mostrar modal manualmente
+                                modalElement.style.display = 'block';
+                                modalElement.classList.add('show');
+                                document.body.classList.add('modal-open');
+                                var backdrop = document.createElement('div');
+                                backdrop.className = 'modal-backdrop fade show';
+                                backdrop.id = 'modalBackdrop';
+                                document.body.appendChild(backdrop);
+                            }
+                        } else { 
+                            console.error('Modal não encontrado');
+                            alert('Erro: Modal não encontrado. Por favor, recarregue a página.');
+                        } 
+                    } catch(e) { 
+                        console.error('Erro ao abrir modal:', e);
+                        alert('Por favor, preencha os dados do formulário abaixo e clique em Confirmar Reserva.');
+                    } 
+                }, 200);";
+            
+            ScriptManager.RegisterStartupScript(this, GetType(), "AbrirModal_" + DateTime.Now.Ticks, scriptAbrirModal, true);
         }
 
         protected void btnConfirmarReserva_Click(object sender, EventArgs e)
         {
             if (Carrinho.Count == 0)
             {
+                ScriptManager.RegisterStartupScript(this, GetType(), "CarrinhoVazio", 
+                    "alert('Adicione produtos ao carrinho antes de fazer a reserva.');", true);
+                return;
+            }
+
+            // Validar campos obrigatórios
+            if (string.IsNullOrWhiteSpace(txtNome.Text))
+            {
+                ScriptManager.RegisterStartupScript(this, GetType(), "NomeVazio", 
+                    "alert('Por favor, preencha o nome.');", true);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtEmail.Text) || !txtEmail.Text.Contains("@"))
+            {
+                ScriptManager.RegisterStartupScript(this, GetType(), "EmailInvalido", 
+                    "alert('Por favor, preencha um email válido.');", true);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(txtTelefone.Text))
+            {
+                ScriptManager.RegisterStartupScript(this, GetType(), "TelefoneVazio", 
+                    "alert('Por favor, preencha o telefone.');", true);
+                return;
+            }
+
+            if (ddlDataRetirada.SelectedValue == null || string.IsNullOrEmpty(ddlDataRetirada.SelectedValue))
+            {
+                ScriptManager.RegisterStartupScript(this, GetType(), "DataVazia", 
+                    "alert('Por favor, selecione uma data de retirada.');", true);
                 return;
             }
 
@@ -449,11 +545,15 @@ namespace KingdomConfeitaria
                     clienteId = (int)Session["ClienteId"];
                 }
 
+                // Formatar email e telefone antes de salvar
+                string emailFormatado = txtEmail.Text.Trim().ToLowerInvariant();
+                string telefoneFormatado = System.Text.RegularExpressions.Regex.Replace(txtTelefone.Text, @"[^\d]", "");
+
                 var reserva = new Reserva
                 {
-                    Nome = txtNome.Text,
-                    Email = txtEmail.Text,
-                    Telefone = txtTelefone.Text,
+                    Nome = txtNome.Text.Trim(),
+                    Email = emailFormatado,
+                    Telefone = telefoneFormatado,
                     DataRetirada = DateTime.Parse(ddlDataRetirada.SelectedValue),
                     DataReserva = DateTime.Now,
                     Status = "Pendente",
@@ -469,15 +569,31 @@ namespace KingdomConfeitaria
                 // Salvar no banco de dados
                 _databaseService.SalvarReserva(reserva);
 
-                // Enviar emails
-                var emailService = new EmailService();
-                emailService.EnviarConfirmacaoReserva(reserva);
-
-                // Enviar WhatsApp se tiver telefone
-                var whatsAppService = new WhatsAppService();
-                if (!string.IsNullOrEmpty(reserva.Telefone))
+                // Enviar emails (não bloquear se falhar)
+                try
                 {
-                    whatsAppService.EnviarConfirmacaoReserva(reserva, reserva.Telefone);
+                    var emailService = new EmailService();
+                    emailService.EnviarConfirmacaoReserva(reserva);
+                }
+                catch (Exception exEmail)
+                {
+                    System.Diagnostics.Debug.WriteLine("Erro ao enviar email: " + exEmail.Message);
+                    // Continuar mesmo se email falhar
+                }
+
+                // Enviar WhatsApp se tiver telefone (não bloquear se falhar)
+                try
+                {
+                    var whatsAppService = new WhatsAppService();
+                    if (!string.IsNullOrEmpty(reserva.Telefone))
+                    {
+                        whatsAppService.EnviarConfirmacaoReserva(reserva, reserva.Telefone);
+                    }
+                }
+                catch (Exception exWhatsApp)
+                {
+                    System.Diagnostics.Debug.WriteLine("Erro ao enviar WhatsApp: " + exWhatsApp.Message);
+                    // Continuar mesmo se WhatsApp falhar
                 }
 
                 // Limpar carrinho
@@ -498,19 +614,30 @@ namespace KingdomConfeitaria
 
         private void VerificarLogin()
         {
-            if (Session["ClienteId"] != null)
+            try
             {
-                clienteNome.InnerText = "Olá, " + Session["ClienteNome"].ToString();
-                linkLogin.Visible = false;
-                linkMinhasReservas.Visible = true;
-                linkLogout.Visible = true;
+                if (clienteNome != null && linkLogin != null && linkMinhasReservas != null && linkLogout != null)
+                {
+                    if (Session["ClienteId"] != null)
+                    {
+                        clienteNome.InnerText = "Olá, " + (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "");
+                        linkLogin.Visible = false;
+                        linkMinhasReservas.Visible = true;
+                        linkLogout.Visible = true;
+                    }
+                    else
+                    {
+                        clienteNome.InnerText = "";
+                        linkLogin.Visible = true;
+                        linkMinhasReservas.Visible = false;
+                        linkLogout.Visible = false;
+                    }
+                }
             }
-            else
+            catch (Exception ex)
             {
-                clienteNome.InnerText = "";
-                linkLogin.Visible = true;
-                linkMinhasReservas.Visible = false;
-                linkLogout.Visible = false;
+                // Log do erro (implementar logging adequado)
+                System.Diagnostics.Debug.WriteLine("Erro ao verificar login: " + ex.Message);
             }
         }
     }

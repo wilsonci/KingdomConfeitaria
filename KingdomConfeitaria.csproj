@@ -70,6 +70,9 @@
     <Content Include="Admin.aspx" />
     <Content Include="Login.aspx" />
     <Content Include="Logout.aspx" />
+    <Content Include="MinhasReservas.aspx" />
+    <Content Include="ConfirmarCadastro.aspx" />
+    <Content Include="VerReserva.aspx" />
     <Content Include="Global.asax" />
     <Content Include="Scripts\site.js" />
     <Content Include="web.config" />
@@ -100,6 +103,27 @@
     <Compile Include="Logout.aspx.cs">
       <DependentUpon>Logout.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="MinhasReservas.aspx.cs">
+      <DependentUpon>MinhasReservas.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="MinhasReservas.aspx.designer.cs">
+      <DependentUpon>MinhasReservas.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="ConfirmarCadastro.aspx.cs">
+      <DependentUpon>ConfirmarCadastro.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="ConfirmarCadastro.aspx.designer.cs">
+      <DependentUpon>ConfirmarCadastro.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="VerReserva.aspx.cs">
+      <DependentUpon>VerReserva.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="VerReserva.aspx.designer.cs">
+      <DependentUpon>VerReserva.aspx</DependentUpon>
     </Compile>
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>

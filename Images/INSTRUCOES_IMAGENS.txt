@@ -1,0 +1,50 @@
+INSTRUÇÕES PARA ADICIONAR IMAGENS DOS PRODUTOS
+===============================================
+
+As imagens dos produtos devem ser colocadas nesta pasta (Images/) com os seguintes nomes:
+
+PRODUTOS INDIVIDUAIS:
+---------------------
+- estrela-pequeno.jpg
+- estrela-grande.jpg
+- floco-neve-pequeno.jpg
+- floco-neve-grande.jpg
+- guirlanda-pequeno.jpg
+- guirlanda-grande.jpg
+- meia-pequeno.jpg
+- meia-grande.jpg
+- arvore-pequeno.jpg
+- arvore-grande.jpg
+- coracao-pequeno.jpg
+- coracao-grande.jpg
+- boneco-pequeno.jpg
+- boneco-grande.jpg
+
+SACOS PROMOCIONAIS:
+------------------
+- saco-6-pequenos.jpg
+- saco-3-grandes.jpg
+
+IMAGEM PADRÃO (FALLBACK):
+------------------------
+- placeholder.png (será usada se a imagem do produto não for encontrada)
+
+FORMATO RECOMENDADO:
+-------------------
+- Formato: JPG ou PNG
+- Tamanho recomendado: 400x400 pixels ou maior
+- Peso: máximo 500KB por imagem
+- Qualidade: boa qualidade, mas otimizada para web
+
+COMO ADICIONAR:
+--------------
+1. Prepare as imagens dos produtos
+2. Renomeie cada imagem conforme a lista acima
+3. Coloque todas as imagens nesta pasta (Images/)
+4. Se uma imagem não for encontrada, será usado o placeholder.png
+
+NOTA:
+-----
+Se você não tiver todas as imagens, o sistema usará o placeholder.png automaticamente.
+Você pode adicionar as imagens gradualmente conforme disponível.
+

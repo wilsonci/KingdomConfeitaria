@@ -112,11 +112,37 @@
             width: 100%;
             margin-top: 20px;
             transition: all 0.3s;
+            cursor: pointer;
         }
-        .btn-reservar:hover {
+        .btn-reservar:hover:not(:disabled) {
             transform: scale(1.05);
             box-shadow: 0 5px 20px rgba(26, 77, 46, 0.4);
             background: linear-gradient(135deg, #2d5a3d 0%, #1a4d2e 100%);
+        }
+        .btn-reservar:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #6c757d;
+        }
+        .is-valid {
+            border-color: #28a745 !important;
+        }
+        .is-invalid {
+            border-color: #dc3545 !important;
+        }
+        .invalid-feedback {
+            display: block;
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875em;
+            color: #dc3545;
+        }
+        .valid-feedback {
+            display: block;
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875em;
+            color: #28a745;
         }
         .header-title {
             text-align: center;
@@ -141,6 +167,12 @@
         <asp:ScriptManager ID="ScriptManager1" runat="server" EnablePageMethods="true"></asp:ScriptManager>
         <div class="container-fluid">
             <div class="header-logo">
+                <div class="header-actions">
+                    <span id="clienteNome" runat="server" style="color: white; margin-right: 15px;"></span>
+                    <a href="Login.aspx" id="linkLogin" runat="server">Entrar</a>
+                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display:none;">Minhas Reservas</a>
+                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display:none;">Sair</a>
+                </div>
                 <img id="logoImg" src="Images/logo-kingdom-confeitaria.png" alt="Kingdom Confeitaria" onerror="document.getElementById('logoFallback').style.display='block'; this.style.display='none';" />
                 <h1 id="logoFallback" class="header-title" style="display: none; color: #d4af37; margin: 0;">
                     <i class="fas fa-crown"></i> Kingdom Confeitaria
@@ -172,7 +204,8 @@
                                 Text="Fazer Reserva" 
                                 CssClass="btn btn-reservar" 
                                 OnClick="btnFazerReserva_Click" 
-                                Enabled="false" />
+                                Enabled="false" 
+                                OnClientClick="return verificarCarrinhoAntesDeAbrirModal();" />
                         </div>
                     </div>
                 </div>
@@ -214,7 +247,8 @@
                         <asp:Button ID="btnConfirmarReserva" runat="server" 
                             Text="Confirmar Reserva" 
                             CssClass="btn btn-primary" 
-                            OnClick="btnConfirmarReserva_Click" />
+                            OnClick="btnConfirmarReserva_Click"
+                            OnClientClick="return validarFormularioReserva();" />
                     </div>
                 </div>
             </div>
@@ -376,6 +410,171 @@
             var dados = sacoId + '|' + nomeSaco + '|' + tamanhoSaco + '|' + precoNormalizado + '|' + quantidade + '|' + produtosSelecionados.join(',');
             
             __doPostBack('AdicionarSacoAoCarrinho', dados);
+        }
+
+        function verificarCarrinhoAntesDeAbrirModal() {
+            // Verificar se há itens no carrinho
+            var carrinhoContainer = document.getElementById('<%= carrinhoContainer.ClientID %>');
+            var btnFazerReserva = document.getElementById('<%= btnFazerReserva.ClientID %>');
+            
+            // Verificar se o botão está desabilitado
+            if (btnFazerReserva && btnFazerReserva.disabled) {
+                alert('Adicione produtos ao carrinho antes de fazer a reserva.');
+                return false;
+            }
+            
+            // Verificar se o carrinho está vazio
+            if (!carrinhoContainer || carrinhoContainer.innerHTML.indexOf('vazio') !== -1 || 
+                carrinhoContainer.innerHTML.trim() === '' || 
+                carrinhoContainer.innerHTML.indexOf('item-carrinho') === -1) {
+                alert('Adicione produtos ao carrinho antes de fazer a reserva.');
+                return false;
+            }
+            
+            return true; // Permitir o postback
+        }
+
+        // Função para abrir modal após postback
+        function abrirModalReserva() {
+            try {
+                var modalElement = document.getElementById('modalReserva');
+                if (modalElement) {
+                    var modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                } else {
+                    console.error('Modal não encontrado');
+                }
+            } catch (e) {
+                console.error('Erro ao abrir modal:', e);
+                // Fallback: mostrar alerta
+                alert('Por favor, preencha os dados e clique em Confirmar Reserva.');
+            }
+        }
+
+        // Verificar se precisa abrir o modal após carregar a página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Verificar se há parâmetro na URL indicando que deve abrir o modal
+            if (window.location.href.indexOf('abrirModal=1') !== -1) {
+                setTimeout(abrirModalReserva, 500);
+            }
+
+            // Validação dinâmica do formulário de reserva
+            var nomeReserva = document.getElementById('<%= txtNome.ClientID %>');
+            var emailReserva = document.getElementById('<%= txtEmail.ClientID %>');
+            var telefoneReserva = document.getElementById('<%= txtTelefone.ClientID %>');
+            var dataRetirada = document.getElementById('<%= ddlDataRetirada.ClientID %>');
+
+            if (emailReserva) {
+                emailReserva.addEventListener('input', function(e) {
+                    validarCampoEmail(e.target);
+                });
+            }
+
+            if (telefoneReserva) {
+                telefoneReserva.addEventListener('input', function(e) {
+                    var value = e.target.value.replace(/\D/g, '');
+                    if (value.length <= 11) {
+                        if (value.length <= 10) {
+                            value = value.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+                        } else {
+                            value = value.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+                        }
+                        e.target.value = value;
+                    }
+                    validarCampoTelefone(e.target);
+                });
+            }
+
+            if (nomeReserva) {
+                nomeReserva.addEventListener('input', function(e) {
+                    validarCampoNome(e.target);
+                });
+            }
+        });
+
+        function validarCampoEmail(input) {
+            var email = input.value.trim();
+            var isValid = true;
+            var message = '';
+
+            if (email.length === 0) {
+                isValid = false;
+                message = 'Email é obrigatório';
+            } else if (!email.includes('@')) {
+                isValid = false;
+                message = 'Email deve conter @';
+            } else if (!email.includes('.')) {
+                isValid = false;
+                message = 'Email deve conter um ponto (.)';
+            } else if (email.indexOf('@') === 0 || email.indexOf('@') === email.length - 1) {
+                isValid = false;
+                message = 'Email inválido';
+            } else {
+                var parts = email.split('@');
+                if (parts.length !== 2 || parts[0].length === 0 || parts[1].length === 0 || !parts[1].includes('.')) {
+                    isValid = false;
+                    message = 'Email inválido';
+                }
+            }
+
+            if (isValid) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+            } else {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+            }
+
+            return isValid;
+        }
+
+        function validarCampoTelefone(input) {
+            var value = input.value.replace(/\D/g, '');
+            var isValid = value.length >= 10 && value.length <= 11;
+
+            if (isValid) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+            } else {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+            }
+
+            return isValid;
+        }
+
+        function validarCampoNome(input) {
+            var nome = input.value.trim();
+            var isValid = nome.length >= 3;
+
+            if (isValid) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+            } else {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+            }
+
+            return isValid;
+        }
+
+        function validarFormularioReserva() {
+            var nome = document.getElementById('<%= txtNome.ClientID %>');
+            var email = document.getElementById('<%= txtEmail.ClientID %>');
+            var telefone = document.getElementById('<%= txtTelefone.ClientID %>');
+            var dataRetirada = document.getElementById('<%= ddlDataRetirada.ClientID %>');
+
+            var nomeValido = validarCampoNome(nome);
+            var emailValido = validarCampoEmail(email);
+            var telefoneValido = validarCampoTelefone(telefone);
+            var dataValida = dataRetirada && dataRetirada.value && dataRetirada.value !== '';
+
+            if (!nomeValido || !emailValido || !telefoneValido || !dataValida) {
+                alert('Por favor, preencha todos os campos obrigatórios corretamente.');
+                return false;
+            }
+
+            return true;
         }
     </script>
 </body>

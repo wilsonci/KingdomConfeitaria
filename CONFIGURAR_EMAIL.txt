@@ -1,0 +1,64 @@
+CONFIGURAÇÃO DE EMAIL - KINGDOM CONFEITARIA
+===========================================
+
+O erro "Authentication Required" geralmente ocorre quando:
+1. As credenciais SMTP não estão corretas
+2. O Gmail requer "Senha de App" em vez da senha normal
+3. A autenticação de 2 fatores está ativada
+
+SOLUÇÃO PARA GMAIL:
+-------------------
+
+1. Ative a autenticação de 2 fatores na sua conta Google:
+   - Acesse: https://myaccount.google.com/security
+   - Ative "Verificação em duas etapas"
+
+2. Gere uma "Senha de App":
+   - Acesse: https://myaccount.google.com/apppasswords
+   - Selecione "App" e "Outro (nome personalizado)"
+   - Digite "Kingdom Confeitaria"
+   - Clique em "Gerar"
+   - Copie a senha gerada (16 caracteres sem espaços)
+
+3. Configure no web.config:
+   ```xml
+   <add key="SmtpServer" value="smtp.gmail.com" />
+   <add key="SmtpPort" value="587" />
+   <add key="SmtpUsername" value="seu-email@gmail.com" />
+   <add key="SmtpPassword" value="senha-de-app-gerada" />
+   <add key="EmailFrom" value="seu-email@gmail.com" />
+   ```
+
+SOLUÇÃO PARA OUTROS PROVEDORES:
+-------------------------------
+
+OUTLOOK/HOTMAIL:
+- SmtpServer: smtp-mail.outlook.com
+- SmtpPort: 587
+- Use sua senha normal ou senha de app
+
+YAHOO:
+- SmtpServer: smtp.mail.yahoo.com
+- SmtpPort: 587
+- Gere senha de app em: https://login.yahoo.com/account/security
+
+SERVIDOR PRÓPRIO:
+- Configure conforme instruções do seu provedor
+- Verifique se requer SSL/TLS
+- Verifique porta e autenticação
+
+TESTE DE CONFIGURAÇÃO:
+---------------------
+
+Após configurar, teste enviando um email:
+1. Faça um cadastro no sistema
+2. Verifique se o email de confirmação é enviado
+3. Verifique os logs (Debug) para erros
+
+NOTAS IMPORTANTES:
+-----------------
+- NUNCA compartilhe suas senhas de app
+- A senha de app é diferente da senha da conta
+- Se mudar a senha da conta, gere nova senha de app
+- O sistema agora não bloqueia se o email falhar (apenas loga o erro)
+

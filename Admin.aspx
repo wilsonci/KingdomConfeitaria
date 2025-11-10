@@ -93,6 +93,17 @@
                     </li>
                 </ul>
 
+                <div class="alert alert-warning mb-3">
+                    <strong><i class="fas fa-exclamation-triangle"></i> Ações Administrativas:</strong>
+                    <asp:Button ID="btnLimparDados" runat="server" 
+                        Text="Limpar Todos os Clientes e Reservas" 
+                        CssClass="btn btn-danger btn-sm ms-2" 
+                        OnClick="btnLimparDados_Click"
+                        OnClientClick="return confirm('ATENÇÃO: Esta ação irá apagar TODOS os clientes e reservas do banco de dados. Esta ação não pode ser desfeita. Deseja continuar?');" />
+                </div>
+
+                <div id="alertContainer" runat="server"></div>
+
                 <div class="tab-content" id="adminTabContent">
                     <!-- Aba Produtos -->
                     <div class="tab-pane fade show active" id="produtos" role="tabpanel">

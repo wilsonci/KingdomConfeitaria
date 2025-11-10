@@ -20,7 +20,8 @@ namespace KingdomConfeitaria.Services
         public EmailService()
         {
             _smtpServer = ConfigurationManager.AppSettings["SmtpServer"];
-            _smtpPort = int.Parse(ConfigurationManager.AppSettings["SmtpPort"]);
+            var smtpPortStr = ConfigurationManager.AppSettings["SmtpPort"];
+            _smtpPort = !string.IsNullOrEmpty(smtpPortStr) ? int.Parse(smtpPortStr) : 587;
             _smtpUsername = ConfigurationManager.AppSettings["SmtpUsername"];
             _smtpPassword = ConfigurationManager.AppSettings["SmtpPassword"];
             _emailIsabela = ConfigurationManager.AppSettings["EmailIsabela"];
@@ -112,14 +113,24 @@ namespace KingdomConfeitaria.Services
         {
             try
             {
+                // Verificar se as configurações estão preenchidas
+                if (string.IsNullOrEmpty(_smtpServer) || string.IsNullOrEmpty(_smtpUsername) || string.IsNullOrEmpty(_smtpPassword))
+                {
+                    System.Diagnostics.Debug.WriteLine("Configurações SMTP não estão preenchidas. Email não será enviado.");
+                    return; // Não lançar exceção, apenas logar
+                }
+
                 using (var client = new SmtpClient(_smtpServer, _smtpPort))
                 {
                     client.EnableSsl = true;
+                    client.UseDefaultCredentials = false;
                     client.Credentials = new NetworkCredential(_smtpUsername, _smtpPassword);
+                    client.DeliveryMethod = SmtpDeliveryMethod.Network;
+                    client.Timeout = 30000; // 30 segundos
 
                     var mensagem = new MailMessage
                     {
-                        From = new MailAddress(_emailFrom, "Kingdom Confeitaria"),
+                        From = new MailAddress(_emailFrom ?? _smtpUsername, "Kingdom Confeitaria"),
                         Subject = assunto,
                         Body = corpo,
                         IsBodyHtml = true
@@ -133,7 +144,10 @@ namespace KingdomConfeitaria.Services
             {
                 // Log do erro (implementar logging adequado)
                 System.Diagnostics.Debug.WriteLine(string.Format("Erro ao enviar email: {0}", ex.Message));
-                throw;
+                System.Diagnostics.Debug.WriteLine(string.Format("Stack trace: {0}", ex.StackTrace));
+                
+                // Não lançar exceção para não interromper o fluxo
+                // Em produção, considere implementar um sistema de retry ou fila
             }
         }
     }

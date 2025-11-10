@@ -140,7 +140,7 @@ namespace KingdomConfeitaria.Services
                             CREATE TABLE [dbo].[Clientes](
                                 [Id] [int] IDENTITY(1,1) NOT NULL,
                                 [Nome] [nvarchar](200) NOT NULL,
-                                [Email] [nvarchar](200) NOT NULL,
+                                [Email] [nvarchar](200) NULL,
                                 [Telefone] [nvarchar](50) NULL,
                                 [TemWhatsApp] [bit] NOT NULL DEFAULT(0),
                                 [Provider] [nvarchar](50) NULL,
@@ -152,8 +152,26 @@ namespace KingdomConfeitaria.Services
                                 [UltimoAcesso] [datetime] NULL,
                                 CONSTRAINT [PK_Clientes] PRIMARY KEY CLUSTERED ([Id] ASC)
                             )
-                            CREATE UNIQUE INDEX [IX_Clientes_Email] ON [dbo].[Clientes]([Email])
+                            CREATE UNIQUE INDEX [IX_Clientes_Email] ON [dbo].[Clientes]([Email]) WHERE [Email] IS NOT NULL
                             CREATE INDEX [IX_Clientes_Provider] ON [dbo].[Clientes]([Provider], [ProviderId])
+                        END";
+                    checkTable.ExecuteNonQuery();
+
+                    // Migração: Alterar coluna Email para permitir NULL se ainda não permitir
+                    checkTable.CommandText = @"
+                        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Clientes]') AND name = 'Email' AND is_nullable = 0)
+                        BEGIN
+                            -- Remover índice único se existir
+                            IF EXISTS (SELECT * FROM sys.indexes WHERE object_id = OBJECT_ID(N'[dbo].[Clientes]') AND name = 'IX_Clientes_Email')
+                            BEGIN
+                                DROP INDEX [IX_Clientes_Email] ON [dbo].[Clientes]
+                            END
+                            
+                            -- Alterar coluna para permitir NULL
+                            ALTER TABLE [dbo].[Clientes] ALTER COLUMN [Email] [nvarchar](200) NULL
+                            
+                            -- Recriar índice único filtrado (apenas para emails não nulos)
+                            CREATE UNIQUE INDEX [IX_Clientes_Email] ON [dbo].[Clientes]([Email]) WHERE [Email] IS NOT NULL
                         END";
                     checkTable.ExecuteNonQuery();
 
@@ -178,22 +196,22 @@ namespace KingdomConfeitaria.Services
                     // Inserir novos produtos
                     var insertData = new SqlCommand(@"
                         INSERT INTO Produtos (Nome, Descricao, PrecoPequeno, PrecoGrande, ImagemUrl, Ativo, Ordem, EhSacoPromocional, QuantidadeSaco, TamanhoSaco) VALUES
-                        ('Gingerbread Estrela Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Pequeno', 5.00, 0.00, 'https://images.unsplash.com/photo-1606914469633-bd392107a83b?w=400', 1, 1, 0, 0, NULL),
-                        ('Gingerbread Estrela Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Grande', 0.00, 10.00, 'https://images.unsplash.com/photo-1606914469633-bd392107a83b?w=400', 1, 2, 0, 0, NULL),
-                        ('Gingerbread Floco de Neve Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Floco de Neve Pequeno', 5.00, 0.00, 'https://images.unsplash.com/photo-1606914469633-bd392107a83b?w=400', 1, 3, 0, 0, NULL),
-                        ('Gingerbread Floco de Neve Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Floco de Neve Grande', 0.00, 10.00, 'https://images.unsplash.com/photo-1606914469633-bd392107a83b?w=400', 1, 4, 0, 0, NULL),
-                        ('Gingerbread Guirlanda Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Guirlanda Pequeno', 5.00, 0.00, 'https://images.unsplash.com/photo-1572383672419-ab35444a55b0?w=400', 1, 5, 0, 0, NULL),
-                        ('Gingerbread Guirlanda Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Guirlanda Grande', 0.00, 10.00, 'https://images.unsplash.com/photo-1572383672419-ab35444a55b0?w=400', 1, 6, 0, 0, NULL),
-                        ('Gingerbread Meia Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Meia Pequeno', 5.00, 0.00, 'https://images.unsplash.com/photo-1606914509765-5c0a5b1b0b5e?w=400', 1, 7, 0, 0, NULL),
-                        ('Gingerbread Meia Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Meia Grande', 0.00, 10.00, 'https://images.unsplash.com/photo-1606914509765-5c0a5b1b0b5e?w=400', 1, 8, 0, 0, NULL),
-                        ('Gingerbread Árvore Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Árvore Pequeno', 5.00, 0.00, 'https://images.unsplash.com/photo-1606914469633-bd392107a83b?w=400', 1, 9, 0, 0, NULL),
-                        ('Gingerbread Árvore Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Árvore Grande', 0.00, 10.00, 'https://images.unsplash.com/photo-1606914469633-bd392107a83b?w=400', 1, 10, 0, 0, NULL),
-                        ('Gingerbread Coração Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Coração Pequeno', 5.00, 0.00, 'https://images.unsplash.com/photo-1572383672419-ab35444a55b0?w=400', 1, 11, 0, 0, NULL),
-                        ('Gingerbread Coração Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Coração Grande', 0.00, 10.00, 'https://images.unsplash.com/photo-1572383672419-ab35444a55b0?w=400', 1, 12, 0, 0, NULL),
-                        ('Gingerbread Boneco Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Boneco Pequeno', 5.00, 0.00, 'https://images.unsplash.com/photo-1572383672419-ab35444a55b0?w=400', 1, 13, 0, 0, NULL),
-                        ('Gingerbread Boneco Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Boneco Grande', 0.00, 10.00, 'https://images.unsplash.com/photo-1572383672419-ab35444a55b0?w=400', 1, 14, 0, 0, NULL),
-                        ('Saco Promocional - 6 Pequenos', 'Saco com 6 biscoitos pequenos (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 21.00, 0.00, 'https://images.unsplash.com/photo-1606914509765-5c0a5b1b0b5e?w=400', 1, 15, 1, 6, 'Pequeno'),
-                        ('Saco Promocional - 3 Grandes', 'Saco com 3 biscoitos grandes (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 0.00, 21.00, 'https://images.unsplash.com/photo-1606914509765-5c0a5b1b0b5e?w=400', 1, 16, 1, 3, 'Grande')", connection);
+                        ('Gingerbread Estrela Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Pequeno', 5.00, 0.00, 'Images/estrela-pequeno.jpg', 1, 1, 0, 0, NULL),
+                        ('Gingerbread Estrela Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Grande', 0.00, 10.00, 'Images/estrela-grande.jpg', 1, 2, 0, 0, NULL),
+                        ('Gingerbread Floco de Neve Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Floco de Neve Pequeno', 5.00, 0.00, 'Images/floco-neve-pequeno.jpg', 1, 3, 0, 0, NULL),
+                        ('Gingerbread Floco de Neve Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Floco de Neve Grande', 0.00, 10.00, 'Images/floco-neve-grande.jpg', 1, 4, 0, 0, NULL),
+                        ('Gingerbread Guirlanda Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Guirlanda Pequeno', 5.00, 0.00, 'Images/guirlanda-pequeno.jpg', 1, 5, 0, 0, NULL),
+                        ('Gingerbread Guirlanda Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Guirlanda Grande', 0.00, 10.00, 'Images/guirlanda-grande.jpg', 1, 6, 0, 0, NULL),
+                        ('Gingerbread Meia Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Meia Pequeno', 5.00, 0.00, 'Images/meia-pequeno.jpg', 1, 7, 0, 0, NULL),
+                        ('Gingerbread Meia Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Meia Grande', 0.00, 10.00, 'Images/meia-grande.jpg', 1, 8, 0, 0, NULL),
+                        ('Gingerbread Árvore Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Árvore Pequeno', 5.00, 0.00, 'Images/arvore-pequeno.jpg', 1, 9, 0, 0, NULL),
+                        ('Gingerbread Árvore Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Árvore Grande', 0.00, 10.00, 'Images/arvore-grande.jpg', 1, 10, 0, 0, NULL),
+                        ('Gingerbread Coração Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Coração Pequeno', 5.00, 0.00, 'Images/coracao-pequeno.jpg', 1, 11, 0, 0, NULL),
+                        ('Gingerbread Coração Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Coração Grande', 0.00, 10.00, 'Images/coracao-grande.jpg', 1, 12, 0, 0, NULL),
+                        ('Gingerbread Boneco Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Boneco Pequeno', 5.00, 0.00, 'Images/boneco-pequeno.jpg', 1, 13, 0, 0, NULL),
+                        ('Gingerbread Boneco Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Boneco Grande', 0.00, 10.00, 'Images/boneco-grande.jpg', 1, 14, 0, 0, NULL),
+                        ('Saco Promocional - 6 Pequenos', 'Saco com 6 biscoitos pequenos (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 21.00, 0.00, 'Images/saco-6-pequenos.jpg', 1, 15, 1, 6, 'Pequeno'),
+                        ('Saco Promocional - 3 Grandes', 'Saco com 3 biscoitos grandes (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 0.00, 21.00, 'Images/saco-3-grandes.jpg', 1, 16, 1, 3, 'Grande')", connection);
                     insertData.ExecuteNonQuery();
                 }
             }
@@ -619,13 +637,37 @@ namespace KingdomConfeitaria.Services
             return clientes;
         }
 
+        // Método auxiliar para formatar email
+        private string FormatarEmail(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+                return "";
+            
+            return email.Trim().ToLowerInvariant();
+        }
+
+        // Método auxiliar para formatar telefone (apenas números)
+        private string FormatarTelefone(string telefone)
+        {
+            if (string.IsNullOrEmpty(telefone))
+                return "";
+            
+            // Remover todos os caracteres não numéricos
+            return System.Text.RegularExpressions.Regex.Replace(telefone, @"[^\d]", "");
+        }
+
         public Cliente ObterClientePorEmail(string email)
         {
+            if (string.IsNullOrEmpty(email))
+                return null;
+
+            string emailFormatado = FormatarEmail(email);
+            
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                var command = new SqlCommand("SELECT Id, Nome, Email, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, DataCadastro, UltimoAcesso FROM Clientes WHERE Email = @Email", connection);
-                command.Parameters.AddWithValue("@Email", email);
+                var command = new SqlCommand("SELECT Id, Nome, Email, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, DataCadastro, UltimoAcesso FROM Clientes WHERE LOWER(LTRIM(RTRIM(Email))) = @Email", connection);
+                command.Parameters.AddWithValue("@Email", emailFormatado);
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -635,7 +677,7 @@ namespace KingdomConfeitaria.Services
                         {
                             Id = reader.GetInt32(0),
                             Nome = reader.GetString(1),
-                            Email = reader.GetString(2),
+                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
                             Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
                             TemWhatsApp = reader.GetBoolean(4),
                             Provider = reader.IsDBNull(5) ? null : reader.GetString(5),
@@ -649,6 +691,69 @@ namespace KingdomConfeitaria.Services
                     }
                 }
             }
+            return null;
+        }
+
+        public Cliente ObterClientePorTelefone(string telefone)
+        {
+            if (string.IsNullOrEmpty(telefone))
+                return null;
+
+            string telefoneFormatado = FormatarTelefone(telefone);
+            
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                // Buscar por telefone formatado (apenas números)
+                var command = new SqlCommand(@"
+                    SELECT Id, Nome, Email, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, DataCadastro, UltimoAcesso 
+                    FROM Clientes 
+                    WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(Telefone, '(', ''), ')', ''), '-', ''), ' ', ''), '.', '') = @Telefone", connection);
+                command.Parameters.AddWithValue("@Telefone", telefoneFormatado);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new Cliente
+                        {
+                            Id = reader.GetInt32(0),
+                            Nome = reader.GetString(1),
+                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                            TemWhatsApp = reader.GetBoolean(4),
+                            Provider = reader.IsDBNull(5) ? null : reader.GetString(5),
+                            ProviderId = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            TokenConfirmacao = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            EmailConfirmado = reader.GetBoolean(8),
+                            WhatsAppConfirmado = reader.GetBoolean(9),
+                            DataCadastro = reader.GetDateTime(10),
+                            UltimoAcesso = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
+                        };
+                    }
+                }
+            }
+            return null;
+        }
+
+        public Cliente ObterClientePorEmailOuTelefone(string email, string telefone)
+        {
+            // Tentar por email primeiro
+            if (!string.IsNullOrEmpty(email))
+            {
+                var cliente = ObterClientePorEmail(email);
+                if (cliente != null)
+                    return cliente;
+            }
+
+            // Tentar por telefone
+            if (!string.IsNullOrEmpty(telefone))
+            {
+                var cliente = ObterClientePorTelefone(telefone);
+                if (cliente != null)
+                    return cliente;
+            }
+
             return null;
         }
 
@@ -721,19 +826,31 @@ namespace KingdomConfeitaria.Services
 
         public int CriarOuAtualizarCliente(Cliente cliente)
         {
+            // Formatar email e telefone antes de processar
+            if (!string.IsNullOrEmpty(cliente.Email))
+            {
+                cliente.Email = FormatarEmail(cliente.Email);
+            }
+            if (!string.IsNullOrEmpty(cliente.Telefone))
+            {
+                cliente.Telefone = FormatarTelefone(cliente.Telefone);
+            }
+
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
                 
-                // Verificar se cliente já existe
+                // Verificar se cliente já existe (por Provider, Email OU Telefone)
                 Cliente clienteExistente = null;
                 if (!string.IsNullOrEmpty(cliente.Provider) && !string.IsNullOrEmpty(cliente.ProviderId))
                 {
                     clienteExistente = ObterClientePorProvider(cliente.Provider, cliente.ProviderId);
                 }
-                else if (!string.IsNullOrEmpty(cliente.Email))
+                
+                // Se não encontrou por Provider, tentar por Email ou Telefone
+                if (clienteExistente == null)
                 {
-                    clienteExistente = ObterClientePorEmail(cliente.Email);
+                    clienteExistente = ObterClientePorEmailOuTelefone(cliente.Email, cliente.Telefone);
                 }
                 
                 if (clienteExistente != null)
@@ -741,13 +858,14 @@ namespace KingdomConfeitaria.Services
                     // Atualizar cliente existente
                     var command = new SqlCommand(@"
                         UPDATE Clientes 
-                        SET Nome = @Nome, Telefone = @Telefone, TemWhatsApp = @TemWhatsApp, 
+                        SET Nome = @Nome, Email = @Email, Telefone = @Telefone, TemWhatsApp = @TemWhatsApp, 
                             UltimoAcesso = GETDATE()
                         WHERE Id = @Id", connection);
                     
                     command.Parameters.AddWithValue("@Id", clienteExistente.Id);
                     command.Parameters.AddWithValue("@Nome", cliente.Nome);
-                    command.Parameters.AddWithValue("@Telefone", cliente.Telefone ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(cliente.Email) ? (object)DBNull.Value : cliente.Email);
+                    command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(cliente.Telefone) ? (object)DBNull.Value : cliente.Telefone);
                     command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
                     
                     command.ExecuteNonQuery();
@@ -766,12 +884,16 @@ namespace KingdomConfeitaria.Services
                         VALUES (@Nome, @Email, @Telefone, @TemWhatsApp, @Provider, @ProviderId, @TokenConfirmacao, @EmailConfirmado, @WhatsAppConfirmado, GETDATE());
                         SELECT CAST(SCOPE_IDENTITY() as int);", connection);
                     
+                    // Garantir que email e telefone estejam formatados
+                    string emailFormatado = FormatarEmail(cliente.Email);
+                    string telefoneFormatado = FormatarTelefone(cliente.Telefone);
+                    
                     command.Parameters.AddWithValue("@Nome", cliente.Nome);
-                    command.Parameters.AddWithValue("@Email", cliente.Email);
-                    command.Parameters.AddWithValue("@Telefone", cliente.Telefone ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(emailFormatado) ? (object)DBNull.Value : emailFormatado);
+                    command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(telefoneFormatado) ? (object)DBNull.Value : telefoneFormatado);
                     command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
-                    command.Parameters.AddWithValue("@Provider", cliente.Provider ?? (object)DBNull.Value);
-                    command.Parameters.AddWithValue("@ProviderId", cliente.ProviderId ?? (object)DBNull.Value);
+                    command.Parameters.AddWithValue("@Provider", string.IsNullOrEmpty(cliente.Provider) ? (object)DBNull.Value : cliente.Provider);
+                    command.Parameters.AddWithValue("@ProviderId", string.IsNullOrEmpty(cliente.ProviderId) ? (object)DBNull.Value : cliente.ProviderId);
                     command.Parameters.AddWithValue("@TokenConfirmacao", cliente.TokenConfirmacao);
                     command.Parameters.AddWithValue("@EmailConfirmado", cliente.EmailConfirmado);
                     command.Parameters.AddWithValue("@WhatsAppConfirmado", cliente.WhatsAppConfirmado);
@@ -936,6 +1058,30 @@ namespace KingdomConfeitaria.Services
                 var command = new SqlCommand("DELETE FROM Reservas WHERE Id = @Id", connection);
                 command.Parameters.AddWithValue("@Id", reservaId);
                 command.ExecuteNonQuery();
+            }
+        }
+
+        public void LimparTodosClientesEReservas()
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                
+                // Desabilitar verificação de chave estrangeira temporariamente
+                var disableFK = new SqlCommand("ALTER TABLE Reservas NOCHECK CONSTRAINT ALL", connection);
+                disableFK.ExecuteNonQuery();
+                
+                // Deletar todas as reservas primeiro (devido à chave estrangeira)
+                var deleteReservas = new SqlCommand("DELETE FROM ReservaItens; DELETE FROM Reservas", connection);
+                deleteReservas.ExecuteNonQuery();
+                
+                // Deletar todos os clientes
+                var deleteClientes = new SqlCommand("DELETE FROM Clientes", connection);
+                deleteClientes.ExecuteNonQuery();
+                
+                // Reabilitar verificação de chave estrangeira
+                var enableFK = new SqlCommand("ALTER TABLE Reservas CHECK CONSTRAINT ALL", connection);
+                enableFK.ExecuteNonQuery();
             }
         }
     }
