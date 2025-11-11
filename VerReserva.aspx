@@ -1,4 +1,4 @@
-<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="VerReserva.aspx.cs" Inherits="KingdomConfeitaria.VerReserva" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="VerReserva.aspx.cs" Inherits="KingdomConfeitaria.VerReserva" %>
 
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -16,15 +16,21 @@
         }
         .header-logo {
             background: #1a4d2e;
-            padding: 30px 20px;
+            padding: 10px 20px;
             text-align: center;
-            border-radius: 20px 20px 0 0;
+            border-radius: 0;
             margin-bottom: 0;
-            position: relative;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         .header-actions {
             position: absolute;
-            top: 20px;
+            top: 10px;
             right: 20px;
         }
         .header-actions a {
@@ -37,15 +43,16 @@
             text-decoration: underline;
         }
         .header-logo img {
-            max-width: 300px;
-            width: 100%;
+            max-width: 20%;
+            width: auto;
             height: auto;
+            max-height: 80px;
         }
         .container-main {
             background: white;
-            border-radius: 0 0 20px 20px;
+            border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            margin: 0 auto 20px auto;
+            margin: 90px auto 20px auto;
             padding: 30px;
         }
         .reserva-detalhes {
@@ -81,7 +88,7 @@
                     <a href="Login.aspx" id="linkLogin" runat="server">Entrar</a>
                     <a href="Logout.aspx" id="linkLogout" runat="server" style="display:none;">Sair</a>
                 </div>
-                <img src="Images/logo-kingdom-confeitaria.png" alt="Kingdom Confeitaria" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
                 <h1 style="display:none; color: white; margin: 0;">Kingdom Confeitaria</h1>
             </div>
             

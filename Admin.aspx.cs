@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.UI;
@@ -11,15 +11,187 @@ namespace KingdomConfeitaria
     public partial class Admin : System.Web.UI.Page
     {
         private DatabaseService _databaseService;
+        
+        // Helper para escapar strings JavaScript com caracteres especiais
+        private string EscapeJavaScript(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return "";
+            
+            return input
+                .Replace("\\", "\\\\")
+                .Replace("'", "\\'")
+                .Replace("\"", "\\\"")
+                .Replace("\r", "\\r")
+                .Replace("\n", "\\n")
+                .Replace("\t", "\\t");
+        }
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            // Configurar encoding UTF-8
+            Response.ContentEncoding = System.Text.Encoding.UTF8;
+            Response.Charset = "UTF-8";
+            
+            // Verificar se é administrador
+            if (Session["IsAdmin"] == null || !(bool)Session["IsAdmin"])
+            {
+                Response.Redirect("Default.aspx");
+                return;
+            }
+            
             _databaseService = new DatabaseService();
 
             if (!IsPostBack)
             {
+                CarregarResumo();
                 CarregarProdutos();
                 CarregarReservas();
+            }
+        }
+
+        private void CarregarResumo()
+        {
+            try
+            {
+                var clientes = _databaseService.ObterTodosClientes();
+                var reservas = _databaseService.ObterTodasReservas();
+                
+                int totalClientes = clientes.Count;
+                int totalAdmins = clientes.Count(c => c.IsAdmin);
+                int totalClientesNormais = totalClientes - totalAdmins;
+                
+                int totalReservas = reservas.Count;
+                int reservasPendentes = reservas.Count(r => r.Status == "Pendente");
+                int reservasConfirmadas = reservas.Count(r => r.Status == "Confirmado");
+                int reservasProntas = reservas.Count(r => r.Status == "Pronto");
+                int reservasEntregues = reservas.Count(r => r.Status == "Entregue");
+                int reservasCanceladas = reservas.Count(r => r.Status == "Cancelado" || r.Cancelado);
+                
+                decimal valorTotalReservas = reservas.Where(r => !r.Cancelado).Sum(r => r.ValorTotal);
+                decimal valorPendente = reservas.Where(r => r.Status == "Pendente" && !r.Cancelado).Sum(r => r.ValorTotal);
+                decimal valorConfirmado = reservas.Where(r => r.Status == "Confirmado" && !r.Cancelado).Sum(r => r.ValorTotal);
+                
+                string html = $@"
+                    <div class='row mb-4'>
+                        <div class='col-md-3'>
+                            <div class='card text-white bg-primary'>
+                                <div class='card-body'>
+                                    <h5 class='card-title'><i class='fas fa-users'></i> Clientes</h5>
+                                    <h2 class='mb-0'>{totalClientes}</h2>
+                                    <small>Total cadastrados</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class='col-md-3'>
+                            <div class='card text-white bg-info'>
+                                <div class='card-body'>
+                                    <h5 class='card-title'><i class='fas fa-user-shield'></i> Administradores</h5>
+                                    <h2 class='mb-0'>{totalAdmins}</h2>
+                                    <small>Usuários admin</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class='col-md-3'>
+                            <div class='card text-white bg-success'>
+                                <div class='card-body'>
+                                    <h5 class='card-title'><i class='fas fa-clipboard-list'></i> Reservas</h5>
+                                    <h2 class='mb-0'>{totalReservas}</h2>
+                                    <small>Total de reservas</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class='col-md-3'>
+                            <div class='card text-white bg-warning'>
+                                <div class='card-body'>
+                                    <h5 class='card-title'><i class='fas fa-dollar-sign'></i> Valor Total</h5>
+                                    <h2 class='mb-0'>R$ {valorTotalReservas:F2}</h2>
+                                    <small>Em reservas</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class='row mb-4'>
+                        <div class='col-md-6'>
+                            <div class='card'>
+                                <div class='card-header bg-primary text-white'>
+                                    <h5 class='mb-0'><i class='fas fa-chart-pie'></i> Status das Reservas</h5>
+                                </div>
+                                <div class='card-body'>
+                                    <ul class='list-group list-group-flush'>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                            <span class='status-badge status-pendente'>Pendente</span>
+                                            <span class='badge bg-primary rounded-pill'>{reservasPendentes}</span>
+                                        </li>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                            <span class='status-badge status-confirmado'>Confirmado</span>
+                                            <span class='badge bg-primary rounded-pill'>{reservasConfirmadas}</span>
+                                        </li>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                            <span class='status-badge status-pronto'>Pronto</span>
+                                            <span class='badge bg-primary rounded-pill'>{reservasProntas}</span>
+                                        </li>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                            <span class='status-badge status-entregue'>Entregue</span>
+                                            <span class='badge bg-primary rounded-pill'>{reservasEntregues}</span>
+                                        </li>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                            <span class='status-badge status-cancelado'>Cancelado</span>
+                                            <span class='badge bg-primary rounded-pill'>{reservasCanceladas}</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class='col-md-6'>
+                            <div class='card'>
+                                <div class='card-header bg-success text-white'>
+                                    <h5 class='mb-0'><i class='fas fa-money-bill-wave'></i> Valores por Status</h5>
+                                </div>
+                                <div class='card-body'>
+                                    <ul class='list-group list-group-flush'>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                            <span>Pendente</span>
+                                            <strong>R$ {valorPendente:F2}</strong>
+                                        </li>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                            <span>Confirmado</span>
+                                            <strong>R$ {valorConfirmado:F2}</strong>
+                                        </li>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                            <span>Total Geral</span>
+                                            <strong class='text-success'>R$ {valorTotalReservas:F2}</strong>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class='card'>
+                        <div class='card-header bg-info text-white'>
+                            <h5 class='mb-0'><i class='fas fa-info-circle'></i> Informações do Sistema</h5>
+                        </div>
+                        <div class='card-body'>
+                            <div class='row'>
+                                <div class='col-md-6'>
+                                    <p><strong>Clientes Normais:</strong> {totalClientesNormais}</p>
+                                    <p><strong>Administradores:</strong> {totalAdmins}</p>
+                                </div>
+                                <div class='col-md-6'>
+                                    <p><strong>Reservas Ativas:</strong> {totalReservas - reservasCanceladas}</p>
+                                    <p><strong>Reservas Canceladas:</strong> {reservasCanceladas}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>";
+                
+                resumoContainer.InnerHtml = html;
+            }
+            catch (Exception ex)
+            {
+                resumoContainer.InnerHtml = $"<div class='alert alert-danger'>Erro ao carregar resumo: {System.Web.HttpUtility.HtmlEncode(ex.Message)}</div>";
             }
         }
 
@@ -113,15 +285,15 @@ namespace KingdomConfeitaria
                 _databaseService.AtualizarProduto(produto);
 
                 CarregarProdutos();
-                ScriptManager.RegisterStartupScript(this, GetType(), "FecharModal", 
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", 
                     "var modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarProduto')); modal.hide();", true);
-                ScriptManager.RegisterStartupScript(this, GetType(), "Sucesso", 
-                    "alert('Produto atualizado com sucesso!');", true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
+                    $"alert('{EscapeJavaScript("Produto atualizado com sucesso!")}');", true);
             }
             catch (Exception ex)
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "Erro", 
-                    string.Format("alert('Erro ao salvar produto: {0}');", ex.Message.Replace("'", "\\'")), true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao salvar produto: {0}');", EscapeJavaScript(ex.Message)), true);
             }
         }
 
@@ -151,15 +323,15 @@ namespace KingdomConfeitaria
                 txtNovaOrdem.Text = "0";
 
                 CarregarProdutos();
-                ScriptManager.RegisterStartupScript(this, GetType(), "FecharModal", 
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", 
                     "var modal = bootstrap.Modal.getInstance(document.getElementById('modalNovoProduto')); modal.hide();", true);
-                ScriptManager.RegisterStartupScript(this, GetType(), "Sucesso", 
-                    "alert('Produto adicionado com sucesso!');", true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
+                    $"alert('{EscapeJavaScript("Produto adicionado com sucesso!")}');", true);
             }
             catch (Exception ex)
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "Erro", 
-                    string.Format("alert('Erro ao adicionar produto: {0}');", ex.Message.Replace("'", "\\'")), true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao adicionar produto: {0}');", EscapeJavaScript(ex.Message)), true);
             }
         }
 
@@ -292,16 +464,42 @@ namespace KingdomConfeitaria
                     _databaseService.AtualizarReserva(reserva);
 
                     CarregarReservas();
-                    ScriptManager.RegisterStartupScript(this, GetType(), "FecharModal", 
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", 
                         "var modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarReserva')); modal.hide();", true);
-                    ScriptManager.RegisterStartupScript(this, GetType(), "Sucesso", 
-                        "alert('Reserva atualizada com sucesso!');", true);
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
+                        $"alert('{EscapeJavaScript("Reserva atualizada com sucesso!")}');", true);
                 }
             }
             catch (Exception ex)
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "Erro", 
-                    string.Format("alert('Erro ao salvar reserva: {0}');", ex.Message.Replace("'", "\\'")), true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao salvar reserva: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        protected void btnLimparDados_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                _databaseService.LimparTodosClientesEReservas();
+                
+                // Recarregar dados
+                CarregarResumo();
+                CarregarProdutos();
+                CarregarReservas();
+                
+                // Mostrar mensagem de sucesso
+                alertContainer.InnerHtml = "<div class='alert alert-success alert-dismissible fade show' role='alert'>" +
+                    "Todos os clientes e reservas foram removidos com sucesso!" +
+                    "<button type='button' class='btn-close' data-bs-dismiss='alert'></button>" +
+                    "</div>";
+            }
+            catch (Exception ex)
+            {
+                alertContainer.InnerHtml = "<div class='alert alert-danger alert-dismissible fade show' role='alert'>" +
+                    "Erro ao limpar dados: " + System.Web.HttpUtility.HtmlEncode(ex.Message) +
+                    "<button type='button' class='btn-close' data-bs-dismiss='alert'></button>" +
+                    "</div>";
             }
         }
     }

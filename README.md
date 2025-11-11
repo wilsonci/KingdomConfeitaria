@@ -9,7 +9,7 @@ Sistema completo de reservas online para produção de Ginger Breads artesanais,
 - [Tecnologias Utilizadas](#tecnologias-utilizadas)
 - [Estrutura do Projeto](#estrutura-do-projeto)
 - [Instalação e Configuração](#instalação-e-configuração)
-- [Como Usar](#como-usar)
+- [Fluxo de Autenticação](#fluxo-de-autenticação)
 - [Configurações Necessárias](#configurações-necessárias)
 - [Banco de Dados](#banco-de-dados)
 - [Páginas do Sistema](#páginas-do-sistema)
@@ -55,6 +55,11 @@ Sistema desenvolvido para gerenciar reservas de Ginger Breads artesanais produzi
   - Cadastro por email/telefone
   - Confirmação de email com link
   - Confirmação por WhatsApp (se configurado)
+  - Validação dinâmica de formulários (email, telefone, nome)
+  - Prevenção de duplicação de clientes (verificação por email e telefone)
+  - Formatação automática de email e telefone
+  - Modal para completar cadastro quando dados estão faltando em login social
+  - Detecção de cliente já cadastrado com orientação para login na rede original
 
 - **Gerenciamento de Reservas**
   - Visualizar todas as reservas
@@ -86,6 +91,7 @@ Sistema desenvolvido para gerenciar reservas de Ginger Breads artesanais produzi
   - Definir previsão de entrega
   - Cancelar reservas
   - Editar observações
+  - Limpar todos os clientes e reservas (ferramenta de reset)
 
 ---
 
@@ -165,6 +171,40 @@ KingdomConfeitaria/
    - Configure um site no IIS
    - Aponte para a pasta do projeto
    - Configure o Application Pool para .NET Framework 4.8
+
+---
+
+## 🔐 Fluxo de Autenticação
+
+### Login Social
+
+O sistema suporta login com Facebook, Google e WhatsApp. O fluxo funciona da seguinte forma:
+
+1. **Primeiro Cadastro**:
+   - Cliente escolhe uma rede social (Facebook, Google ou WhatsApp)
+   - Sistema cria automaticamente uma conta com os dados fornecidos
+   - Se nome ou telefone estiverem faltando, um modal solicita o preenchimento
+   - Cliente recebe confirmação por email/WhatsApp
+
+2. **Cliente Já Cadastrado**:
+   - Se o cliente já está cadastrado (ex: pelo email do Google) e tenta se cadastrar novamente por outra rede social (ex: Facebook), o sistema detecta automaticamente
+   - O sistema verifica se o email ou telefone já existe no banco de dados
+   - Uma mensagem informa que o cliente já está cadastrado
+   - O sistema orienta o cliente a fazer login na rede social original (ex: Google) para ter acesso ao sistema
+   - Isso previne a criação de contas duplicadas
+
+3. **Cadastro por Email/Telefone**:
+   - Cliente preenche nome, email e telefone
+   - Sistema valida os dados em tempo real
+   - Se email ou telefone já existirem, o sistema faz login automaticamente
+   - Caso contrário, cria uma nova conta e envia confirmação
+
+### Validação de Dados
+
+- **Email**: Validado em tempo real, deve conter @ e ponto (.)
+- **Telefone**: Máscara automática, deve ter 10 ou 11 dígitos
+- **Nome**: Mínimo de 3 caracteres
+- Todos os dados são formatados automaticamente antes de salvar no banco
 
 ---
 
@@ -269,9 +309,14 @@ Página principal onde os clientes visualizam produtos e fazem reservas.
 
 **Funcionalidades**:
 - Listagem de produtos
-- Carrinho de compras
-- Formulário de reserva
+- Carrinho de compras em tempo real
+- Formulário de reserva com validação dinâmica
 - Seleção de data de retirada
+- Validação de campos obrigatórios (nome, email, telefone)
+- Máscara de telefone automática
+- Feedback visual de validação
+- Placeholder para imagens de produtos não encontradas
+- Botão "Fazer Reserva" habilitado apenas com itens no carrinho
 
 ### 2. Login.aspx
 Página de login e cadastro.
@@ -280,6 +325,12 @@ Página de login e cadastro.
 - Login social (Facebook, Google, WhatsApp)
 - Cadastro por email/telefone
 - Envio de confirmação
+- Validação dinâmica de campos (email, telefone, nome)
+- Máscara de telefone automática
+- Feedback visual de validação (verde/vermelho)
+- Modal para completar dados faltantes em login social
+- Detecção de cliente já cadastrado com mensagem informativa
+- Prevenção de cadastros duplicados (verificação por email e telefone)
 
 ### 3. MinhasReservas.aspx
 Área do cliente para gerenciar reservas.
@@ -315,6 +366,7 @@ Painel administrativo.
 - Gerenciamento de reservas
 - Edição de status
 - Controle de entregas
+- Limpeza de dados (clientes e reservas) - ferramenta de reset
 
 ### 7. Logout.aspx
 Encerramento de sessão.
@@ -337,6 +389,9 @@ Encerramento de sessão.
 - Facebook Login
 - Google Login
 - Criação automática de conta
+- Detecção de cliente já cadastrado
+- Prevenção de duplicação de contas
+- Solicitação de dados faltantes (nome, telefone)
 
 ---
 
@@ -374,18 +429,33 @@ msbuild KingdomConfeitaria.csproj /p:Configuration=Debug /t:Build
 
 1. **Banco de Dados**: O banco é criado automaticamente na primeira execução. Certifique-se de ter permissões adequadas.
 
-2. **Emails**: Configure o SMTP corretamente para envio de emails funcionar.
+2. **Emails**: Configure o SMTP corretamente para envio de emails funcionar. Para Gmail, use "Senha de App" (veja `CONFIGURAR_EMAIL.txt`).
 
-3. **OAuth**: As integrações sociais precisam ser configuradas com chaves válidas.
+3. **OAuth**: As integrações sociais precisam ser configuradas com chaves válidas (veja `CONFIGURAR_LOGIN_SOCIAL.txt`).
 
 4. **WhatsApp**: A API de WhatsApp precisa ser configurada com um provedor real.
 
 5. **BaseUrl**: Configure com a URL real do site em produção para os links funcionarem corretamente.
 
-6. **Segurança**: Em produção, considere:
+6. **Validação de Dados**:
+   - Email e telefone são formatados automaticamente antes de salvar
+   - O sistema previne cadastros duplicados verificando email e telefone
+   - Validação dinâmica em tempo real nos formulários
+
+7. **Login Social**:
+   - Se um cliente já cadastrado (ex: pelo email do Google) tentar se cadastrar por outra rede social (ex: Facebook), o sistema detecta e informa que ele já está cadastrado
+   - O sistema orienta o cliente a fazer login na rede original para ter acesso
+   - Se dados estiverem faltando (nome ou telefone), um modal solicita o preenchimento
+
+8. **Imagens de Produtos**:
+   - Coloque as imagens na pasta `Images/` seguindo os nomes especificados no banco
+   - Se uma imagem não for encontrada, o sistema usa um placeholder automático
+   - Veja `Images/INSTRUCOES_IMAGENS.txt` para mais detalhes
+
+9. **Segurança**: Em produção, considere:
    - Proteger Admin.aspx com autenticação
    - Usar HTTPS
-   - Validar todos os inputs
+   - Validar todos os inputs (já implementado)
    - Implementar rate limiting
 
 ---
@@ -430,7 +500,19 @@ Desenvolvido para Isabela e Camila - Kingdom Confeitaria 🍪👑
 
 ---
 
-**Versão**: 1.0  
-**Última atualização**: 2024  
+**Versão**: 1.1  
+**Última atualização**: Dezembro 2024  
 **Status**: ✅ Completo e funcional
+
+### Changelog v1.1
+
+- ✅ Validação dinâmica de formulários (email, telefone, nome)
+- ✅ Prevenção de cadastros duplicados (verificação por email e telefone)
+- ✅ Formatação automática de email e telefone
+- ✅ Modal para completar cadastro em login social
+- ✅ Detecção de cliente já cadastrado com orientação para login
+- ✅ Validação de imagens com placeholder automático
+- ✅ Limpeza de dados no painel administrativo
+- ✅ Melhorias na validação de reservas
+- ✅ Correções de bugs e melhorias de UX
 

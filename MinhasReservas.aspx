@@ -1,4 +1,4 @@
-<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="MinhasReservas.aspx.cs" Inherits="KingdomConfeitaria.MinhasReservas" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="MinhasReservas.aspx.cs" Inherits="KingdomConfeitaria.MinhasReservas" %>
 
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -16,15 +16,21 @@
         }
         .header-logo {
             background: #1a4d2e;
-            padding: 30px 20px;
+            padding: 10px 20px;
             text-align: center;
-            border-radius: 20px 20px 0 0;
+            border-radius: 0;
             margin-bottom: 0;
-            position: relative;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         .header-actions {
             position: absolute;
-            top: 20px;
+            top: 10px;
             right: 20px;
         }
         .header-actions a {
@@ -37,15 +43,16 @@
             text-decoration: underline;
         }
         .header-logo img {
-            max-width: 300px;
-            width: 100%;
+            max-width: 20%;
+            width: auto;
             height: auto;
+            max-height: 80px;
         }
         .container-main {
             background: white;
-            border-radius: 0 0 20px 20px;
+            border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            margin: 0 auto 20px auto;
+            margin: 90px auto 20px auto;
             padding: 30px;
         }
         .reserva-card {
@@ -77,7 +84,6 @@
 </head>
 <body>
     <form id="form1" runat="server">
-        <asp:ScriptManager ID="ScriptManager1" runat="server"></asp:ScriptManager>
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-actions">
@@ -85,7 +91,7 @@
                     <a href="Default.aspx">Nova Reserva</a>
                     <a href="Logout.aspx">Sair</a>
                 </div>
-                <img src="Images/logo-kingdom-confeitaria.png" alt="Kingdom Confeitaria" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
                 <h1 style="display:none; color: white; margin: 0;">Kingdom Confeitaria</h1>
             </div>
             
@@ -108,26 +114,54 @@
     </form>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Garantir que __doPostBack esteja disponível -->
+    <script type="text/javascript">
+        if (typeof __doPostBack === 'undefined') {
+            function __doPostBack(eventTarget, eventArgument) {
+                if (!eventTarget) return false;
+                var form = document.getElementById('form1');
+                if (!form) {
+                    console.error('Formulário form1 não encontrado');
+                    return false;
+                }
+                
+                var existingTarget = form.querySelector('input[name="__EVENTTARGET"]');
+                if (existingTarget) existingTarget.remove();
+                var existingArg = form.querySelector('input[name="__EVENTARGUMENT"]');
+                if (existingArg) existingArg.remove();
+                
+                var targetInput = document.createElement('input');
+                targetInput.type = 'hidden';
+                targetInput.name = '__EVENTTARGET';
+                targetInput.value = eventTarget;
+                form.appendChild(targetInput);
+                
+                if (eventArgument) {
+                    var argInput = document.createElement('input');
+                    argInput.type = 'hidden';
+                    argInput.name = '__EVENTARGUMENT';
+                    argInput.value = eventArgument;
+                    form.appendChild(argInput);
+                }
+                
+                form.submit();
+                return false;
+            }
+        }
+    </script>
+    <!-- Scripts comuns da aplicação -->
+    <script src="Scripts/app.js"></script>
+    <!-- Scripts específicos da página MinhasReservas -->
+    <script src="Scripts/minhasreservas.js"></script>
     <script>
-        function compartilharFacebook(url, texto) {
-            window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url) + '&quote=' + encodeURIComponent(texto), '_blank', 'width=600,height=400');
-        }
-
-        function compartilharWhatsApp(url, texto) {
-            window.open('https://wa.me/?text=' + encodeURIComponent(texto + ' ' + url), '_blank');
-        }
-
-        function compartilharTwitter(url, texto) {
-            window.open('https://twitter.com/intent/tweet?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(texto), '_blank', 'width=600,height=400');
-        }
-
+        // Funções adicionais específicas da página
         function compartilharEmail(url, texto) {
             window.location.href = 'mailto:?subject=Minha Reserva - Kingdom Confeitaria&body=' + encodeURIComponent(texto + '\n\n' + url);
         }
 
         function excluirReserva(reservaId) {
             if (confirm('Tem certeza que deseja excluir esta reserva?')) {
-                __doPostBack('ExcluirReserva', reservaId.toString());
+                KingdomConfeitaria.Utils.postBack('ExcluirReserva', reservaId.toString());
             }
         }
     </script>

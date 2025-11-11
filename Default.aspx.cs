@@ -1,9 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Web;
 using System.Web.UI;
 using System.Web.UI.WebControls;
+using System.Web.Services;
+using System.Web.Script.Services;
 using KingdomConfeitaria.Models;
 using KingdomConfeitaria.Services;
 using KingdomConfeitaria.Helpers;
@@ -13,6 +16,35 @@ namespace KingdomConfeitaria
     public partial class Default : System.Web.UI.Page
     {
         private DatabaseService _databaseService;
+        
+        // Helper para escapar strings JavaScript com caracteres especiais
+        private string EscapeJavaScript(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return "";
+            
+            return input
+                .Replace("\\", "\\\\")
+                .Replace("'", "\\'")
+                .Replace("\"", "\\\"")
+                .Replace("\r", "\\r")
+                .Replace("\n", "\\n")
+                .Replace("\t", "\\t");
+        }
+        
+        // Helper para adicionar scripts usando data attributes em vez de ScriptManager
+        private void AddPageScript(string script)
+        {
+            // Adicionar script como data attribute no body para ser executado após carregar
+            if (Page.Header != null)
+            {
+                var scriptTag = new System.Web.UI.HtmlControls.HtmlGenericControl("script");
+                scriptTag.Attributes["type"] = "text/javascript";
+                scriptTag.InnerHtml = script;
+                Page.Header.Controls.Add(scriptTag);
+            }
+        }
+        
         private List<ItemPedido> Carrinho
         {
             get
@@ -26,13 +58,24 @@ namespace KingdomConfeitaria
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            // Configurar encoding UTF-8
+            Response.ContentEncoding = System.Text.Encoding.UTF8;
+            Response.Charset = "UTF-8";
+            
             _databaseService = new DatabaseService();
 
+            // Verificar status de login e definir variável JavaScript
+            bool estaLogado = Session["ClienteId"] != null && !Session.IsNewSession;
+            Page.ClientScript.RegisterStartupScript(this.GetType(), "DefinirStatusLogin", 
+                $"window.usuarioLogado = {estaLogado.ToString().ToLower()};", true);
+
+            // Sempre verificar login para atualizar links do header
+            VerificarLogin();
+            
             if (!IsPostBack)
             {
                 CarregarProdutos();
                 CarregarDatasRetirada();
-                VerificarLogin();
                 AtualizarCarrinho(); // Atualizar carrinho na primeira carga
             }
 
@@ -75,7 +118,23 @@ namespace KingdomConfeitaria
             try
             {
                 var produtos = _databaseService.ObterProdutos();
+                
+                // Debug: Log produtos carregados
+                System.Diagnostics.Debug.WriteLine($"=== CARREGAR PRODUTOS ===");
+                System.Diagnostics.Debug.WriteLine($"Total de produtos ativos carregados: {produtos.Count}");
+                foreach (var produto in produtos)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Produto carregado - ID: {produto.Id}, Nome: {produto.Nome}, Ativo: {produto.Ativo}");
+                }
+                
                 produtosContainer.InnerHtml = "";
+                
+                // Se não houver produtos, mostrar mensagem
+                if (produtos.Count == 0)
+                {
+                    produtosContainer.InnerHtml = "<div class='alert alert-warning'><i class='fas fa-exclamation-triangle'></i> Nenhum produto cadastrado no momento. Por favor, cadastre produtos na área administrativa.</div>";
+                    return;
+                }
 
                 foreach (var produto in produtos)
                 {
@@ -137,11 +196,17 @@ namespace KingdomConfeitaria
                             produto.Id, nomeEscapado, produto.TamanhoSaco, produto.QuantidadeSaco);
                     }
 
+                    // Usar placeholder SVG inline se a imagem não existir
+                    string placeholderSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' fill='%23999999' text-anchor='middle' dy='.3em'%3EImagem N%26atilde%3Bo Disponível%3C/text%3E%3C/svg%3E";
+                    
+                    // Determinar a URL da imagem - usar placeholder se vazio
+                    string imagemSrc = !string.IsNullOrEmpty(produto.ImagemUrl) ? produto.ImagemUrl : placeholderSvg;
+                    
                     string html = string.Format(@"
                         <div class='produto-card mb-3'>
                             <div class='row'>
                                 <div class='col-md-3'>
-                                    <img src='{0}' alt='{1}' class='produto-imagem' onerror='this.onerror=null; this.src=""Images/placeholder.png"";' />
+                                    <img src='{0}' alt='{1}' class='produto-imagem' data-original-src='{13}' onerror='this.onerror=null; if(this.src !== ""{12}"") {{ this.src=""{12}""; }}' />
                                 </div>
                                 <div class='col-md-9'>
                                     <h5>{1}</h5>
@@ -171,7 +236,7 @@ namespace KingdomConfeitaria
                                 </div>
                             </div>
                         </div>",
-                        !string.IsNullOrEmpty(produto.ImagemUrl) ? produto.ImagemUrl : "Images/placeholder.png",
+                        imagemSrc,
                         produto.Nome,
                         produto.Descricao,
                         produto.Id,
@@ -185,13 +250,15 @@ namespace KingdomConfeitaria
                         seletorProdutosHtml,
                         !string.IsNullOrEmpty(onclickSaco) 
                             ? onclickSaco
-                            : "adicionarAoCarrinho(" + produto.Id + ", \"" + nomeEscapado + "\", document.getElementById(\"tamanho_" + produto.Id + "\").value, document.getElementById(\"quantidade_" + produto.Id + "\").value)");
+                            : "adicionarAoCarrinho(" + produto.Id + ", \"" + nomeEscapado + "\", document.getElementById(\"tamanho_" + produto.Id + "\").value, document.getElementById(\"quantidade_" + produto.Id + "\").value)",
+                        placeholderSvg,
+                        !string.IsNullOrEmpty(produto.ImagemUrl) ? produto.ImagemUrl : "");
                     produtosContainer.InnerHtml += html;
                 }
             }
             catch (Exception ex)
             {
-                produtosContainer.InnerHtml = string.Format("<div class='alert alert-danger'>Erro ao carregar produtos: {0}</div>", ex.Message);
+                produtosContainer.InnerHtml = string.Format("<div class='alert alert-danger'>Erro ao carregar produtos: {0}</div>", System.Web.HttpUtility.HtmlEncode(ex.Message));
             }
         }
 
@@ -247,11 +314,24 @@ namespace KingdomConfeitaria
                     
                     int quantidade = partes.Length > 4 ? int.Parse(partes[4]) : 1;
 
+                    // Debug: Verificar se o produto existe no banco antes de adicionar
+                    var todosProdutos = _databaseService.ObterTodosProdutos();
+                    var produtoExiste = todosProdutos.Any(p => p.Id == produtoId);
+                    System.Diagnostics.Debug.WriteLine($"=== ADICIONAR AO CARRINHO ===");
+                    System.Diagnostics.Debug.WriteLine($"ProdutoId: {produtoId}, Nome: {nome}, Tamanho: {tamanho}, Produto existe no banco: {produtoExiste}");
+                    
+                    if (!produtoExiste)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ATENÇÃO: Produto ID {produtoId} não existe no banco de dados!");
+                        // Continuar mesmo assim, pois pode ser um produto que foi removido após carregar a página
+                    }
+
                     var itemExistente = Carrinho.FirstOrDefault(i => i.ProdutoId == produtoId && i.Tamanho == tamanho);
                     if (itemExistente != null)
                     {
                         itemExistente.Quantidade += quantidade;
                         itemExistente.Subtotal = itemExistente.Quantidade * itemExistente.PrecoUnitario;
+                        System.Diagnostics.Debug.WriteLine($"Item existente atualizado - Quantidade: {itemExistente.Quantidade}");
                     }
                     else
                     {
@@ -264,6 +344,7 @@ namespace KingdomConfeitaria
                             PrecoUnitario = preco,
                             Subtotal = preco * quantidade
                         });
+                        System.Diagnostics.Debug.WriteLine($"Novo item adicionado ao carrinho - Total de itens: {Carrinho.Count}");
                     }
                 }
             }
@@ -418,20 +499,8 @@ namespace KingdomConfeitaria
             if (Carrinho.Count > 0)
             {
                 btnFazerReserva.Enabled = true;
-                // Adicionar script para garantir que o botão esteja habilitado no cliente
-                // Usar um nome único para o script
-                string scriptKey = "HabilitarBotao_" + DateTime.Now.Ticks;
-                ScriptManager.RegisterStartupScript(this, GetType(), scriptKey, 
-                    "setTimeout(function() { " +
-                    "var btn = document.getElementById('" + btnFazerReserva.ClientID + "'); " +
-                    "if (btn) { " +
-                    "btn.disabled = false; " +
-                    "btn.removeAttribute('disabled'); " +
-                    "btn.style.opacity = '1'; " +
-                    "btn.style.cursor = 'pointer'; " +
-                    "btn.classList.remove('disabled'); " +
-                    "} " +
-                    "}, 100);", true);
+                // Adicionar data attribute para indicar que está habilitado
+                btnFazerReserva.Attributes["data-enabled"] = "true";
             }
             else
             {
@@ -441,113 +510,373 @@ namespace KingdomConfeitaria
 
         protected void btnFazerReserva_Click(object sender, EventArgs e)
         {
+            // Permitir que qualquer um abra o modal para montar a reserva
+            // A validação de login será feita apenas ao confirmar a reserva
+            
+            // Log para debug
+            System.Diagnostics.Debug.WriteLine("btnFazerReserva_Click foi chamado!");
+            System.Diagnostics.Debug.WriteLine("Carrinho.Count: " + Carrinho.Count);
+            System.Diagnostics.Debug.WriteLine("ClienteId: " + (Session["ClienteId"] != null ? Session["ClienteId"].ToString() : "null"));
+            
             if (Carrinho.Count == 0)
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "CarrinhoVazio", 
-                    "alert('Adicione produtos ao carrinho antes de fazer a reserva.');", true);
+                // Usar data attribute para mostrar alerta
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "CarrinhoVazio", 
+                    $"alert('{EscapeJavaScript("Adicione produtos ao carrinho antes de fazer a reserva.")}');", true);
                 return;
             }
 
             // Preencher campos do modal se cliente estiver logado
-            if (Session["ClienteNome"] != null)
+            bool estaLogado = Session["ClienteId"] != null && !Session.IsNewSession;
+            
+            if (estaLogado)
             {
-                txtNome.Text = Session["ClienteNome"].ToString();
+                if (Session["ClienteNome"] != null)
+                {
+                    txtNome.Text = Session["ClienteNome"].ToString();
+                }
+                if (Session["ClienteEmail"] != null)
+                {
+                    txtEmail.Text = Session["ClienteEmail"].ToString();
+                }
+                if (Session["ClienteTelefone"] != null)
+                {
+                    txtTelefone.Text = Session["ClienteTelefone"].ToString();
+                }
+                
+                // Ocultar campo de senha e área de login se estiver logado
+                divSenhaReserva.Visible = false;
+                divLoginDinamico.Visible = false;
+                divDadosReserva.Visible = true;
+                btnConfirmarReserva.Style["display"] = "inline-block";
+                
+                // Adicionar script para indicar que está logado e mostrar área de reserva
+                string script = $@"
+                    window.usuarioLogado = true;
+                    var divLoginDinamico = document.getElementById('{divLoginDinamico.ClientID}');
+                    var divDadosReserva = document.getElementById('{divDadosReserva.ClientID}');
+                    var btnConfirmarReserva = document.getElementById('{btnConfirmarReserva.ClientID}');
+                    if (divLoginDinamico) divLoginDinamico.style.display = 'none';
+                    if (divDadosReserva) divDadosReserva.style.display = 'block';
+                    if (btnConfirmarReserva) btnConfirmarReserva.style.display = 'inline-block';
+                ";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "UsuarioLogado", script, true);
             }
-            if (Session["ClienteEmail"] != null)
+            else
             {
-                txtEmail.Text = Session["ClienteEmail"].ToString();
-            }
-            if (Session["ClienteTelefone"] != null)
-            {
-                txtTelefone.Text = Session["ClienteTelefone"].ToString();
+                // Limpar campos se não estiver logado
+                txtNome.Text = "";
+                txtEmail.Text = "";
+                txtTelefone.Text = "";
+                txtSenhaReserva.Text = "";
+                
+                // Mostrar área de login e ocultar área de reserva se não estiver logado
+                divLoginDinamico.Visible = true;
+                divDadosReserva.Visible = false;
+                divSenhaReserva.Visible = false; // Será mostrado dinamicamente quando cliente for encontrado
+                btnConfirmarReserva.Style["display"] = "none";
+                
+                // Adicionar script para indicar que não está logado
+                string scriptNaoLogado = $@"
+                    window.usuarioLogado = false;
+                    var divLoginDinamico = document.getElementById('{divLoginDinamico.ClientID}');
+                    var divDadosReserva = document.getElementById('{divDadosReserva.ClientID}');
+                    var btnConfirmarReserva = document.getElementById('{btnConfirmarReserva.ClientID}');
+                    if (divLoginDinamico) divLoginDinamico.style.display = 'block';
+                    if (divDadosReserva) divDadosReserva.style.display = 'none';
+                    if (btnConfirmarReserva) btnConfirmarReserva.style.display = 'none';
+                ";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "UsuarioNaoLogado", scriptNaoLogado, true);
             }
 
             // Limpar observações
             txtObservacoes.Text = "";
 
-            // Abrir modal via JavaScript - múltiplas tentativas para garantir
-            string scriptAbrirModal = @"
-                setTimeout(function() { 
-                    try { 
-                        var modalElement = document.getElementById('modalReserva'); 
-                        if (modalElement) { 
-                            // Tentar usar Bootstrap 5
-                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                                var modal = bootstrap.Modal.getOrCreateInstance(modalElement);
-                                modal.show();
-                            } else {
-                                // Fallback: mostrar modal manualmente
-                                modalElement.style.display = 'block';
-                                modalElement.classList.add('show');
-                                document.body.classList.add('modal-open');
-                                var backdrop = document.createElement('div');
-                                backdrop.className = 'modal-backdrop fade show';
-                                backdrop.id = 'modalBackdrop';
-                                document.body.appendChild(backdrop);
-                            }
-                        } else { 
-                            console.error('Modal não encontrado');
-                            alert('Erro: Modal não encontrado. Por favor, recarregue a página.');
-                        } 
-                    } catch(e) { 
-                        console.error('Erro ao abrir modal:', e);
-                        alert('Por favor, preencha os dados do formulário abaixo e clique em Confirmar Reserva.');
-                    } 
-                }, 200);";
+            // Adicionar data attribute para abrir modal após postback
+            btnFazerReserva.Attributes["data-open-modal"] = "modalReserva";
             
-            ScriptManager.RegisterStartupScript(this, GetType(), "AbrirModal_" + DateTime.Now.Ticks, scriptAbrirModal, true);
+            // Usar ClientScript em vez de ScriptManager
+            string scriptAbrirModal = @"
+                setTimeout(function() {
+                    if (typeof DefaultPage !== 'undefined' && DefaultPage.ModalReserva) {
+                        DefaultPage.ModalReserva.abrir();
+                    } else if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
+                        KingdomConfeitaria.Modal.show('modalReserva');
+                    }
+                }, 100);";
+            
+            Page.ClientScript.RegisterStartupScript(this.GetType(), "AbrirModal_" + DateTime.Now.Ticks, scriptAbrirModal, true);
         }
 
         protected void btnConfirmarReserva_Click(object sender, EventArgs e)
         {
             if (Carrinho.Count == 0)
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "CarrinhoVazio", 
-                    "alert('Adicione produtos ao carrinho antes de fazer a reserva.');", true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "CarrinhoVazio", 
+                    $"alert('{EscapeJavaScript("Adicione produtos ao carrinho antes de fazer a reserva.")}');", true);
                 return;
             }
 
             // Validar campos obrigatórios
             if (string.IsNullOrWhiteSpace(txtNome.Text))
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "NomeVazio", 
-                    "alert('Por favor, preencha o nome.');", true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "NomeVazio", 
+                    $"alert('{EscapeJavaScript("Por favor, preencha o nome.")}');", true);
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(txtEmail.Text) || !txtEmail.Text.Contains("@"))
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "EmailInvalido", 
-                    "alert('Por favor, preencha um email válido.');", true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "EmailInvalido", 
+                    $"alert('{EscapeJavaScript("Por favor, preencha um email válido.")}');", true);
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(txtTelefone.Text))
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "TelefoneVazio", 
-                    "alert('Por favor, preencha o telefone.');", true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "TelefoneVazio", 
+                    $"alert('{EscapeJavaScript("Por favor, preencha o telefone.")}');", true);
                 return;
             }
 
             if (ddlDataRetirada.SelectedValue == null || string.IsNullOrEmpty(ddlDataRetirada.SelectedValue))
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "DataVazia", 
-                    "alert('Por favor, selecione uma data de retirada.');", true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "DataVazia", 
+                    $"alert('{EscapeJavaScript("Por favor, selecione uma data de retirada.")}');", true);
+                return;
+            }
+
+            // Formatar email e telefone antes de processar
+            string emailFormatado = txtEmail.Text.Trim().ToLowerInvariant();
+            string telefoneFormatado = System.Text.RegularExpressions.Regex.Replace(txtTelefone.Text, @"[^\d]", "");
+
+            // Verificar se cliente está logado, se não estiver, fazer login automático
+            int clienteId = 0;
+            Cliente cliente = null;
+            
+            if (Session["ClienteId"] != null && !Session.IsNewSession)
+            {
+                // Cliente já está logado
+                try
+                {
+                    clienteId = (int)Session["ClienteId"];
+                    if (clienteId > 0)
+                    {
+                        cliente = _databaseService.ObterClientePorId(clienteId);
+                    }
+                }
+                catch
+                {
+                    // Sessão inválida, continuar para fazer login automático
+                    clienteId = 0;
+                    cliente = null;
+                }
+            }
+            
+            // Se não estiver logado ou cliente não encontrado, fazer login automático
+            if (clienteId == 0 || cliente == null)
+            {
+                try
+                {
+                    // Buscar cliente por email ou telefone
+                    cliente = _databaseService.ObterClientePorEmail(emailFormatado);
+                    
+                    if (cliente == null && !string.IsNullOrEmpty(telefoneFormatado))
+                    {
+                        cliente = _databaseService.ObterClientePorTelefone(telefoneFormatado);
+                    }
+                    
+                    if (cliente != null)
+                    {
+                        // Cliente existe - verificar senha
+                        string senhaInformada = txtSenhaReserva != null ? txtSenhaReserva.Text : "";
+                        
+                        // Se o cliente tem senha cadastrada, validar
+                        if (!string.IsNullOrEmpty(cliente.Senha))
+                        {
+                            if (string.IsNullOrEmpty(senhaInformada))
+                            {
+                                Page.ClientScript.RegisterStartupScript(this.GetType(), "SenhaObrigatoria", 
+                                    $"alert('{EscapeJavaScript("Este email/telefone já está cadastrado. Por favor, informe sua senha para continuar.")}');", true);
+                                return;
+                            }
+                            
+                            // Verificar senha
+                            if (!VerificarSenha(senhaInformada, cliente.Senha))
+                            {
+                                Page.ClientScript.RegisterStartupScript(this.GetType(), "SenhaIncorreta", 
+                                    $"alert('{EscapeJavaScript("Senha incorreta. Por favor, tente novamente.")}');", true);
+                                return;
+                            }
+                        }
+                        else
+                        {
+                            // Cliente não tem senha cadastrada (cadastro antigo) - permitir continuar sem senha
+                            // Mas avisar que seria bom cadastrar uma senha
+                        }
+                        
+                        // Senha válida ou cliente sem senha - fazer login
+                        clienteId = cliente.Id;
+                        Session["ClienteId"] = cliente.Id;
+                        Session["ClienteNome"] = cliente.Nome;
+                        Session["ClienteEmail"] = cliente.Email;
+                        Session["IsAdmin"] = cliente.IsAdmin;
+                        if (!string.IsNullOrEmpty(cliente.Telefone))
+                        {
+                            Session["ClienteTelefone"] = cliente.Telefone;
+                        }
+                        Session["SessionStartTime"] = DateTime.Now;
+                        
+                        // Atualizar último acesso
+                        cliente.UltimoAcesso = DateTime.Now;
+                        _databaseService.CriarOuAtualizarCliente(cliente);
+                        
+                        // Atualizar links do header após login
+                        VerificarLogin();
+                    }
+                    else
+                    {
+                        // Cliente não existe - criar novo cliente e fazer login
+                        cliente = new Cliente
+                        {
+                            Nome = txtNome.Text.Trim(),
+                            Email = emailFormatado,
+                            Telefone = telefoneFormatado,
+                            TemWhatsApp = !string.IsNullOrEmpty(telefoneFormatado),
+                            Provider = "Email",
+                            EmailConfirmado = false,
+                            WhatsAppConfirmado = false,
+                            IsAdmin = false,
+                            DataCadastro = DateTime.Now
+                        };
+                        
+                        clienteId = _databaseService.CriarOuAtualizarCliente(cliente);
+                        
+                        // Fazer login automático
+                        Session["ClienteId"] = clienteId;
+                        Session["ClienteNome"] = cliente.Nome;
+                        Session["ClienteEmail"] = cliente.Email;
+                        Session["IsAdmin"] = cliente.IsAdmin;
+                        if (!string.IsNullOrEmpty(cliente.Telefone))
+                        {
+                            Session["ClienteTelefone"] = cliente.Telefone;
+                        }
+                        Session["SessionStartTime"] = DateTime.Now;
+                        
+                        // Atualizar links do header após login automático
+                        VerificarLogin();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine("Erro ao fazer login automático: " + ex.Message);
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "ErroLogin", 
+                        $"alert('{EscapeJavaScript("Erro ao processar login automático. Por favor, tente novamente.")}');", true);
+                    return;
+                }
+            }
+            
+            // Validar que ClienteId é válido
+            if (clienteId <= 0)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "ClienteIdInvalido", 
+                    $"alert('{EscapeJavaScript("Erro: Não foi possível identificar o cliente. Por favor, tente novamente.")}');", true);
                 return;
             }
 
             try
             {
-                // Verificar se cliente está logado
-                int? clienteId = null;
-                if (Session["ClienteId"] != null)
+
+                // Validar produtos antes de criar a reserva
+                if (Carrinho.Count == 0)
                 {
-                    clienteId = (int)Session["ClienteId"];
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "CarrinhoVazio", 
+                        $"alert('{EscapeJavaScript("O carrinho está vazio. Por favor, adicione produtos antes de fazer a reserva.")}');", true);
+                    return;
+                }
+                
+                var todosProdutos = _databaseService.ObterTodosProdutos();
+                var todosProdutosIds = todosProdutos.Select(p => p.Id).ToHashSet();
+                var produtosAtivosIds = todosProdutos.Where(p => p.Ativo).Select(p => p.Id).ToHashSet();
+                
+                // Debug: Log informações sobre o carrinho e produtos
+                System.Diagnostics.Debug.WriteLine($"=== VALIDAÇÃO DE PRODUTOS ===");
+                System.Diagnostics.Debug.WriteLine($"Total de itens no carrinho: {Carrinho.Count}");
+                System.Diagnostics.Debug.WriteLine($"Total de produtos no banco: {todosProdutos.Count}");
+                System.Diagnostics.Debug.WriteLine($"Total de produtos ativos: {produtosAtivosIds.Count}");
+                
+                // Validar itens do carrinho
+                var itensValidos = new List<ItemPedido>();
+                var itensInvalidos = new List<ItemPedido>();
+                
+                foreach (var item in Carrinho)
+                {
+                    bool produtoExiste = todosProdutosIds.Contains(item.ProdutoId);
+                    bool produtoAtivo = produtosAtivosIds.Contains(item.ProdutoId);
+                    
+                    System.Diagnostics.Debug.WriteLine($"Item no carrinho - ProdutoId: {item.ProdutoId}, Nome: {item.NomeProduto}, Existe: {produtoExiste}, Ativo: {produtoAtivo}");
+                    
+                    // Aceitar item se o produto existe no banco (mesmo que inativo)
+                    // Isso permite salvar reservas de produtos que foram desativados após serem adicionados ao carrinho
+                    if (produtoExiste)
+                    {
+                        itensValidos.Add(item);
+                    }
+                    else
+                    {
+                        itensInvalidos.Add(item);
+                        System.Diagnostics.Debug.WriteLine($"PRODUTO INVÁLIDO: ID {item.ProdutoId} não existe no banco de dados!");
+                    }
+                }
+                
+                if (itensValidos.Count == 0)
+                {
+                    // Listar produtos inválidos para debug
+                    var produtosInvalidos = itensInvalidos.Select(item => $"ID: {item.ProdutoId} ({item.NomeProduto})").ToList();
+                    System.Diagnostics.Debug.WriteLine($"Produtos inválidos no carrinho: {string.Join(", ", produtosInvalidos)}");
+                    
+                    // Listar todos os IDs de produtos válidos para debug
+                    var idsValidos = string.Join(", ", todosProdutosIds.OrderBy(id => id));
+                    System.Diagnostics.Debug.WriteLine($"IDs de produtos válidos no banco: {idsValidos}");
+                    
+                    // Criar mensagem mais informativa
+                    string mensagemErro = "Nenhum item válido no carrinho. ";
+                    if (todosProdutos.Count == 0)
+                    {
+                        mensagemErro += "Não há produtos cadastrados no sistema. Por favor, cadastre produtos primeiro.";
+                    }
+                    else
+                    {
+                        mensagemErro += $"Os produtos no carrinho (IDs: {string.Join(", ", itensInvalidos.Select(i => i.ProdutoId))}) não foram encontrados no banco de dados. ";
+                        mensagemErro += "Por favor, adicione produtos novamente.";
+                    }
+                    
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "SemItensValidos", 
+                        $"alert('{EscapeJavaScript(mensagemErro)}');", true);
+                    // Limpar carrinho se todos os itens forem inválidos
+                    Carrinho.Clear();
+                    AtualizarCarrinho();
+                    return;
+                }
+                
+                // Se houver itens inválidos, remover do carrinho mas continuar com os válidos
+                if (itensInvalidos.Count > 0)
+                {
+                    foreach (var itemInvalido in itensInvalidos)
+                    {
+                        Carrinho.Remove(itemInvalido);
+                    }
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "ItensRemovidos", 
+                        $"alert('{EscapeJavaScript("Alguns produtos não estão mais disponíveis e foram removidos do carrinho. Continuando com os produtos válidos.")}');", true);
                 }
 
-                // Formatar email e telefone antes de salvar
-                string emailFormatado = txtEmail.Text.Trim().ToLowerInvariant();
-                string telefoneFormatado = System.Text.RegularExpressions.Regex.Replace(txtTelefone.Text, @"[^\d]", "");
+                // Validar que há itens válidos para gravar
+                if (itensValidos == null || itensValidos.Count == 0)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "SemItens", 
+                        $"alert('{EscapeJavaScript("Erro: Não há itens válidos para gravar na reserva.")}');", true);
+                    return;
+                }
 
                 var reserva = new Reserva
                 {
@@ -557,17 +886,47 @@ namespace KingdomConfeitaria
                     DataRetirada = DateTime.Parse(ddlDataRetirada.SelectedValue),
                     DataReserva = DateTime.Now,
                     Status = "Pendente",
-                    ValorTotal = Carrinho.Sum(i => i.Subtotal),
-                    Itens = new List<ItemPedido>(Carrinho),
+                    ValorTotal = itensValidos.Sum(i => i.Subtotal),
+                    Itens = itensValidos, // Usar apenas itens válidos
                     Observacoes = txtObservacoes.Text,
                     ConvertidoEmPedido = false,
                     PrevisaoEntrega = null,
                     Cancelado = false,
-                    ClienteId = clienteId
+                    ClienteId = clienteId // Garantir que ClienteId está definido
                 };
+
+                // Validar que ClienteId está definido antes de salvar
+                if (!reserva.ClienteId.HasValue || reserva.ClienteId.Value <= 0)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "ClienteIdNaoDefinido", 
+                        $"alert('{EscapeJavaScript("Erro: ID do cliente não está definido. Por favor, faça login novamente.")}'); window.location.href='Login.aspx';", true);
+                    return;
+                }
 
                 // Salvar no banco de dados
                 _databaseService.SalvarReserva(reserva);
+                
+                // Verificar se todos os itens foram gravados
+                var reservaSalva = _databaseService.ObterReservasPorCliente(clienteId)
+                    .OrderByDescending(r => r.DataReserva)
+                    .FirstOrDefault();
+                
+                if (reservaSalva != null && reservaSalva.Itens != null)
+                {
+                    int itensGravados = reservaSalva.Itens.Count;
+                    int itensEsperados = itensValidos.Count;
+                    
+                    if (itensGravados != itensEsperados)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ATENÇÃO: Esperado {itensEsperados} itens, mas apenas {itensGravados} foram gravados!");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"SUCESSO: Todos os {itensGravados} itens foram gravados corretamente na reserva ID {reservaSalva.Id}");
+                    }
+                }
+                
+                System.Diagnostics.Debug.WriteLine("Reserva salva com sucesso! ID: " + reserva.Id);
 
                 // Enviar emails (não bloquear se falhar)
                 try
@@ -599,16 +958,222 @@ namespace KingdomConfeitaria
                 // Limpar carrinho
                 Carrinho.Clear();
 
-                // Mostrar modal de sucesso
-                ScriptManager.RegisterStartupScript(this, GetType(), "FecharModalReserva", 
-                    "var modal = bootstrap.Modal.getInstance(document.getElementById('modalReserva')); modal.hide();", true);
-                ScriptManager.RegisterStartupScript(this, GetType(), "AbrirModalSucesso", 
-                    "var modal = new bootstrap.Modal(document.getElementById('modalSucesso')); modal.show();", true);
+                // Fechar modal de reserva e mostrar modal de sucesso
+                string scriptFecharEAbrir = @"
+                    setTimeout(function() {
+                        if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
+                            KingdomConfeitaria.Modal.hide('modalReserva');
+                            setTimeout(function() {
+                                KingdomConfeitaria.Modal.show('modalSucesso');
+                            }, 300);
+                        }
+                    }, 100);";
+                
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharEAbrirModal", scriptFecharEAbrir, true);
             }
             catch (Exception ex)
             {
-                ScriptManager.RegisterStartupScript(this, GetType(), "Erro", 
-                    string.Format("alert('Erro ao processar reserva: {0}');", ex.Message.Replace("'", "\\'")), true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao processar reserva: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private string HashSenha(string senha)
+        {
+            // Usar SHA256 para hash da senha (mesmo método usado no Login)
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                var hashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(senha));
+                return Convert.ToBase64String(hashedBytes);
+            }
+        }
+
+        private bool VerificarSenha(string senha, string hashArmazenado)
+        {
+            string hashSenha = HashSenha(senha);
+            return hashSenha == hashArmazenado;
+        }
+
+        [System.Web.Services.WebMethod]
+        [System.Web.Script.Services.ScriptMethod]
+        public static object VerificarClienteCadastrado(string login)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(login))
+                {
+                    return new { existe = false, temSenha = false, cliente = (object)null };
+                }
+
+                var databaseService = new DatabaseService();
+                Cliente cliente = null;
+                
+                // Detectar se é email ou telefone
+                string loginLimpo = login.Trim();
+                bool isEmail = loginLimpo.Contains("@");
+                
+                if (isEmail)
+                {
+                    // É email
+                    cliente = databaseService.ObterClientePorEmail(loginLimpo.ToLowerInvariant());
+                }
+                else
+                {
+                    // É telefone - remover caracteres não numéricos
+                    string telefoneFormatado = System.Text.RegularExpressions.Regex.Replace(loginLimpo, @"[^\d]", "");
+                    System.Diagnostics.Debug.WriteLine($"Verificando telefone: '{loginLimpo}' -> formatado: '{telefoneFormatado}'");
+                    
+                    if (telefoneFormatado.Length >= 10)
+                    {
+                        cliente = databaseService.ObterClientePorTelefone(telefoneFormatado);
+                        System.Diagnostics.Debug.WriteLine($"Cliente encontrado por telefone: {(cliente != null ? "SIM" : "NÃO")}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Telefone muito curto: {telefoneFormatado.Length} caracteres");
+                    }
+                }
+                
+                if (cliente != null)
+                {
+                    // Retornar dados do cliente (sem senha)
+                    return new 
+                    { 
+                        existe = true, 
+                        temSenha = !string.IsNullOrEmpty(cliente.Senha),
+                        cliente = new
+                        {
+                            id = cliente.Id,
+                            nome = cliente.Nome,
+                            email = cliente.Email ?? "",
+                            telefone = cliente.Telefone ?? "",
+                            isAdmin = cliente.IsAdmin
+                        }
+                    };
+                }
+                
+                return new { existe = false, temSenha = false, cliente = (object)null };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Erro ao verificar cliente: " + ex.Message);
+                return new { existe = false, temSenha = false, cliente = (object)null };
+            }
+        }
+
+        [System.Web.Services.WebMethod]
+        [System.Web.Script.Services.ScriptMethod]
+        public static object ValidarSenhaCliente(string login, string senha)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(login) || string.IsNullOrEmpty(senha))
+                {
+                    return new { valido = false, mensagem = "Login e senha são obrigatórios" };
+                }
+
+                var databaseService = new DatabaseService();
+                Cliente cliente = null;
+                
+                // Detectar se é email ou telefone
+                string loginLimpo = login.Trim();
+                bool isEmail = loginLimpo.Contains("@");
+                
+                if (isEmail)
+                {
+                    cliente = databaseService.ObterClientePorEmail(loginLimpo.ToLowerInvariant());
+                }
+                else
+                {
+                    string telefoneFormatado = System.Text.RegularExpressions.Regex.Replace(loginLimpo, @"[^\d]", "");
+                    if (telefoneFormatado.Length >= 10)
+                    {
+                        cliente = databaseService.ObterClientePorTelefone(telefoneFormatado);
+                    }
+                }
+                
+                if (cliente == null)
+                {
+                    return new { valido = false, mensagem = "Cliente não encontrado" };
+                }
+                
+                if (string.IsNullOrEmpty(cliente.Senha))
+                {
+                    return new { valido = false, mensagem = "Este cliente não possui senha cadastrada" };
+                }
+                
+                // Validar senha
+                string hashSenha = HashSenhaStatic(senha);
+                if (hashSenha != cliente.Senha)
+                {
+                    return new { valido = false, mensagem = "Senha incorreta" };
+                }
+                
+                // Senha válida - retornar dados do cliente
+                return new 
+                { 
+                    valido = true,
+                    cliente = new
+                    {
+                        id = cliente.Id,
+                        nome = cliente.Nome,
+                        email = cliente.Email ?? "",
+                        telefone = cliente.Telefone ?? "",
+                        isAdmin = cliente.IsAdmin
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Erro ao validar senha: " + ex.Message);
+                return new { valido = false, mensagem = "Erro ao validar senha: " + ex.Message };
+            }
+        }
+
+        private static string HashSenhaStatic(string senha)
+        {
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                var hashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(senha));
+                return Convert.ToBase64String(hashedBytes);
+            }
+        }
+
+        [System.Web.Services.WebMethod]
+        [System.Web.Script.Services.ScriptMethod]
+        public static object FazerLoginSessao(int clienteId)
+        {
+            try
+            {
+                var databaseService = new DatabaseService();
+                var cliente = databaseService.ObterClientePorId(clienteId);
+                
+                if (cliente == null)
+                {
+                    return new { sucesso = false, mensagem = "Cliente não encontrado" };
+                }
+                
+                // Fazer login na sessão
+                HttpContext.Current.Session["ClienteId"] = cliente.Id;
+                HttpContext.Current.Session["ClienteNome"] = cliente.Nome;
+                HttpContext.Current.Session["ClienteEmail"] = cliente.Email;
+                HttpContext.Current.Session["IsAdmin"] = cliente.IsAdmin;
+                if (!string.IsNullOrEmpty(cliente.Telefone))
+                {
+                    HttpContext.Current.Session["ClienteTelefone"] = cliente.Telefone;
+                }
+                HttpContext.Current.Session["SessionStartTime"] = DateTime.Now;
+                
+                // Atualizar último acesso
+                cliente.UltimoAcesso = DateTime.Now;
+                databaseService.CriarOuAtualizarCliente(cliente);
+                
+                return new { sucesso = true };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Erro ao fazer login na sessão: " + ex.Message);
+                return new { sucesso = false, mensagem = "Erro ao fazer login: " + ex.Message };
             }
         }
 
@@ -616,21 +1181,41 @@ namespace KingdomConfeitaria
         {
             try
             {
-                if (clienteNome != null && linkLogin != null && linkMinhasReservas != null && linkLogout != null)
+                // Verificar se a sessão expirou
+                if (Session["ClienteId"] != null && Session.IsNewSession)
                 {
-                    if (Session["ClienteId"] != null)
+                    // Sessão expirou - limpar dados de autenticação
+                    Session.Remove("ClienteId");
+                    Session.Remove("ClienteNome");
+                    Session.Remove("ClienteEmail");
+                    Session.Remove("ClienteTelefone");
+                }
+                
+                if (clienteNome != null && linkLogin != null && linkMinhasReservas != null && linkMeusDados != null && linkLogout != null && linkAdmin != null)
+                {
+                    if (Session["ClienteId"] != null && !Session.IsNewSession)
                     {
-                        clienteNome.InnerText = "Olá, " + (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "");
+                        string nomeCliente = Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "";
+                        clienteNome.InnerText = "Olá, " + System.Web.HttpUtility.HtmlEncode(nomeCliente);
+                        clienteNome.Visible = true;
                         linkLogin.Visible = false;
                         linkMinhasReservas.Visible = true;
+                        linkMeusDados.Visible = true;
                         linkLogout.Visible = true;
+                        
+                        // Mostrar link de admin se for administrador
+                        bool isAdmin = Session["IsAdmin"] != null && (bool)Session["IsAdmin"];
+                        linkAdmin.Visible = isAdmin;
                     }
                     else
                     {
                         clienteNome.InnerText = "";
+                        clienteNome.Visible = false;
                         linkLogin.Visible = true;
                         linkMinhasReservas.Visible = false;
+                        linkMeusDados.Visible = false;
                         linkLogout.Visible = false;
+                        linkAdmin.Visible = false;
                     }
                 }
             }

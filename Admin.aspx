@@ -1,4 +1,4 @@
-<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="Admin.aspx.cs" Inherits="KingdomConfeitaria.Admin" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="Admin.aspx.cs" Inherits="KingdomConfeitaria.Admin" %>
 
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -16,20 +16,28 @@
         }
         .header-logo {
             background: #1a4d2e;
-            padding: 20px;
+            padding: 10px 20px;
             text-align: center;
-            border-radius: 20px 20px 0 0;
+            border-radius: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
         .header-logo img {
-            max-width: 300px;
-            width: 100%;
+            max-width: 20%;
+            width: auto;
             height: auto;
+            max-height: 80px;
         }
         .container-main {
             background: white;
-            border-radius: 0 0 20px 20px;
+            border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            margin: 0 auto 20px auto;
+            margin: 90px auto 20px auto;
             padding: 30px;
         }
         .nav-tabs .nav-link {
@@ -67,10 +75,9 @@
 </head>
 <body>
     <form id="form1" runat="server">
-        <asp:ScriptManager ID="ScriptManager1" runat="server"></asp:ScriptManager>
         <div class="container-fluid">
             <div class="header-logo">
-                <img src="Images/logo-kingdom-confeitaria.png" alt="Kingdom Confeitaria" onerror="this.style.display='none';" />
+                <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
             </div>
             <div class="container-main">
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -82,7 +89,12 @@
 
                 <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="produtos-tab" data-bs-toggle="tab" data-bs-target="#produtos" type="button" role="tab">
+                        <button class="nav-link active" id="resumo-tab" data-bs-toggle="tab" data-bs-target="#resumo" type="button" role="tab">
+                            <i class="fas fa-chart-line"></i> Resumo
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="produtos-tab" data-bs-toggle="tab" data-bs-target="#produtos" type="button" role="tab">
                             <i class="fas fa-cookie-bite"></i> Produtos
                         </button>
                     </li>
@@ -105,8 +117,15 @@
                 <div id="alertContainer" runat="server"></div>
 
                 <div class="tab-content" id="adminTabContent">
+                    <!-- Aba Resumo -->
+                    <div class="tab-pane fade show active" id="resumo" role="tabpanel">
+                        <div id="resumoContainer" runat="server">
+                            <!-- Resumo será carregado aqui -->
+                        </div>
+                    </div>
+                    
                     <!-- Aba Produtos -->
-                    <div class="tab-pane fade show active" id="produtos" role="tabpanel">
+                    <div class="tab-pane fade" id="produtos" role="tabpanel">
                         <div class="mb-3">
                             <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNovoProduto">
                                 <i class="fas fa-plus"></i> Novo Produto
@@ -309,51 +328,77 @@
     </form>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function editarProduto(id, nome, descricao, precoPequeno, precoGrande, imagemUrl, ordem, ativo) {
-            document.getElementById('<%= hdnProdutoId.ClientID %>').value = id;
-            document.getElementById('<%= txtNomeProduto.ClientID %>').value = nome;
-            document.getElementById('<%= txtDescricao.ClientID %>').value = descricao || '';
-            document.getElementById('<%= txtPrecoPequeno.ClientID %>').value = precoPequeno;
-            document.getElementById('<%= txtPrecoGrande.ClientID %>').value = precoGrande;
-            document.getElementById('<%= txtImagemUrl.ClientID %>').value = imagemUrl;
-            document.getElementById('<%= txtOrdem.ClientID %>').value = ordem;
-            document.getElementById('<%= chkAtivo.ClientID %>').checked = ativo === 'True';
-            
-            var preview = document.getElementById('previewImagem');
-            preview.src = imagemUrl;
-            preview.style.display = imagemUrl ? 'block' : 'none';
-            
-            var modal = new bootstrap.Modal(document.getElementById('modalEditarProduto'));
-            modal.show();
+    <!-- Garantir que __doPostBack esteja disponível -->
+    <script type="text/javascript">
+        if (typeof __doPostBack === 'undefined') {
+            function __doPostBack(eventTarget, eventArgument) {
+                if (!eventTarget) return false;
+                var form = document.getElementById('form1');
+                if (!form) {
+                    console.error('Formulário form1 não encontrado');
+                    return false;
+                }
+                
+                var existingTarget = form.querySelector('input[name="__EVENTTARGET"]');
+                if (existingTarget) existingTarget.remove();
+                var existingArg = form.querySelector('input[name="__EVENTARGUMENT"]');
+                if (existingArg) existingArg.remove();
+                
+                var targetInput = document.createElement('input');
+                targetInput.type = 'hidden';
+                targetInput.name = '__EVENTTARGET';
+                targetInput.value = eventTarget;
+                form.appendChild(targetInput);
+                
+                if (eventArgument) {
+                    var argInput = document.createElement('input');
+                    argInput.type = 'hidden';
+                    argInput.name = '__EVENTARGUMENT';
+                    argInput.value = eventArgument;
+                    form.appendChild(argInput);
+                }
+                
+                form.submit();
+                return false;
+            }
         }
-
-        function editarReserva(id, status, valorTotal, convertidoEmPedido, cancelado, previsaoEntrega, observacoes) {
-            document.getElementById('<%= hdnReservaId.ClientID %>').value = id;
-            document.getElementById('<%= ddlStatus.ClientID %>').value = status;
-            document.getElementById('<%= txtValorTotal.ClientID %>').value = valorTotal;
-            document.getElementById('<%= chkConvertidoEmPedido.ClientID %>').checked = convertidoEmPedido === 'True';
-            document.getElementById('<%= chkCancelado.ClientID %>').checked = cancelado === 'True';
-            
-            if (previsaoEntrega && previsaoEntrega !== '') {
-                var data = new Date(previsaoEntrega);
-                var dataFormatada = data.toISOString().slice(0, 16);
-                document.getElementById('<%= txtPrevisaoEntrega.ClientID %>').value = dataFormatada;
-            } else {
-                document.getElementById('<%= txtPrevisaoEntrega.ClientID %>').value = '';
+    </script>
+    
+    <!-- Scripts comuns da aplicação -->
+    <script src="Scripts/app.js"></script>
+    <!-- Scripts específicos da página Admin -->
+    <script src="Scripts/admin.js"></script>
+    <script>
+        // Scripts inline apenas para dados dinâmicos do servidor (ClientIDs)
+        (function() {
+            function init() {
+                // Preview de imagem ao digitar URL
+                var txtImagemUrl = document.getElementById('<%= txtImagemUrl.ClientID %>');
+                if (txtImagemUrl) {
+                    txtImagemUrl.addEventListener('input', function() {
+                        if (typeof AdminPage !== 'undefined' && AdminPage.Produtos) {
+                            AdminPage.Produtos.atualizarPreview(this);
+                        }
+                    });
+                }
+                
+                var txtNovaImagemUrl = document.getElementById('<%= txtNovaImagemUrl.ClientID %>');
+                if (txtNovaImagemUrl) {
+                    txtNovaImagemUrl.addEventListener('input', function() {
+                        if (typeof AdminPage !== 'undefined' && AdminPage.Produtos) {
+                            AdminPage.Produtos.atualizarPreview(this);
+                        }
+                    });
+                }
             }
             
-            document.getElementById('<%= txtObservacoesReserva.ClientID %>').value = observacoes || '';
-            
-            var modal = new bootstrap.Modal(document.getElementById('modalEditarReserva'));
-            modal.show();
-        }
-
-        document.getElementById('<%= txtImagemUrl.ClientID %>').addEventListener('input', function() {
-            var preview = document.getElementById('previewImagem');
-            preview.src = this.value;
-            preview.style.display = this.value ? 'block' : 'none';
-        });
+            // Executar quando DOM estiver pronto
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
     </script>
 </body>
 </html>

@@ -69,9 +69,13 @@
     <Content Include="Default.aspx" />
     <Content Include="Admin.aspx" />
     <Content Include="Login.aspx" />
+    <Content Include="Cadastro.aspx" />
+    <Content Include="MeusDados.aspx" />
     <Content Include="Logout.aspx" />
     <Content Include="MinhasReservas.aspx" />
     <Content Include="ConfirmarCadastro.aspx" />
+    <Content Include="RecuperarSenha.aspx" />
+    <Content Include="RedefinirSenha.aspx" />
     <Content Include="VerReserva.aspx" />
     <Content Include="Global.asax" />
     <Content Include="Scripts\site.js" />
@@ -100,6 +104,20 @@
     <Compile Include="Login.aspx.designer.cs">
       <DependentUpon>Login.aspx</DependentUpon>
     </Compile>
+    <Compile Include="Cadastro.aspx.cs">
+      <DependentUpon>Cadastro.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Cadastro.aspx.designer.cs">
+      <DependentUpon>Cadastro.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="MeusDados.aspx.cs">
+      <DependentUpon>MeusDados.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="MeusDados.aspx.designer.cs">
+      <DependentUpon>MeusDados.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Logout.aspx.cs">
       <DependentUpon>Logout.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -124,6 +142,20 @@
     </Compile>
     <Compile Include="VerReserva.aspx.designer.cs">
       <DependentUpon>VerReserva.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RecuperarSenha.aspx.cs">
+      <DependentUpon>RecuperarSenha.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RecuperarSenha.aspx.designer.cs">
+      <DependentUpon>RecuperarSenha.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="RedefinirSenha.aspx.cs">
+      <DependentUpon>RedefinirSenha.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="RedefinirSenha.aspx.designer.cs">
+      <DependentUpon>RedefinirSenha.aspx</DependentUpon>
     </Compile>
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>

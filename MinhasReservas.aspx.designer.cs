@@ -12,7 +12,6 @@ namespace KingdomConfeitaria
     public partial class MinhasReservas
     {
         protected global::System.Web.UI.HtmlControls.HtmlForm form1;
-        protected global::System.Web.UI.ScriptManager ScriptManager1;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl clienteNome;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl alertContainer;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl reservasContainer;

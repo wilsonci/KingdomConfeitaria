@@ -1,4 +1,4 @@
-<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="ConfirmarCadastro.aspx.cs" Inherits="KingdomConfeitaria.ConfirmarCadastro" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="ConfirmarCadastro.aspx.cs" Inherits="KingdomConfeitaria.ConfirmarCadastro" %>
 
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -28,12 +28,17 @@
         }
         .header-logo {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
+            width: 100%;
+            padding-top: 0;
         }
         .header-logo img {
-            max-width: 300px;
-            width: 100%;
+            max-width: 20%;
+            width: auto;
             height: auto;
+            max-height: 80px;
+            display: block;
+            margin: 0 auto;
         }
         .success-icon {
             font-size: 80px;
@@ -51,7 +56,7 @@
     <form id="form1" runat="server">
         <div class="confirm-container">
             <div class="header-logo">
-                <img src="Images/logo-kingdom-confeitaria.png" alt="Kingdom Confeitaria" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
                 <h1 style="display:none; color: #1a4d2e;">Kingdom Confeitaria</h1>
             </div>
             

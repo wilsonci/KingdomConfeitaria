@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Web.UI;
 using KingdomConfeitaria.Services;
 
@@ -10,6 +10,10 @@ namespace KingdomConfeitaria
 
         protected void Page_Load(object sender, EventArgs e)
         {
+            // Configurar encoding UTF-8
+            Response.ContentEncoding = System.Text.Encoding.UTF8;
+            Response.Charset = "UTF-8";
+            
             _databaseService = new DatabaseService();
 
             string token = Request.QueryString["token"];

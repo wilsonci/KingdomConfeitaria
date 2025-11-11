@@ -141,13 +141,17 @@ namespace KingdomConfeitaria.Services
                                 [Id] [int] IDENTITY(1,1) NOT NULL,
                                 [Nome] [nvarchar](200) NOT NULL,
                                 [Email] [nvarchar](200) NULL,
+                                [Senha] [nvarchar](500) NULL,
                                 [Telefone] [nvarchar](50) NULL,
                                 [TemWhatsApp] [bit] NOT NULL DEFAULT(0),
                                 [Provider] [nvarchar](50) NULL,
                                 [ProviderId] [nvarchar](200) NULL,
                                 [TokenConfirmacao] [nvarchar](100) NULL,
+                                [TokenRecuperacaoSenha] [nvarchar](100) NULL,
+                                [DataExpiracaoRecuperacaoSenha] [datetime] NULL,
                                 [EmailConfirmado] [bit] NOT NULL DEFAULT(0),
                                 [WhatsAppConfirmado] [bit] NOT NULL DEFAULT(0),
+                                [IsAdmin] [bit] NOT NULL DEFAULT(0),
                                 [DataCadastro] [datetime] NOT NULL DEFAULT(GETDATE()),
                                 [UltimoAcesso] [datetime] NULL,
                                 CONSTRAINT [PK_Clientes] PRIMARY KEY CLUSTERED ([Id] ASC)
@@ -175,6 +179,38 @@ namespace KingdomConfeitaria.Services
                         END";
                     checkTable.ExecuteNonQuery();
 
+                    // Adicionar coluna Senha se não existir
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Clientes]') AND name = 'Senha')
+                        BEGIN
+                            ALTER TABLE [dbo].[Clientes] ADD [Senha] [nvarchar](500) NULL
+                        END";
+                    checkTable.ExecuteNonQuery();
+
+                    // Adicionar coluna IsAdmin se não existir
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Clientes]') AND name = 'IsAdmin')
+                        BEGIN
+                            ALTER TABLE [dbo].[Clientes] ADD [IsAdmin] [bit] NOT NULL DEFAULT(0)
+                        END";
+                    checkTable.ExecuteNonQuery();
+
+                    // Adicionar coluna TokenRecuperacaoSenha se não existir
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Clientes]') AND name = 'TokenRecuperacaoSenha')
+                        BEGIN
+                            ALTER TABLE [dbo].[Clientes] ADD [TokenRecuperacaoSenha] [nvarchar](100) NULL
+                        END";
+                    checkTable.ExecuteNonQuery();
+
+                    // Adicionar coluna DataExpiracaoRecuperacaoSenha se não existir
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Clientes]') AND name = 'DataExpiracaoRecuperacaoSenha')
+                        BEGIN
+                            ALTER TABLE [dbo].[Clientes] ADD [DataExpiracaoRecuperacaoSenha] [datetime] NULL
+                        END";
+                    checkTable.ExecuteNonQuery();
+
                     // Adicionar ClienteId e TokenAcesso na tabela Reservas se não existir
                     checkTable.CommandText = @"
                         IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'ClienteId')
@@ -189,12 +225,15 @@ namespace KingdomConfeitaria.Services
                         END";
                     checkTable.ExecuteNonQuery();
 
-                    // Limpar produtos existentes e inserir novos produtos
-                    var clearData = new SqlCommand("DELETE FROM Produtos", connection);
-                    clearData.ExecuteNonQuery();
+                    // Verificar se há produtos no banco
+                    var checkProdutos = new SqlCommand("SELECT COUNT(*) FROM Produtos", connection);
+                    var countProdutos = (int)checkProdutos.ExecuteScalar();
                     
-                    // Inserir novos produtos
-                    var insertData = new SqlCommand(@"
+                    // Se não houver produtos, inserir produtos padrão
+                    if (countProdutos == 0)
+                    {
+                        // Inserir novos produtos
+                        var insertData = new SqlCommand(@"
                         INSERT INTO Produtos (Nome, Descricao, PrecoPequeno, PrecoGrande, ImagemUrl, Ativo, Ordem, EhSacoPromocional, QuantidadeSaco, TamanhoSaco) VALUES
                         ('Gingerbread Estrela Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Pequeno', 5.00, 0.00, 'Images/estrela-pequeno.jpg', 1, 1, 0, 0, NULL),
                         ('Gingerbread Estrela Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Grande', 0.00, 10.00, 'Images/estrela-grande.jpg', 1, 2, 0, 0, NULL),
@@ -212,7 +251,8 @@ namespace KingdomConfeitaria.Services
                         ('Gingerbread Boneco Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Boneco Grande', 0.00, 10.00, 'Images/boneco-grande.jpg', 1, 14, 0, 0, NULL),
                         ('Saco Promocional - 6 Pequenos', 'Saco com 6 biscoitos pequenos (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 21.00, 0.00, 'Images/saco-6-pequenos.jpg', 1, 15, 1, 6, 'Pequeno'),
                         ('Saco Promocional - 3 Grandes', 'Saco com 3 biscoitos grandes (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 0.00, 21.00, 'Images/saco-3-grandes.jpg', 1, 16, 1, 3, 'Grande')", connection);
-                    insertData.ExecuteNonQuery();
+                        insertData.ExecuteNonQuery();
+                    }
                 }
             }
             catch (SqlException sqlEx)
@@ -370,22 +410,83 @@ namespace KingdomConfeitaria.Services
                 
                 var reservaId = (int)command.ExecuteScalar();
                 
-                // Salvar itens da reserva
+                // Obter todos os produtos existentes no banco (ativos ou inativos)
+                // Aceitar produtos inativos também, pois podem ter sido desativados após serem adicionados ao carrinho
+                var produtosExistentes = new HashSet<int>();
+                var produtosCommand = new SqlCommand("SELECT Id FROM Produtos", connection);
+                using (var produtosReader = produtosCommand.ExecuteReader())
+                {
+                    while (produtosReader.Read())
+                    {
+                        produtosExistentes.Add(produtosReader.GetInt32(0));
+                    }
+                }
+                
+                // Validar que há itens para gravar
+                if (reserva.Itens == null || reserva.Itens.Count == 0)
+                {
+                    throw new Exception("A reserva não possui itens para gravar.");
+                }
+
+                // Validar que ClienteId está definido
+                if (!reserva.ClienteId.HasValue || reserva.ClienteId.Value <= 0)
+                {
+                    throw new Exception("ClienteId não está definido. Apenas clientes logados podem fazer reservas.");
+                }
+
+                // Salvar TODOS os itens da reserva na tabela ReservaItens
+                int itensGravados = 0;
+                int itensPulados = 0;
+                
                 foreach (var item in reserva.Itens)
                 {
-                    var itemCommand = new SqlCommand(@"
-                        INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal)
-                        VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal)", connection);
+                    // Validar se o produto existe no banco (mesmo que inativo)
+                    if (!produtosExistentes.Contains(item.ProdutoId))
+                    {
+                        // Se o produto não existe, pular este item e registrar um log
+                        System.Diagnostics.Debug.WriteLine($"ATENÇÃO: Produto ID {item.ProdutoId} não encontrado no banco. Item: {item.NomeProduto} será pulado.");
+                        itensPulados++;
+                        continue; // Pular este item
+                    }
                     
-                    itemCommand.Parameters.AddWithValue("@ReservaId", reservaId);
-                    itemCommand.Parameters.AddWithValue("@ProdutoId", item.ProdutoId);
-                    itemCommand.Parameters.AddWithValue("@NomeProduto", item.NomeProduto);
-                    itemCommand.Parameters.AddWithValue("@Tamanho", item.Tamanho);
-                    itemCommand.Parameters.AddWithValue("@Quantidade", item.Quantidade);
-                    itemCommand.Parameters.AddWithValue("@PrecoUnitario", item.PrecoUnitario);
-                    itemCommand.Parameters.AddWithValue("@Subtotal", item.Subtotal);
-                    
-                    itemCommand.ExecuteNonQuery();
+                    try
+                    {
+                        var itemCommand = new SqlCommand(@"
+                            INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal)
+                            VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal)", connection);
+                        
+                        itemCommand.Parameters.AddWithValue("@ReservaId", reservaId);
+                        itemCommand.Parameters.AddWithValue("@ProdutoId", item.ProdutoId);
+                        itemCommand.Parameters.AddWithValue("@NomeProduto", item.NomeProduto ?? "");
+                        itemCommand.Parameters.AddWithValue("@Tamanho", item.Tamanho ?? "");
+                        itemCommand.Parameters.AddWithValue("@Quantidade", item.Quantidade);
+                        itemCommand.Parameters.AddWithValue("@PrecoUnitario", item.PrecoUnitario);
+                        itemCommand.Parameters.AddWithValue("@Subtotal", item.Subtotal);
+                        
+                        itemCommand.ExecuteNonQuery();
+                        itensGravados++;
+                        
+                        System.Diagnostics.Debug.WriteLine($"Item gravado: {item.NomeProduto} (ProdutoId: {item.ProdutoId}, Quantidade: {item.Quantidade}, Subtotal: {item.Subtotal})");
+                    }
+                    catch (Exception exItem)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ERRO ao gravar item {item.NomeProduto} (ProdutoId: {item.ProdutoId}): {exItem.Message}");
+                        itensPulados++;
+                        // Continuar tentando gravar os outros itens
+                    }
+                }
+                
+                // Validar que pelo menos um item foi gravado
+                if (itensGravados == 0)
+                {
+                    throw new Exception($"Nenhum item foi gravado na reserva. Total de itens: {reserva.Itens.Count}, Itens pulados: {itensPulados}");
+                }
+                
+                // Log final
+                System.Diagnostics.Debug.WriteLine($"Reserva ID {reservaId} salva com sucesso. Itens gravados: {itensGravados}/{reserva.Itens.Count}");
+                if (itensPulados > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ATENÇÃO: {itensPulados} item(ns) foram pulados (produtos não encontrados no banco).");
                 }
             }
         }
@@ -610,7 +711,7 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                var command = new SqlCommand("SELECT Id, Nome, Email, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, DataCadastro, UltimoAcesso FROM Clientes", connection);
+                var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes", connection);
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -620,16 +721,20 @@ namespace KingdomConfeitaria.Services
                         {
                             Id = reader.GetInt32(0),
                             Nome = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            TemWhatsApp = reader.GetBoolean(4),
-                            Provider = reader.IsDBNull(5) ? null : reader.GetString(5),
-                            ProviderId = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            TokenConfirmacao = reader.IsDBNull(7) ? null : reader.GetString(7),
-                            EmailConfirmado = reader.GetBoolean(8),
-                            WhatsAppConfirmado = reader.GetBoolean(9),
-                            DataCadastro = reader.GetDateTime(10),
-                            UltimoAcesso = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
+                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            TemWhatsApp = reader.GetBoolean(5),
+                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            EmailConfirmado = reader.GetBoolean(11),
+                            WhatsAppConfirmado = reader.GetBoolean(12),
+                            IsAdmin = reader.GetBoolean(13),
+                            DataCadastro = reader.GetDateTime(14),
+                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
                         });
                     }
                 }
@@ -666,7 +771,7 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                var command = new SqlCommand("SELECT Id, Nome, Email, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, DataCadastro, UltimoAcesso FROM Clientes WHERE LOWER(LTRIM(RTRIM(Email))) = @Email", connection);
+                var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes WHERE LOWER(LTRIM(RTRIM(Email))) = @Email", connection);
                 command.Parameters.AddWithValue("@Email", emailFormatado);
                 
                 using (var reader = command.ExecuteReader())
@@ -678,15 +783,56 @@ namespace KingdomConfeitaria.Services
                             Id = reader.GetInt32(0),
                             Nome = reader.GetString(1),
                             Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            TemWhatsApp = reader.GetBoolean(4),
-                            Provider = reader.IsDBNull(5) ? null : reader.GetString(5),
-                            ProviderId = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            TokenConfirmacao = reader.IsDBNull(7) ? null : reader.GetString(7),
-                            EmailConfirmado = reader.GetBoolean(8),
-                            WhatsAppConfirmado = reader.GetBoolean(9),
-                            DataCadastro = reader.GetDateTime(10),
-                            UltimoAcesso = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
+                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            TemWhatsApp = reader.GetBoolean(5),
+                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            EmailConfirmado = reader.GetBoolean(11),
+                            WhatsAppConfirmado = reader.GetBoolean(12),
+                            IsAdmin = reader.GetBoolean(13),
+                            DataCadastro = reader.GetDateTime(14),
+                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
+                        };
+                    }
+                }
+            }
+            return null;
+        }
+
+        public Cliente ObterClientePorId(int clienteId)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes WHERE Id = @Id", connection);
+                command.Parameters.AddWithValue("@Id", clienteId);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new Cliente
+                        {
+                            Id = reader.GetInt32(0),
+                            Nome = reader.GetString(1),
+                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            TemWhatsApp = reader.GetBoolean(5),
+                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            EmailConfirmado = reader.GetBoolean(11),
+                            WhatsAppConfirmado = reader.GetBoolean(12),
+                            IsAdmin = reader.GetBoolean(13),
+                            DataCadastro = reader.GetDateTime(14),
+                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
                         };
                     }
                 }
@@ -700,36 +846,50 @@ namespace KingdomConfeitaria.Services
                 return null;
 
             string telefoneFormatado = FormatarTelefone(telefone);
+            System.Diagnostics.Debug.WriteLine($"ObterClientePorTelefone: telefone recebido='{telefone}', formatado='{telefoneFormatado}'");
             
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
                 // Buscar por telefone formatado (apenas números)
+                // A query remove formatação do telefone no banco e compara com o telefone formatado
+                // Usar LTRIM e RTRIM para remover espaços e garantir comparação correta
                 var command = new SqlCommand(@"
-                    SELECT Id, Nome, Email, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, DataCadastro, UltimoAcesso 
+                    SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso 
                     FROM Clientes 
-                    WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(Telefone, '(', ''), ')', ''), '-', ''), ' ', ''), '.', '') = @Telefone", connection);
+                    WHERE LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefone, ''), '(', ''), ')', ''), '-', ''), ' ', ''), '.', ''), '/', ''))) = @Telefone", connection);
                 command.Parameters.AddWithValue("@Telefone", telefoneFormatado);
+                
+                System.Diagnostics.Debug.WriteLine($"Query SQL: Buscando telefone formatado='{telefoneFormatado}'");
                 
                 using (var reader = command.ExecuteReader())
                 {
                     if (reader.Read())
                     {
+                        System.Diagnostics.Debug.WriteLine($"Cliente encontrado! ID={reader.GetInt32(0)}, Nome={reader.GetString(1)}");
                         return new Cliente
                         {
                             Id = reader.GetInt32(0),
                             Nome = reader.GetString(1),
                             Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            TemWhatsApp = reader.GetBoolean(4),
-                            Provider = reader.IsDBNull(5) ? null : reader.GetString(5),
-                            ProviderId = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            TokenConfirmacao = reader.IsDBNull(7) ? null : reader.GetString(7),
-                            EmailConfirmado = reader.GetBoolean(8),
-                            WhatsAppConfirmado = reader.GetBoolean(9),
-                            DataCadastro = reader.GetDateTime(10),
-                            UltimoAcesso = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
+                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            TemWhatsApp = reader.GetBoolean(5),
+                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            EmailConfirmado = reader.GetBoolean(11),
+                            WhatsAppConfirmado = reader.GetBoolean(12),
+                            IsAdmin = reader.GetBoolean(13),
+                            DataCadastro = reader.GetDateTime(14),
+                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
                         };
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("Nenhum cliente encontrado com esse telefone.");
                     }
                 }
             }
@@ -762,7 +922,7 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                var command = new SqlCommand("SELECT Id, Nome, Email, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, DataCadastro, UltimoAcesso FROM Clientes WHERE Provider = @Provider AND ProviderId = @ProviderId", connection);
+                var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes WHERE Provider = @Provider AND ProviderId = @ProviderId", connection);
                 command.Parameters.AddWithValue("@Provider", provider);
                 command.Parameters.AddWithValue("@ProviderId", providerId);
                 
@@ -774,16 +934,20 @@ namespace KingdomConfeitaria.Services
                         {
                             Id = reader.GetInt32(0),
                             Nome = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            TemWhatsApp = reader.GetBoolean(4),
-                            Provider = reader.GetString(5),
-                            ProviderId = reader.GetString(6),
-                            TokenConfirmacao = reader.IsDBNull(7) ? null : reader.GetString(7),
-                            EmailConfirmado = reader.GetBoolean(8),
-                            WhatsAppConfirmado = reader.GetBoolean(9),
-                            DataCadastro = reader.GetDateTime(10),
-                            UltimoAcesso = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
+                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            TemWhatsApp = reader.GetBoolean(5),
+                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            EmailConfirmado = reader.GetBoolean(11),
+                            WhatsAppConfirmado = reader.GetBoolean(12),
+                            IsAdmin = reader.GetBoolean(13),
+                            DataCadastro = reader.GetDateTime(14),
+                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
                         };
                     }
                 }
@@ -796,7 +960,7 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                var command = new SqlCommand("SELECT Id, Nome, Email, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, DataCadastro, UltimoAcesso FROM Clientes WHERE TokenConfirmacao = @Token", connection);
+                var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes WHERE TokenConfirmacao = @Token", connection);
                 command.Parameters.AddWithValue("@Token", token);
                 
                 using (var reader = command.ExecuteReader())
@@ -807,16 +971,20 @@ namespace KingdomConfeitaria.Services
                         {
                             Id = reader.GetInt32(0),
                             Nome = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            TemWhatsApp = reader.GetBoolean(4),
-                            Provider = reader.IsDBNull(5) ? null : reader.GetString(5),
-                            ProviderId = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            TokenConfirmacao = reader.GetString(7),
-                            EmailConfirmado = reader.GetBoolean(8),
-                            WhatsAppConfirmado = reader.GetBoolean(9),
-                            DataCadastro = reader.GetDateTime(10),
-                            UltimoAcesso = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
+                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            TemWhatsApp = reader.GetBoolean(5),
+                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            EmailConfirmado = reader.GetBoolean(11),
+                            WhatsAppConfirmado = reader.GetBoolean(12),
+                            IsAdmin = reader.GetBoolean(13),
+                            DataCadastro = reader.GetDateTime(14),
+                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
                         };
                     }
                 }
@@ -858,15 +1026,17 @@ namespace KingdomConfeitaria.Services
                     // Atualizar cliente existente
                     var command = new SqlCommand(@"
                         UPDATE Clientes 
-                        SET Nome = @Nome, Email = @Email, Telefone = @Telefone, TemWhatsApp = @TemWhatsApp, 
-                            UltimoAcesso = GETDATE()
+                        SET Nome = @Nome, Email = @Email, Senha = @Senha, Telefone = @Telefone, TemWhatsApp = @TemWhatsApp, 
+                            IsAdmin = @IsAdmin, UltimoAcesso = GETDATE()
                         WHERE Id = @Id", connection);
                     
                     command.Parameters.AddWithValue("@Id", clienteExistente.Id);
                     command.Parameters.AddWithValue("@Nome", cliente.Nome);
                     command.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(cliente.Email) ? (object)DBNull.Value : cliente.Email);
+                    command.Parameters.AddWithValue("@Senha", string.IsNullOrEmpty(cliente.Senha) ? (object)DBNull.Value : cliente.Senha);
                     command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(cliente.Telefone) ? (object)DBNull.Value : cliente.Telefone);
                     command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
+                    command.Parameters.AddWithValue("@IsAdmin", cliente.IsAdmin);
                     
                     command.ExecuteNonQuery();
                     return clienteExistente.Id;
@@ -880,8 +1050,8 @@ namespace KingdomConfeitaria.Services
                     }
                     
                     var command = new SqlCommand(@"
-                        INSERT INTO Clientes (Nome, Email, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, DataCadastro)
-                        VALUES (@Nome, @Email, @Telefone, @TemWhatsApp, @Provider, @ProviderId, @TokenConfirmacao, @EmailConfirmado, @WhatsAppConfirmado, GETDATE());
+                        INSERT INTO Clientes (Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro)
+                        VALUES (@Nome, @Email, @Senha, @Telefone, @TemWhatsApp, @Provider, @ProviderId, @TokenConfirmacao, @EmailConfirmado, @WhatsAppConfirmado, @IsAdmin, GETDATE());
                         SELECT CAST(SCOPE_IDENTITY() as int);", connection);
                     
                     // Garantir que email e telefone estejam formatados
@@ -890,6 +1060,7 @@ namespace KingdomConfeitaria.Services
                     
                     command.Parameters.AddWithValue("@Nome", cliente.Nome);
                     command.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(emailFormatado) ? (object)DBNull.Value : emailFormatado);
+                    command.Parameters.AddWithValue("@Senha", string.IsNullOrEmpty(cliente.Senha) ? (object)DBNull.Value : cliente.Senha);
                     command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(telefoneFormatado) ? (object)DBNull.Value : telefoneFormatado);
                     command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
                     command.Parameters.AddWithValue("@Provider", string.IsNullOrEmpty(cliente.Provider) ? (object)DBNull.Value : cliente.Provider);
@@ -897,6 +1068,7 @@ namespace KingdomConfeitaria.Services
                     command.Parameters.AddWithValue("@TokenConfirmacao", cliente.TokenConfirmacao);
                     command.Parameters.AddWithValue("@EmailConfirmado", cliente.EmailConfirmado);
                     command.Parameters.AddWithValue("@WhatsAppConfirmado", cliente.WhatsAppConfirmado);
+                    command.Parameters.AddWithValue("@IsAdmin", cliente.IsAdmin);
                     
                     return (int)command.ExecuteScalar();
                 }
@@ -909,6 +1081,71 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 var command = new SqlCommand("UPDATE Clientes SET EmailConfirmado = 1 WHERE TokenConfirmacao = @Token", connection);
+                command.Parameters.AddWithValue("@Token", token);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        public Cliente ObterClientePorTokenRecuperacaoSenha(string token)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes WHERE TokenRecuperacaoSenha = @Token AND DataExpiracaoRecuperacaoSenha > GETDATE()", connection);
+                command.Parameters.AddWithValue("@Token", token);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new Cliente
+                        {
+                            Id = reader.GetInt32(0),
+                            Nome = reader.GetString(1),
+                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            TemWhatsApp = reader.GetBoolean(5),
+                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            EmailConfirmado = reader.GetBoolean(11),
+                            WhatsAppConfirmado = reader.GetBoolean(12),
+                            IsAdmin = reader.GetBoolean(13),
+                            DataCadastro = reader.GetDateTime(14),
+                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
+                        };
+                    }
+                }
+            }
+            return null;
+        }
+
+        public void GerarTokenRecuperacaoSenha(string email)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                string token = Guid.NewGuid().ToString("N");
+                DateTime dataExpiracao = DateTime.Now.AddHours(24); // Token válido por 24 horas
+                
+                var command = new SqlCommand("UPDATE Clientes SET TokenRecuperacaoSenha = @Token, DataExpiracaoRecuperacaoSenha = @DataExpiracao WHERE LOWER(LTRIM(RTRIM(Email))) = @Email", connection);
+                command.Parameters.AddWithValue("@Token", token);
+                command.Parameters.AddWithValue("@DataExpiracao", dataExpiracao);
+                command.Parameters.AddWithValue("@Email", email.ToLowerInvariant().Trim());
+                command.ExecuteNonQuery();
+            }
+        }
+
+        public void RedefinirSenha(string token, string novaSenhaHash)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("UPDATE Clientes SET Senha = @Senha, TokenRecuperacaoSenha = NULL, DataExpiracaoRecuperacaoSenha = NULL WHERE TokenRecuperacaoSenha = @Token AND DataExpiracaoRecuperacaoSenha > GETDATE()", connection);
+                command.Parameters.AddWithValue("@Senha", novaSenhaHash);
                 command.Parameters.AddWithValue("@Token", token);
                 command.ExecuteNonQuery();
             }

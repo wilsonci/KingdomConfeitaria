@@ -20,6 +20,7 @@ namespace KingdomConfeitaria
         protected global::System.Web.UI.WebControls.TextBox txtNovaImagemUrl;
         protected global::System.Web.UI.WebControls.TextBox txtNovaOrdem;
         protected global::System.Web.UI.WebControls.Button btnSalvarNovoProduto;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl resumoContainer;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl reservasContainer;
         protected global::System.Web.UI.WebControls.HiddenField hdnReservaId;
         protected global::System.Web.UI.WebControls.DropDownList ddlStatus;
@@ -29,6 +30,8 @@ namespace KingdomConfeitaria
         protected global::System.Web.UI.WebControls.TextBox txtPrevisaoEntrega;
         protected global::System.Web.UI.WebControls.TextBox txtObservacoesReserva;
         protected global::System.Web.UI.WebControls.Button btnSalvarReserva;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl alertContainer;
+        protected global::System.Web.UI.WebControls.Button btnLimparDados;
     }
 }
 

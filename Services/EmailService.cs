@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Configuration;
 using System.Net;
 using System.Net.Mail;
@@ -104,6 +104,25 @@ namespace KingdomConfeitaria.Services
             corpo.AppendLine("<p>Por favor, confirme seu cadastro clicando no link abaixo:</p>");
             corpo.AppendLine(string.Format("<p><a href='{0}' style='background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;'>Confirmar Cadastro</a></p>", linkConfirmacao));
             corpo.AppendLine(string.Format("<p>Ou copie e cole este link no seu navegador:</p><p>{0}</p>", linkConfirmacao));
+            corpo.AppendLine("<p>Obrigado!</p>");
+
+            EnviarEmail(cliente.Email, assunto, corpo.ToString());
+        }
+
+        public void EnviarRecuperacaoSenha(Cliente cliente, string token)
+        {
+            var assunto = "Recuperação de Senha - Kingdom Confeitaria";
+            var baseUrl = ConfigurationManager.AppSettings["BaseUrl"] ?? "http://localhost";
+            var linkRecuperacao = string.Format("{0}/RedefinirSenha.aspx?token={1}", baseUrl, token);
+            
+            var corpo = new StringBuilder();
+            corpo.AppendLine(string.Format("<h2>Olá {0}!</h2>", cliente.Nome));
+            corpo.AppendLine("<p>Recebemos uma solicitação para redefinir sua senha.</p>");
+            corpo.AppendLine("<p>Clique no link abaixo para criar uma nova senha:</p>");
+            corpo.AppendLine(string.Format("<p><a href='{0}' style='background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;'>Redefinir Senha</a></p>", linkRecuperacao));
+            corpo.AppendLine(string.Format("<p>Ou copie e cole este link no seu navegador:</p><p>{0}</p>", linkRecuperacao));
+            corpo.AppendLine("<p><strong>Este link expira em 24 horas.</strong></p>");
+            corpo.AppendLine("<p>Se você não solicitou esta recuperação de senha, ignore este email.</p>");
             corpo.AppendLine("<p>Obrigado!</p>");
 
             EnviarEmail(cliente.Email, assunto, corpo.ToString());
