@@ -113,6 +113,23 @@ namespace KingdomConfeitaria
                     string textoCompartilhar = string.Format("Minha reserva na Kingdom Confeitaria - Valor: R$ {0} - Data de Retirada: {1}",
                         reserva.ValorTotal.ToString("F2"), reserva.DataRetirada.ToString("dd/MM/yyyy"));
 
+                    // Verificar se a reserva está cancelada (verificando status "Cancelado")
+                    var statusCancelado = _databaseService.ObterStatusReservaPorNome("Cancelado");
+                    bool jaCancelada = reserva.Cancelado || (reserva.StatusId.HasValue && statusCancelado != null && reserva.StatusId.Value == statusCancelado.Id);
+                    
+                    // Determinar se pode cancelar
+                    bool podeCancelar = !jaCancelada && reserva.StatusId.HasValue && _databaseService.StatusPermiteExclusao(reserva.StatusId.Value);
+                    string botaoCancelar = podeCancelar 
+                        ? string.Format("<button type='button' class='btn btn-warning btn-sm' onclick='cancelarReserva({0})'><i class='fas fa-times-circle'></i> Cancelar</button>", reserva.Id)
+                        : "";
+                    
+                    // Determinar se pode excluir (apenas para administradores)
+                    bool isAdmin = Session["IsAdmin"] != null && (bool)Session["IsAdmin"];
+                    bool podeExcluir = isAdmin && !jaCancelada && reserva.StatusId.HasValue && _databaseService.StatusPermiteExclusao(reserva.StatusId.Value);
+                    string botaoExcluir = podeExcluir
+                        ? string.Format("<button type='button' class='btn btn-danger btn-sm' onclick='excluirReserva({0})'><i class='fas fa-trash'></i> Excluir</button>", reserva.Id)
+                        : "";
+
                     html += string.Format(@"
                         <div class='reserva-card'>
                             <div class='d-flex justify-content-between align-items-start mb-3'>
@@ -185,14 +202,8 @@ namespace KingdomConfeitaria
                         "", // {11} - removido (era disabled do botão excluir)
                         textoCompartilhar.Replace("\"", "&quot;"), // {12}
                         linkReservaCompleto, // {13} - URL completa para compartilhamento
-                        // Botão de cancelar (para clientes normais) - verificar PermiteExclusao via StatusId
-                        (!reserva.Cancelado && reserva.StatusId.HasValue && _databaseService.StatusPermiteExclusao(reserva.StatusId.Value)) 
-                            ? string.Format("<button type='button' class='btn btn-warning btn-sm' onclick='cancelarReserva({0})'><i class='fas fa-times-circle'></i> Cancelar</button>", reserva.Id)
-                            : "",
-                        // Botão de excluir (apenas para administradores) - verificar PermiteExclusao via StatusId
-                        (Session["IsAdmin"] != null && (bool)Session["IsAdmin"] && !reserva.Cancelado && reserva.StatusId.HasValue && _databaseService.StatusPermiteExclusao(reserva.StatusId.Value))
-                            ? string.Format("<button type='button' class='btn btn-danger btn-sm' onclick='excluirReserva({0})'><i class='fas fa-trash'></i> Excluir</button>", reserva.Id)
-                            : ""
+                        botaoCancelar, // {14} - Botão de cancelar
+                        botaoExcluir // {15} - Botão de excluir
                     );
                 }
 
@@ -210,10 +221,17 @@ namespace KingdomConfeitaria
             {
                 // Verificar se a reserva pertence ao cliente
                 var reserva = _databaseService.ObterReservaPorId(reservaId);
+                
+                // Verificar se a reserva já está cancelada (verificando status "Cancelado")
+                var statusCancelado = _databaseService.ObterStatusReservaPorNome("Cancelado");
+                bool jaCancelada = reserva != null && 
+                                   (reserva.Cancelado || 
+                                    (reserva.StatusId.HasValue && statusCancelado != null && reserva.StatusId.Value == statusCancelado.Id));
+                
                 // Verificar se pode cancelar (usando StatusId para verificar PermiteExclusao)
                 bool podeCancelar = reserva != null && 
                                   reserva.ClienteId == clienteId && 
-                                  !reserva.Cancelado && 
+                                  !jaCancelada && 
                                   reserva.StatusId.HasValue &&
                                   _databaseService.StatusPermiteExclusao(reserva.StatusId.Value);
                 
@@ -228,7 +246,7 @@ namespace KingdomConfeitaria
                     string motivo = "Não foi possível cancelar a reserva.";
                     if (reserva != null)
                     {
-                        if (reserva.Cancelado)
+                        if (jaCancelada)
                         {
                             motivo = "Esta reserva já foi cancelada.";
                         }

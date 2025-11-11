@@ -221,7 +221,17 @@ namespace KingdomConfeitaria.Services
                             ('Produção Pronta', 'Já foi produzido', 0, 0, 3),
                             ('Preparando Entrega', 'Já está sendo preparado para entrega', 0, 0, 4),
                             ('Saiu para Entrega', 'Já está entregando', 0, 0, 5),
-                            ('Já Entregue', 'Produtos já entregues', 0, 0, 6)
+                            ('Já Entregue', 'Produtos já entregues', 0, 0, 6),
+                            ('Cancelado', 'Reserva cancelada', 0, 0, 7)
+                        END";
+                    checkTable.ExecuteNonQuery();
+                    
+                    // Garantir que o status "Cancelado" existe (caso a tabela já tenha sido criada sem ele)
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM StatusReserva WHERE Nome = 'Cancelado')
+                        BEGIN
+                            INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem)
+                            VALUES ('Cancelado', 'Reserva cancelada', 0, 0, 7)
                         END";
                     checkTable.ExecuteNonQuery();
 
@@ -606,41 +616,81 @@ namespace KingdomConfeitaria.Services
                     reserva.TokenAcesso = Guid.NewGuid().ToString("N");
                 }
                 
-                // Garantir que StatusId está definido - sempre usar "Aberta" (ID = 1) para novas reservas
-                if (!reserva.StatusId.HasValue)
+                // Para novas reservas (Id = 0), SEMPRE usar StatusId de "Aberta"
+                if (reserva.Id == 0)
                 {
-                    // Se StatusId não estiver definido, obter pelo nome do Status
-                    if (!string.IsNullOrEmpty(reserva.Status))
+                    // Buscar o StatusId de "Aberta" no banco de dados
+                    var statusAberta = ObterStatusReservaPorNome("Aberta");
+                    if (statusAberta == null)
                     {
-                        var statusReserva = ObterStatusReservaPorNome(reserva.Status);
-                        if (statusReserva != null)
+                        // Se não encontrar "Aberta", criar ou usar ID 1 como fallback
+                        System.Diagnostics.Debug.WriteLine("ATENÇÃO: Status 'Aberta' não encontrado no banco. Usando ID 1 como fallback.");
+                        reserva.StatusId = 1;
+                    }
+                    else
+                    {
+                        // Usar o ID obtido do banco (deve ser 1, mas não assumimos isso)
+                        reserva.StatusId = statusAberta.Id;
+                        System.Diagnostics.Debug.WriteLine($"StatusId definido para nova reserva: {reserva.StatusId.Value} (Aberta)");
+                    }
+                }
+                else
+                {
+                    // Para atualizações, manter o StatusId existente ou obter pelo nome se necessário
+                    if (!reserva.StatusId.HasValue)
+                    {
+                        if (!string.IsNullOrEmpty(reserva.Status))
                         {
-                            reserva.StatusId = statusReserva.Id;
+                            var statusReserva = ObterStatusReservaPorNome(reserva.Status);
+                            if (statusReserva != null)
+                            {
+                                reserva.StatusId = statusReserva.Id;
+                            }
+                            else
+                            {
+                                // Se não encontrar, usar "Aberta" como padrão
+                                var statusAberta = ObterStatusReservaPorNome("Aberta");
+                                reserva.StatusId = statusAberta != null ? statusAberta.Id : 1;
+                            }
                         }
                         else
                         {
-                            // Se não encontrar, usar status "Aberta" como padrão (ID = 1)
+                            // Se não tiver Status nem StatusId, usar "Aberta" como padrão
                             var statusAberta = ObterStatusReservaPorNome("Aberta");
                             reserva.StatusId = statusAberta != null ? statusAberta.Id : 1;
                         }
                     }
+                }
+                
+                // Validação final: garantir que StatusId está definido
+                if (!reserva.StatusId.HasValue)
+                {
+                    System.Diagnostics.Debug.WriteLine("ERRO: StatusId não foi definido. Usando ID 1 como último recurso.");
+                    reserva.StatusId = 1;
+                }
+                
+                // Verificar se o StatusId existe na tabela StatusReserva antes de salvar
+                var verificarStatusCommand = new SqlCommand("SELECT COUNT(*) FROM StatusReserva WHERE Id = @StatusId", connection);
+                verificarStatusCommand.Parameters.AddWithValue("@StatusId", reserva.StatusId.Value);
+                var statusExiste = (int)verificarStatusCommand.ExecuteScalar() > 0;
+                
+                if (!statusExiste)
+                {
+                    // Se o StatusId não existir, buscar "Aberta" novamente
+                    var statusAberta = ObterStatusReservaPorNome("Aberta");
+                    if (statusAberta != null)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ATENÇÃO: StatusId {reserva.StatusId.Value} não existe. Usando StatusId {statusAberta.Id} (Aberta)");
+                        reserva.StatusId = statusAberta.Id;
+                    }
                     else
                     {
-                        // Se não tiver Status nem StatusId, usar "Aberta" como padrão (ID = 1)
-                        var statusAberta = ObterStatusReservaPorNome("Aberta");
-                        reserva.StatusId = statusAberta != null ? statusAberta.Id : 1;
+                        throw new Exception($"StatusId {reserva.StatusId.Value} não existe na tabela StatusReserva e não foi possível encontrar o status 'Aberta'.");
                     }
                 }
                 
-                // Garantir que StatusId é sempre 1 (Aberta) para novas reservas
-                // Se o StatusId não for 1, verificar se é uma atualização ou nova reserva
-                // Para novas reservas (Id = 0), sempre usar StatusId = 1
-                if (reserva.Id == 0 && reserva.StatusId != 1)
-                {
-                    var statusAberta = ObterStatusReservaPorNome("Aberta");
-                    reserva.StatusId = statusAberta != null ? statusAberta.Id : 1;
-                    System.Diagnostics.Debug.WriteLine($"Forçando StatusId = {reserva.StatusId} (Aberta) para nova reserva");
-                }
+                // Log para debug
+                System.Diagnostics.Debug.WriteLine($"Salvando reserva ID {reserva.Id} com StatusId = {reserva.StatusId.Value}");
                 
                 var command = new SqlCommand(@"
                     INSERT INTO Reservas (ClienteId, DataRetirada, DataReserva, StatusId, ValorTotal, Observacoes, ConvertidoEmPedido, PrevisaoEntrega, Cancelado, TokenAcesso)
@@ -1780,13 +1830,25 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
+                
+                // Buscar o StatusId do status "Cancelado"
+                var statusCancelado = ObterStatusReservaPorNome("Cancelado");
+                if (statusCancelado == null)
+                {
+                    throw new Exception("Status 'Cancelado' não encontrado na tabela StatusReserva. Verifique se o banco de dados foi inicializado corretamente.");
+                }
+                
+                // Atualizar o StatusId para "Cancelado" e marcar como cancelado
                 var command = new SqlCommand(@"
                     UPDATE Reservas 
-                    SET Cancelado = 1
+                    SET StatusId = @StatusId, Cancelado = 1
                     WHERE Id = @Id", connection);
                 
                 command.Parameters.AddWithValue("@Id", reservaId);
+                command.Parameters.AddWithValue("@StatusId", statusCancelado.Id);
                 command.ExecuteNonQuery();
+                
+                System.Diagnostics.Debug.WriteLine($"Reserva ID {reservaId} cancelada. StatusId alterado para {statusCancelado.Id} (Cancelado)");
             }
         }
 
