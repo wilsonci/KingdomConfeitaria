@@ -107,7 +107,8 @@ namespace KingdomConfeitaria
                 }
                 else
                 {
-                    Response.Redirect("Default.aspx");
+                    // Redirecionar para Default.aspx com parâmetro para abrir modal de reserva
+                    Response.Redirect("Default.aspx?abrirReserva=true");
                 }
             }
             catch (Exception ex)

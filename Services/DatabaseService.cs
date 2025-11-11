@@ -65,23 +65,61 @@ namespace KingdomConfeitaria.Services
                     checkTable.CommandText = @"
                         IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND type in (N'U'))
                         BEGIN
+                            -- Garantir que o status 'Aberta' existe antes de criar a tabela
+                            IF NOT EXISTS (SELECT * FROM StatusReserva WHERE Nome = 'Aberta')
+                            BEGIN
+                                INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem)
+                                VALUES ('Aberta', 'Reserva dentro do período que permite alterações e cancelamento', 1, 1, 1)
+                            END
+                            
+                            -- Criar tabela sem DEFAULT (vamos definir depois)
                             CREATE TABLE [dbo].[Reservas](
                                 [Id] [int] IDENTITY(1,1) NOT NULL,
-                                [Nome] [nvarchar](200) NOT NULL,
-                                [Email] [nvarchar](200) NOT NULL,
-                                [Telefone] [nvarchar](50) NULL,
+                                [ClienteId] [int] NOT NULL,
                                 [DataRetirada] [datetime] NOT NULL,
                                 [DataReserva] [datetime] NOT NULL,
-                                [Status] [nvarchar](50) NOT NULL DEFAULT('Pendente'),
+                                [StatusId] [int] NOT NULL,
                                 [ValorTotal] [decimal](10, 2) NOT NULL,
                                 [Observacoes] [nvarchar](1000) NULL,
                                 [ConvertidoEmPedido] [bit] NOT NULL DEFAULT(0),
                                 [PrevisaoEntrega] [datetime] NULL,
                                 [Cancelado] [bit] NOT NULL DEFAULT(0),
-                                CONSTRAINT [PK_Reservas] PRIMARY KEY CLUSTERED ([Id] ASC)
+                                [TokenAcesso] [nvarchar](100) NULL,
+                                CONSTRAINT [PK_Reservas] PRIMARY KEY CLUSTERED ([Id] ASC),
+                                CONSTRAINT [FK_Reservas_Clientes] FOREIGN KEY([ClienteId]) 
+                                    REFERENCES [dbo].[Clientes] ([Id]),
+                                CONSTRAINT [FK_Reservas_StatusReserva] FOREIGN KEY([StatusId]) 
+                                    REFERENCES [dbo].[StatusReserva] ([Id])
                             )
                         END";
                     checkTable.ExecuteNonQuery();
+                    
+                    // Adicionar DEFAULT para StatusId após criar a tabela (em comando separado)
+                    // Primeiro, obter o ID do status 'Aberta'
+                    checkTable.CommandText = "SELECT Id FROM StatusReserva WHERE Nome = 'Aberta'";
+                    object statusAbertaIdObjNew = null;
+                    try
+                    {
+                        statusAbertaIdObjNew = checkTable.ExecuteScalar();
+                    }
+                    catch { /* Ignorar se não encontrar */ }
+                    
+                    if (statusAbertaIdObjNew != null && statusAbertaIdObjNew != DBNull.Value)
+                    {
+                        int statusAbertaIdNew = Convert.ToInt32(statusAbertaIdObjNew);
+                        
+                        // Verificar se a constraint já existe antes de adicionar
+                        checkTable.CommandText = @"
+                            IF NOT EXISTS (SELECT * FROM sys.default_constraints WHERE name = 'DF_Reservas_StatusId')
+                            BEGIN
+                                ALTER TABLE [dbo].[Reservas] ADD CONSTRAINT [DF_Reservas_StatusId] DEFAULT (" + statusAbertaIdNew + @") FOR [StatusId]
+                            END";
+                        try
+                        {
+                            checkTable.ExecuteNonQuery();
+                        }
+                        catch { /* Ignorar se já existir */ }
+                    }
 
                     // Adicionar novas colunas se a tabela já existir
                     checkTable.CommandText = @"
@@ -110,6 +148,29 @@ namespace KingdomConfeitaria.Services
                             ALTER TABLE [dbo].[Produtos] ADD [TamanhoSaco] [nvarchar](50) NULL
                         END";
                     checkTable.ExecuteNonQuery();
+                    
+                    // Migração: Remover colunas duplicadas Nome, Email, Telefone se existirem
+                    // Executar em comandos separados para evitar problemas de sintaxe
+                    checkTable.CommandText = @"
+                        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'Nome')
+                        BEGIN
+                            ALTER TABLE [dbo].[Reservas] DROP COLUMN [Nome]
+                        END";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se já foi removida */ }
+                    
+                    checkTable.CommandText = @"
+                        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'Email')
+                        BEGIN
+                            ALTER TABLE [dbo].[Reservas] DROP COLUMN [Email]
+                        END";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se já foi removida */ }
+                    
+                    checkTable.CommandText = @"
+                        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'Telefone')
+                        BEGIN
+                            ALTER TABLE [dbo].[Reservas] DROP COLUMN [Telefone]
+                        END";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se já foi removida */ }
 
                     // Verificar se a tabela ReservaItens existe
                     checkTable.CommandText = @"
@@ -130,6 +191,37 @@ namespace KingdomConfeitaria.Services
                                 CONSTRAINT [FK_ReservaItens_Produtos] FOREIGN KEY([ProdutoId]) 
                                     REFERENCES [dbo].[Produtos] ([Id])
                             )
+                        END";
+                    checkTable.ExecuteNonQuery();
+
+                    // Verificar se a tabela StatusReserva existe
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[StatusReserva]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[StatusReserva](
+                                [Id] [int] IDENTITY(1,1) NOT NULL,
+                                [Nome] [nvarchar](100) NOT NULL,
+                                [Descricao] [nvarchar](500) NOT NULL,
+                                [PermiteAlteracao] [bit] NOT NULL DEFAULT(1),
+                                [PermiteExclusao] [bit] NOT NULL DEFAULT(1),
+                                [Ordem] [int] NOT NULL DEFAULT(0),
+                                CONSTRAINT [PK_StatusReserva] PRIMARY KEY CLUSTERED ([Id] ASC),
+                                CONSTRAINT [UQ_StatusReserva_Nome] UNIQUE([Nome])
+                            )
+                        END";
+                    checkTable.ExecuteNonQuery();
+
+                    // Inserir status padrão se a tabela estiver vazia
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM StatusReserva)
+                        BEGIN
+                            INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem) VALUES
+                            ('Aberta', 'Reserva dentro do período que permite alterações e cancelamento', 1, 1, 1),
+                            ('Em Produção', 'Já está sendo produzida os produtos da reserva, não permite alteração nem exclusão', 0, 0, 2),
+                            ('Produção Pronta', 'Já foi produzido', 0, 0, 3),
+                            ('Preparando Entrega', 'Já está sendo preparado para entrega', 0, 0, 4),
+                            ('Saiu para Entrega', 'Já está entregando', 0, 0, 5),
+                            ('Já Entregue', 'Produtos já entregues', 0, 0, 6)
                         END";
                     checkTable.ExecuteNonQuery();
 
@@ -160,6 +252,28 @@ namespace KingdomConfeitaria.Services
                             CREATE INDEX [IX_Clientes_Provider] ON [dbo].[Clientes]([Provider], [ProviderId])
                         END";
                     checkTable.ExecuteNonQuery();
+
+                    // Atualizar administradores: definir IsAdmin = true para emails específicos
+                    checkTable.CommandText = @"
+                        UPDATE Clientes 
+                        SET IsAdmin = 1 
+                        WHERE LOWER(LTRIM(RTRIM(Email))) IN (
+                            LOWER(LTRIM(RTRIM('wilson2071@gmail.com'))),
+                            LOWER(LTRIM(RTRIM('isanfm@gmail.com'))),
+                            LOWER(LTRIM(RTRIM('camilafermagalhaes@gmail.com')))
+                        )";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se houver erro */ }
+
+                    // Garantir que apenas os emails específicos sejam administradores
+                    checkTable.CommandText = @"
+                        UPDATE Clientes 
+                        SET IsAdmin = 0 
+                        WHERE LOWER(LTRIM(RTRIM(Email))) NOT IN (
+                            LOWER(LTRIM(RTRIM('wilson2071@gmail.com'))),
+                            LOWER(LTRIM(RTRIM('isanfm@gmail.com'))),
+                            LOWER(LTRIM(RTRIM('camilafermagalhaes@gmail.com')))
+                        ) AND (Email IS NOT NULL AND Email != '')";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se houver erro */ }
 
                     // Migração: Alterar coluna Email para permitir NULL se ainda não permitir
                     checkTable.CommandText = @"
@@ -211,19 +325,122 @@ namespace KingdomConfeitaria.Services
                         END";
                     checkTable.ExecuteNonQuery();
 
-                    // Adicionar ClienteId e TokenAcesso na tabela Reservas se não existir
+                    // Adicionar ClienteId e TokenAcesso na tabela Reservas se não existir (migração para tabelas antigas)
                     checkTable.CommandText = @"
-                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'ClienteId')
+                        IF EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND type in (N'U'))
                         BEGIN
-                            ALTER TABLE [dbo].[Reservas] ADD [ClienteId] [int] NULL
-                            ALTER TABLE [dbo].[Reservas] ADD CONSTRAINT [FK_Reservas_Clientes] 
-                                FOREIGN KEY([ClienteId]) REFERENCES [dbo].[Clientes] ([Id])
-                        END
-                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'TokenAcesso')
-                        BEGIN
-                            ALTER TABLE [dbo].[Reservas] ADD [TokenAcesso] [nvarchar](100) NULL
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'ClienteId')
+                            BEGIN
+                                ALTER TABLE [dbo].[Reservas] ADD [ClienteId] [int] NULL
+                                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Reservas_Clientes')
+                                BEGIN
+                                    ALTER TABLE [dbo].[Reservas] ADD CONSTRAINT [FK_Reservas_Clientes] 
+                                        FOREIGN KEY([ClienteId]) REFERENCES [dbo].[Clientes] ([Id])
+                                END
+                            END
+                            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'TokenAcesso')
+                            BEGIN
+                                ALTER TABLE [dbo].[Reservas] ADD [TokenAcesso] [nvarchar](100) NULL
+                            END
                         END";
                     checkTable.ExecuteNonQuery();
+
+                    // Migração: Adicionar coluna StatusId se não existir (executar sempre que a tabela Reservas existir)
+                    if (connection.State == System.Data.ConnectionState.Open)
+                    {
+                        // Verificar se a tabela Reservas existe
+                        var checkReservasExists = new SqlCommand("SELECT COUNT(*) FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND type in (N'U')", connection);
+                        var reservasExists = (int)checkReservasExists.ExecuteScalar() > 0;
+                        
+                        if (reservasExists)
+                        {
+                            // Verificar se StatusId não existe
+                            var checkStatusIdExists = new SqlCommand("SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'StatusId'", connection);
+                            var statusIdExists = (int)checkStatusIdExists.ExecuteScalar() > 0;
+                            
+                            if (!statusIdExists)
+                            {
+                                // Garantir que o status 'Aberta' existe
+                                checkTable.CommandText = @"
+                                    IF NOT EXISTS (SELECT * FROM StatusReserva WHERE Nome = 'Aberta')
+                                    BEGIN
+                                        INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem)
+                                        VALUES ('Aberta', 'Reserva dentro do período que permite alterações e cancelamento', 1, 1, 1)
+                                    END";
+                                checkTable.ExecuteNonQuery();
+                                
+                                // Obter ID do status 'Aberta'
+                                checkTable.CommandText = "SELECT Id FROM StatusReserva WHERE Nome = 'Aberta'";
+                                object statusAbertaIdObj = checkTable.ExecuteScalar();
+                                int statusAbertaId = statusAbertaIdObj != null && statusAbertaIdObj != DBNull.Value ? Convert.ToInt32(statusAbertaIdObj) : 1;
+                                
+                                // Adicionar coluna StatusId
+                                checkTable.CommandText = "ALTER TABLE [dbo].[Reservas] ADD [StatusId] [int] NULL";
+                                checkTable.ExecuteNonQuery();
+                                
+                                // Verificar se a coluna Status existe para migrar dados
+                                var checkStatusExists = new SqlCommand("SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'Status'", connection);
+                                var statusExists = (int)checkStatusExists.ExecuteScalar() > 0;
+                                
+                                if (statusExists)
+                                {
+                                    // Migrar dados de Status para StatusId
+                                    checkTable.CommandText = @"
+                                        UPDATE r SET r.StatusId = sr.Id
+                                        FROM Reservas r
+                                        LEFT JOIN StatusReserva sr ON r.Status = sr.Nome
+                                        WHERE r.StatusId IS NULL";
+                                    checkTable.ExecuteNonQuery();
+                                    
+                                    // Se algum Status não foi encontrado, usar 'Aberta' como padrão
+                                    checkTable.CommandText = "UPDATE Reservas SET StatusId = " + statusAbertaId + " WHERE StatusId IS NULL";
+                                    checkTable.ExecuteNonQuery();
+                                }
+                                else
+                                {
+                                    // Se não tem Status, definir todos como 'Aberta'
+                                    checkTable.CommandText = "UPDATE Reservas SET StatusId = " + statusAbertaId + " WHERE StatusId IS NULL";
+                                    checkTable.ExecuteNonQuery();
+                                }
+                                
+                                // Tornar StatusId NOT NULL
+                                checkTable.CommandText = "ALTER TABLE [dbo].[Reservas] ALTER COLUMN [StatusId] [int] NOT NULL";
+                                checkTable.ExecuteNonQuery();
+                                
+                                // Adicionar foreign key
+                                checkTable.CommandText = @"
+                                    IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Reservas_StatusReserva')
+                                    BEGIN
+                                        ALTER TABLE [dbo].[Reservas] ADD CONSTRAINT [FK_Reservas_StatusReserva] 
+                                            FOREIGN KEY([StatusId]) REFERENCES [dbo].[StatusReserva] ([Id])
+                                    END";
+                                checkTable.ExecuteNonQuery();
+                                
+                                // Remover coluna Status antiga se existir
+                                if (statusExists)
+                                {
+                                    checkTable.CommandText = "ALTER TABLE [dbo].[Reservas] DROP COLUMN [Status]";
+                                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se houver erro */ }
+                                }
+                            }
+                            
+                            // Garantir que a foreign key existe
+                            checkTable.CommandText = @"
+                                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND name = 'StatusId')
+                                AND NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Reservas_StatusReserva')
+                                BEGIN
+                                    ALTER TABLE [dbo].[Reservas] ADD CONSTRAINT [FK_Reservas_StatusReserva] 
+                                        FOREIGN KEY([StatusId]) REFERENCES [dbo].[StatusReserva] ([Id])
+                                END";
+                            try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se já existe */ }
+                        }
+                    }
+
+                    // Limpar dados das tabelas Reservas e ReservaItens (apenas na primeira inicialização)
+                    // COMENTADO: Não limpar dados automaticamente - isso apaga reservas existentes
+                    // Se precisar limpar, fazer manualmente
+                    // checkTable.CommandText = @"DELETE FROM ReservaItens; DELETE FROM Reservas";
+                    // try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se houver erro */ }
 
                     // Verificar se há produtos no banco
                     var checkProdutos = new SqlCommand("SELECT COUNT(*) FROM Produtos", connection);
@@ -389,17 +606,50 @@ namespace KingdomConfeitaria.Services
                     reserva.TokenAcesso = Guid.NewGuid().ToString("N");
                 }
                 
+                // Garantir que StatusId está definido - sempre usar "Aberta" (ID = 1) para novas reservas
+                if (!reserva.StatusId.HasValue)
+                {
+                    // Se StatusId não estiver definido, obter pelo nome do Status
+                    if (!string.IsNullOrEmpty(reserva.Status))
+                    {
+                        var statusReserva = ObterStatusReservaPorNome(reserva.Status);
+                        if (statusReserva != null)
+                        {
+                            reserva.StatusId = statusReserva.Id;
+                        }
+                        else
+                        {
+                            // Se não encontrar, usar status "Aberta" como padrão (ID = 1)
+                            var statusAberta = ObterStatusReservaPorNome("Aberta");
+                            reserva.StatusId = statusAberta != null ? statusAberta.Id : 1;
+                        }
+                    }
+                    else
+                    {
+                        // Se não tiver Status nem StatusId, usar "Aberta" como padrão (ID = 1)
+                        var statusAberta = ObterStatusReservaPorNome("Aberta");
+                        reserva.StatusId = statusAberta != null ? statusAberta.Id : 1;
+                    }
+                }
+                
+                // Garantir que StatusId é sempre 1 (Aberta) para novas reservas
+                // Se o StatusId não for 1, verificar se é uma atualização ou nova reserva
+                // Para novas reservas (Id = 0), sempre usar StatusId = 1
+                if (reserva.Id == 0 && reserva.StatusId != 1)
+                {
+                    var statusAberta = ObterStatusReservaPorNome("Aberta");
+                    reserva.StatusId = statusAberta != null ? statusAberta.Id : 1;
+                    System.Diagnostics.Debug.WriteLine($"Forçando StatusId = {reserva.StatusId} (Aberta) para nova reserva");
+                }
+                
                 var command = new SqlCommand(@"
-                    INSERT INTO Reservas (Nome, Email, Telefone, DataRetirada, DataReserva, Status, ValorTotal, Observacoes, ConvertidoEmPedido, PrevisaoEntrega, Cancelado, ClienteId, TokenAcesso)
-                    VALUES (@Nome, @Email, @Telefone, @DataRetirada, @DataReserva, @Status, @ValorTotal, @Observacoes, @ConvertidoEmPedido, @PrevisaoEntrega, @Cancelado, @ClienteId, @TokenAcesso);
+                    INSERT INTO Reservas (ClienteId, DataRetirada, DataReserva, StatusId, ValorTotal, Observacoes, ConvertidoEmPedido, PrevisaoEntrega, Cancelado, TokenAcesso)
+                    VALUES (@ClienteId, @DataRetirada, @DataReserva, @StatusId, @ValorTotal, @Observacoes, @ConvertidoEmPedido, @PrevisaoEntrega, @Cancelado, @TokenAcesso);
                     SELECT CAST(SCOPE_IDENTITY() as int);", connection);
                 
-                command.Parameters.AddWithValue("@Nome", reserva.Nome);
-                command.Parameters.AddWithValue("@Email", reserva.Email);
-                command.Parameters.AddWithValue("@Telefone", reserva.Telefone ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@DataRetirada", reserva.DataRetirada);
                 command.Parameters.AddWithValue("@DataReserva", reserva.DataReserva);
-                command.Parameters.AddWithValue("@Status", reserva.Status);
+                command.Parameters.AddWithValue("@StatusId", reserva.StatusId.Value);
                 command.Parameters.AddWithValue("@ValorTotal", reserva.ValorTotal);
                 command.Parameters.AddWithValue("@Observacoes", reserva.Observacoes ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@ConvertidoEmPedido", reserva.ConvertidoEmPedido);
@@ -409,6 +659,11 @@ namespace KingdomConfeitaria.Services
                 command.Parameters.AddWithValue("@TokenAcesso", reserva.TokenAcesso);
                 
                 var reservaId = (int)command.ExecuteScalar();
+                
+                // Atualizar o ID da reserva no objeto
+                reserva.Id = reservaId;
+                
+                System.Diagnostics.Debug.WriteLine($"Reserva criada com ID: {reservaId}");
                 
                 // Obter todos os produtos existentes no banco (ativos ou inativos)
                 // Aceitar produtos inativos também, pois podem ter sido desativados após serem adicionados ao carrinho
@@ -479,7 +734,20 @@ namespace KingdomConfeitaria.Services
                 // Validar que pelo menos um item foi gravado
                 if (itensGravados == 0)
                 {
-                    throw new Exception($"Nenhum item foi gravado na reserva. Total de itens: {reserva.Itens.Count}, Itens pulados: {itensPulados}");
+                    // Se nenhum item foi gravado, deletar a reserva criada
+                    try
+                    {
+                        var deleteCommand = new SqlCommand("DELETE FROM Reservas WHERE Id = @Id", connection);
+                        deleteCommand.Parameters.AddWithValue("@Id", reservaId);
+                        deleteCommand.ExecuteNonQuery();
+                        System.Diagnostics.Debug.WriteLine($"Reserva ID {reservaId} deletada porque nenhum item foi gravado.");
+                    }
+                    catch (Exception exDelete)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Erro ao deletar reserva vazia: {exDelete.Message}");
+                    }
+                    
+                    throw new Exception($"Nenhum item foi gravado na reserva. Total de itens: {reserva.Itens.Count}, Itens pulados: {itensPulados}. A reserva foi removida.");
                 }
                 
                 // Log final
@@ -551,10 +819,13 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 var command = new SqlCommand(@"
-                    SELECT Id, Nome, Email, Telefone, DataRetirada, DataReserva, Status, ValorTotal, Observacoes, 
-                           ConvertidoEmPedido, PrevisaoEntrega, Cancelado, ClienteId, TokenAcesso
-                    FROM Reservas 
-                    ORDER BY DataReserva DESC", connection);
+                    SELECT r.Id, r.DataRetirada, r.DataReserva, r.StatusId, r.ValorTotal, r.Observacoes, 
+                           r.ConvertidoEmPedido, r.PrevisaoEntrega, r.Cancelado, r.ClienteId, r.TokenAcesso,
+                           c.Nome, c.Email, c.Telefone, sr.Nome as StatusNome
+                    FROM Reservas r
+                    LEFT JOIN Clientes c ON r.ClienteId = c.Id
+                    LEFT JOIN StatusReserva sr ON r.StatusId = sr.Id
+                    ORDER BY r.DataReserva DESC", connection);
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -563,19 +834,20 @@ namespace KingdomConfeitaria.Services
                         var reserva = new Reserva
                         {
                             Id = reader.GetInt32(0),
-                            Nome = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            DataRetirada = reader.GetDateTime(4),
-                            DataReserva = reader.GetDateTime(5),
-                            Status = reader.GetString(6),
-                            ValorTotal = reader.GetDecimal(7),
-                            Observacoes = reader.IsDBNull(8) ? "" : reader.GetString(8),
-                            ConvertidoEmPedido = reader.GetBoolean(9),
-                            PrevisaoEntrega = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
-                            Cancelado = reader.GetBoolean(11),
-                            ClienteId = reader.IsDBNull(12) ? (int?)null : reader.GetInt32(12),
-                            TokenAcesso = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                            DataRetirada = reader.GetDateTime(1),
+                            DataReserva = reader.GetDateTime(2),
+                            StatusId = reader.GetInt32(3),
+                            ValorTotal = reader.GetDecimal(4),
+                            Observacoes = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                            ConvertidoEmPedido = reader.GetBoolean(6),
+                            PrevisaoEntrega = reader.IsDBNull(7) ? (DateTime?)null : reader.GetDateTime(7),
+                            Cancelado = reader.GetBoolean(8),
+                            ClienteId = reader.IsDBNull(9) ? (int?)null : reader.GetInt32(9),
+                            TokenAcesso = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                            Nome = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                            Email = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                            Telefone = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                            Status = reader.IsDBNull(14) ? "" : reader.GetString(14),
                             Itens = new List<ItemPedido>()
                         };
                         reservas.Add(reserva);
@@ -620,10 +892,13 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 var command = new SqlCommand(@"
-                    SELECT Id, Nome, Email, Telefone, DataRetirada, DataReserva, Status, ValorTotal, Observacoes, 
-                           ConvertidoEmPedido, PrevisaoEntrega, Cancelado, ClienteId, TokenAcesso
-                    FROM Reservas 
-                    WHERE Id = @Id", connection);
+                    SELECT r.Id, r.DataRetirada, r.DataReserva, r.StatusId, r.ValorTotal, r.Observacoes, 
+                           r.ConvertidoEmPedido, r.PrevisaoEntrega, r.Cancelado, r.ClienteId, r.TokenAcesso,
+                           c.Nome, c.Email, c.Telefone, sr.Nome as StatusNome
+                    FROM Reservas r
+                    LEFT JOIN Clientes c ON r.ClienteId = c.Id
+                    LEFT JOIN StatusReserva sr ON r.StatusId = sr.Id
+                    WHERE r.Id = @Id", connection);
                 command.Parameters.AddWithValue("@Id", id);
                 
                 using (var reader = command.ExecuteReader())
@@ -633,19 +908,20 @@ namespace KingdomConfeitaria.Services
                         reserva = new Reserva
                         {
                             Id = reader.GetInt32(0),
-                            Nome = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            DataRetirada = reader.GetDateTime(4),
-                            DataReserva = reader.GetDateTime(5),
-                            Status = reader.GetString(6),
-                            ValorTotal = reader.GetDecimal(7),
-                            Observacoes = reader.IsDBNull(8) ? "" : reader.GetString(8),
-                            ConvertidoEmPedido = reader.GetBoolean(9),
-                            PrevisaoEntrega = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
-                            Cancelado = reader.GetBoolean(11),
-                            ClienteId = reader.IsDBNull(12) ? (int?)null : reader.GetInt32(12),
-                            TokenAcesso = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                            DataRetirada = reader.GetDateTime(1),
+                            DataReserva = reader.GetDateTime(2),
+                            StatusId = reader.GetInt32(3),
+                            ValorTotal = reader.GetDecimal(4),
+                            Observacoes = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                            ConvertidoEmPedido = reader.GetBoolean(6),
+                            PrevisaoEntrega = reader.IsDBNull(7) ? (DateTime?)null : reader.GetDateTime(7),
+                            Cancelado = reader.GetBoolean(8),
+                            ClienteId = reader.IsDBNull(9) ? (int?)null : reader.GetInt32(9),
+                            TokenAcesso = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                            Nome = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                            Email = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                            Telefone = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                            Status = reader.IsDBNull(14) ? "" : reader.GetString(14),
                             Itens = new List<ItemPedido>()
                         };
                     }
@@ -686,23 +962,187 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
+                
+                // Se StatusId não estiver definido, obter pelo nome do Status
+                if (!reserva.StatusId.HasValue && !string.IsNullOrEmpty(reserva.Status))
+                {
+                    var statusReserva = ObterStatusReservaPorNome(reserva.Status);
+                    if (statusReserva != null)
+                    {
+                        reserva.StatusId = statusReserva.Id;
+                    }
+                }
+                
+                // Se ainda não tiver StatusId, manter o atual
+                if (!reserva.StatusId.HasValue)
+                {
+                    var reservaAtual = ObterReservaPorId(reserva.Id);
+                    if (reservaAtual != null)
+                    {
+                        reserva.StatusId = reservaAtual.StatusId;
+                    }
+                }
+                
                 var command = new SqlCommand(@"
                     UPDATE Reservas 
-                    SET Status = @Status, ConvertidoEmPedido = @ConvertidoEmPedido, 
+                    SET StatusId = @StatusId, ConvertidoEmPedido = @ConvertidoEmPedido, 
                         PrevisaoEntrega = @PrevisaoEntrega, Cancelado = @Cancelado,
-                        Observacoes = @Observacoes, ValorTotal = @ValorTotal
+                        Observacoes = @Observacoes, ValorTotal = @ValorTotal,
+                        DataRetirada = @DataRetirada
                     WHERE Id = @Id", connection);
                 
                 command.Parameters.AddWithValue("@Id", reserva.Id);
-                command.Parameters.AddWithValue("@Status", reserva.Status);
+                command.Parameters.AddWithValue("@StatusId", reserva.StatusId.Value);
                 command.Parameters.AddWithValue("@ConvertidoEmPedido", reserva.ConvertidoEmPedido);
                 command.Parameters.AddWithValue("@PrevisaoEntrega", reserva.PrevisaoEntrega.HasValue ? (object)reserva.PrevisaoEntrega.Value : DBNull.Value);
                 command.Parameters.AddWithValue("@Cancelado", reserva.Cancelado);
                 command.Parameters.AddWithValue("@Observacoes", reserva.Observacoes ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@ValorTotal", reserva.ValorTotal);
+                command.Parameters.AddWithValue("@DataRetirada", reserva.DataRetirada);
                 
                 command.ExecuteNonQuery();
             }
+        }
+
+        public void AtualizarItensReserva(int reservaId, List<ItemPedido> novosItens)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                
+                // Deletar todos os itens antigos
+                var deleteCommand = new SqlCommand("DELETE FROM ReservaItens WHERE ReservaId = @ReservaId", connection);
+                deleteCommand.Parameters.AddWithValue("@ReservaId", reservaId);
+                deleteCommand.ExecuteNonQuery();
+                
+                // Obter lista de produtos existentes
+                var produtosExistentes = new HashSet<int>();
+                var produtosCommand = new SqlCommand("SELECT Id FROM Produtos", connection);
+                using (var produtosReader = produtosCommand.ExecuteReader())
+                {
+                    while (produtosReader.Read())
+                    {
+                        produtosExistentes.Add(produtosReader.GetInt32(0));
+                    }
+                }
+                
+                // Inserir novos itens
+                foreach (var item in novosItens)
+                {
+                    // Validar se o produto existe
+                    if (!produtosExistentes.Contains(item.ProdutoId))
+                    {
+                        continue; // Pular produtos que não existem mais
+                    }
+                    
+                    var insertCommand = new SqlCommand(@"
+                        INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal)
+                        VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal)", connection);
+                    
+                    insertCommand.Parameters.AddWithValue("@ReservaId", reservaId);
+                    insertCommand.Parameters.AddWithValue("@ProdutoId", item.ProdutoId);
+                    insertCommand.Parameters.AddWithValue("@NomeProduto", item.NomeProduto ?? "");
+                    insertCommand.Parameters.AddWithValue("@Tamanho", item.Tamanho ?? "");
+                    insertCommand.Parameters.AddWithValue("@Quantidade", item.Quantidade);
+                    insertCommand.Parameters.AddWithValue("@PrecoUnitario", item.PrecoUnitario);
+                    insertCommand.Parameters.AddWithValue("@Subtotal", item.Subtotal);
+                    
+                    insertCommand.ExecuteNonQuery();
+                }
+            }
+        }
+
+        public List<StatusReserva> ObterTodosStatusReserva()
+        {
+            var status = new List<StatusReserva>();
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("SELECT Id, Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem FROM StatusReserva ORDER BY Ordem", connection);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        status.Add(new StatusReserva
+                        {
+                            Id = reader.GetInt32(0),
+                            Nome = reader.GetString(1),
+                            Descricao = reader.GetString(2),
+                            PermiteAlteracao = reader.GetBoolean(3),
+                            PermiteExclusao = reader.GetBoolean(4),
+                            Ordem = reader.GetInt32(5)
+                        });
+                    }
+                }
+            }
+            return status;
+        }
+
+        public StatusReserva ObterStatusReservaPorNome(string nome)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("SELECT Id, Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem FROM StatusReserva WHERE Nome = @Nome", connection);
+                command.Parameters.AddWithValue("@Nome", nome);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new StatusReserva
+                        {
+                            Id = reader.GetInt32(0),
+                            Nome = reader.GetString(1),
+                            Descricao = reader.GetString(2),
+                            PermiteAlteracao = reader.GetBoolean(3),
+                            PermiteExclusao = reader.GetBoolean(4),
+                            Ordem = reader.GetInt32(5)
+                        };
+                    }
+                }
+            }
+            return null;
+        }
+
+        public StatusReserva ObterStatusReservaPorId(int id)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("SELECT Id, Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem FROM StatusReserva WHERE Id = @Id", connection);
+                command.Parameters.AddWithValue("@Id", id);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new StatusReserva
+                        {
+                            Id = reader.GetInt32(0),
+                            Nome = reader.GetString(1),
+                            Descricao = reader.GetString(2),
+                            PermiteAlteracao = reader.GetBoolean(3),
+                            PermiteExclusao = reader.GetBoolean(4),
+                            Ordem = reader.GetInt32(5)
+                        };
+                    }
+                }
+            }
+            return null;
+        }
+
+        public bool StatusPermiteAlteracao(int statusId)
+        {
+            var status = ObterStatusReservaPorId(statusId);
+            return status != null && status.PermiteAlteracao;
+        }
+
+        public bool StatusPermiteExclusao(int statusId)
+        {
+            var status = ObterStatusReservaPorId(statusId);
+            return status != null && status.PermiteExclusao;
         }
 
         public List<Cliente> ObterTodosClientes()
@@ -992,6 +1432,23 @@ namespace KingdomConfeitaria.Services
             return null;
         }
 
+        // Lista de emails de administradores
+        private readonly string[] _emailsAdministradores = new string[]
+        {
+            "wilson2071@gmail.com",
+            "isanfm@gmail.com",
+            "camilafermagalhaes@gmail.com"
+        };
+
+        private bool VerificarSeEhAdministrador(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+                return false;
+            
+            string emailFormatado = FormatarEmail(email);
+            return _emailsAdministradores.Any(e => FormatarEmail(e) == emailFormatado);
+        }
+
         public int CriarOuAtualizarCliente(Cliente cliente)
         {
             // Formatar email e telefone antes de processar
@@ -1002,6 +1459,18 @@ namespace KingdomConfeitaria.Services
             if (!string.IsNullOrEmpty(cliente.Telefone))
             {
                 cliente.Telefone = FormatarTelefone(cliente.Telefone);
+            }
+
+            // Verificar se o email é de administrador e definir IsAdmin automaticamente
+            bool ehAdministrador = VerificarSeEhAdministrador(cliente.Email);
+            if (ehAdministrador)
+            {
+                cliente.IsAdmin = true;
+            }
+            else
+            {
+                // Garantir que apenas os emails específicos sejam administradores
+                cliente.IsAdmin = false;
             }
 
             using (var connection = new SqlConnection(_connectionString))
@@ -1023,6 +1492,10 @@ namespace KingdomConfeitaria.Services
                 
                 if (clienteExistente != null)
                 {
+                    // Se o cliente existente tem um dos emails de administrador, garantir que IsAdmin seja true
+                    bool clienteExistenteEhAdmin = VerificarSeEhAdministrador(clienteExistente.Email);
+                    bool isAdminFinal = ehAdministrador || clienteExistenteEhAdmin;
+                    
                     // Atualizar cliente existente
                     var command = new SqlCommand(@"
                         UPDATE Clientes 
@@ -1036,7 +1509,7 @@ namespace KingdomConfeitaria.Services
                     command.Parameters.AddWithValue("@Senha", string.IsNullOrEmpty(cliente.Senha) ? (object)DBNull.Value : cliente.Senha);
                     command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(cliente.Telefone) ? (object)DBNull.Value : cliente.Telefone);
                     command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
-                    command.Parameters.AddWithValue("@IsAdmin", cliente.IsAdmin);
+                    command.Parameters.AddWithValue("@IsAdmin", isAdminFinal);
                     
                     command.ExecuteNonQuery();
                     return clienteExistente.Id;
@@ -1159,11 +1632,14 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 var command = new SqlCommand(@"
-                    SELECT Id, Nome, Email, Telefone, DataRetirada, DataReserva, Status, ValorTotal, Observacoes, 
-                           ConvertidoEmPedido, PrevisaoEntrega, Cancelado, ClienteId, TokenAcesso
-                    FROM Reservas 
-                    WHERE ClienteId = @ClienteId
-                    ORDER BY DataReserva DESC", connection);
+                    SELECT r.Id, r.DataRetirada, r.DataReserva, r.StatusId, r.ValorTotal, r.Observacoes, 
+                           r.ConvertidoEmPedido, r.PrevisaoEntrega, r.Cancelado, r.ClienteId, r.TokenAcesso,
+                           c.Nome, c.Email, c.Telefone, sr.Nome as StatusNome
+                    FROM Reservas r
+                    LEFT JOIN Clientes c ON r.ClienteId = c.Id
+                    LEFT JOIN StatusReserva sr ON r.StatusId = sr.Id
+                    WHERE r.ClienteId = @ClienteId
+                    ORDER BY r.DataReserva DESC", connection);
                 command.Parameters.AddWithValue("@ClienteId", clienteId);
                 
                 using (var reader = command.ExecuteReader())
@@ -1173,19 +1649,20 @@ namespace KingdomConfeitaria.Services
                         var reserva = new Reserva
                         {
                             Id = reader.GetInt32(0),
-                            Nome = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            DataRetirada = reader.GetDateTime(4),
-                            DataReserva = reader.GetDateTime(5),
-                            Status = reader.GetString(6),
-                            ValorTotal = reader.GetDecimal(7),
-                            Observacoes = reader.IsDBNull(8) ? "" : reader.GetString(8),
-                            ConvertidoEmPedido = reader.GetBoolean(9),
-                            PrevisaoEntrega = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
-                            Cancelado = reader.GetBoolean(11),
-                            ClienteId = reader.IsDBNull(12) ? (int?)null : reader.GetInt32(12),
-                            TokenAcesso = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                            DataRetirada = reader.GetDateTime(1),
+                            DataReserva = reader.GetDateTime(2),
+                            StatusId = reader.GetInt32(3),
+                            ValorTotal = reader.GetDecimal(4),
+                            Observacoes = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                            ConvertidoEmPedido = reader.GetBoolean(6),
+                            PrevisaoEntrega = reader.IsDBNull(7) ? (DateTime?)null : reader.GetDateTime(7),
+                            Cancelado = reader.GetBoolean(8),
+                            ClienteId = reader.IsDBNull(9) ? (int?)null : reader.GetInt32(9),
+                            TokenAcesso = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                            Nome = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                            Email = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                            Telefone = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                            Status = reader.IsDBNull(14) ? "" : reader.GetString(14),
                             Itens = new List<ItemPedido>()
                         };
                         reservas.Add(reserva);
@@ -1227,12 +1704,22 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
+                
+                // Se o token for numérico, pode ser um ID de reserva antiga sem token
+                int reservaId;
+                bool isNumeric = int.TryParse(token, out reservaId);
+                
                 var command = new SqlCommand(@"
-                    SELECT Id, Nome, Email, Telefone, DataRetirada, DataReserva, Status, ValorTotal, Observacoes, 
-                           ConvertidoEmPedido, PrevisaoEntrega, Cancelado, ClienteId, TokenAcesso
-                    FROM Reservas 
-                    WHERE TokenAcesso = @Token", connection);
+                    SELECT r.Id, r.DataRetirada, r.DataReserva, r.StatusId, r.ValorTotal, r.Observacoes, 
+                           r.ConvertidoEmPedido, r.PrevisaoEntrega, r.Cancelado, r.ClienteId, r.TokenAcesso,
+                           c.Nome, c.Email, c.Telefone, sr.Nome as StatusNome
+                    FROM Reservas r
+                    LEFT JOIN Clientes c ON r.ClienteId = c.Id
+                    LEFT JOIN StatusReserva sr ON r.StatusId = sr.Id
+                    WHERE (r.TokenAcesso = @Token OR (@IsNumeric = 1 AND r.Id = @ReservaId))", connection);
                 command.Parameters.AddWithValue("@Token", token);
+                command.Parameters.AddWithValue("@IsNumeric", isNumeric);
+                command.Parameters.AddWithValue("@ReservaId", isNumeric ? reservaId : 0);
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -1241,19 +1728,20 @@ namespace KingdomConfeitaria.Services
                         var reserva = new Reserva
                         {
                             Id = reader.GetInt32(0),
-                            Nome = reader.GetString(1),
-                            Email = reader.GetString(2),
-                            Telefone = reader.IsDBNull(3) ? "" : reader.GetString(3),
-                            DataRetirada = reader.GetDateTime(4),
-                            DataReserva = reader.GetDateTime(5),
-                            Status = reader.GetString(6),
-                            ValorTotal = reader.GetDecimal(7),
-                            Observacoes = reader.IsDBNull(8) ? "" : reader.GetString(8),
-                            ConvertidoEmPedido = reader.GetBoolean(9),
-                            PrevisaoEntrega = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
-                            Cancelado = reader.GetBoolean(11),
-                            ClienteId = reader.IsDBNull(12) ? (int?)null : reader.GetInt32(12),
-                            TokenAcesso = reader.GetString(13),
+                            DataRetirada = reader.GetDateTime(1),
+                            DataReserva = reader.GetDateTime(2),
+                            StatusId = reader.GetInt32(3),
+                            ValorTotal = reader.GetDecimal(4),
+                            Observacoes = reader.IsDBNull(5) ? "" : reader.GetString(5),
+                            ConvertidoEmPedido = reader.GetBoolean(6),
+                            PrevisaoEntrega = reader.IsDBNull(7) ? (DateTime?)null : reader.GetDateTime(7),
+                            Cancelado = reader.GetBoolean(8),
+                            ClienteId = reader.IsDBNull(9) ? (int?)null : reader.GetInt32(9),
+                            TokenAcesso = reader.IsDBNull(10) ? "" : reader.GetString(10),
+                            Nome = reader.IsDBNull(11) ? "" : reader.GetString(11),
+                            Email = reader.IsDBNull(12) ? "" : reader.GetString(12),
+                            Telefone = reader.IsDBNull(13) ? "" : reader.GetString(13),
+                            Status = reader.IsDBNull(14) ? "" : reader.GetString(14),
                             Itens = new List<ItemPedido>()
                         };
 
@@ -1287,6 +1775,21 @@ namespace KingdomConfeitaria.Services
             return null;
         }
 
+        public void CancelarReserva(int reservaId)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand(@"
+                    UPDATE Reservas 
+                    SET Cancelado = 1
+                    WHERE Id = @Id", connection);
+                
+                command.Parameters.AddWithValue("@Id", reservaId);
+                command.ExecuteNonQuery();
+            }
+        }
+
         public void ExcluirReserva(int reservaId)
         {
             using (var connection = new SqlConnection(_connectionString))
@@ -1294,6 +1797,91 @@ namespace KingdomConfeitaria.Services
                 connection.Open();
                 var command = new SqlCommand("DELETE FROM Reservas WHERE Id = @Id", connection);
                 command.Parameters.AddWithValue("@Id", reservaId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        // Métodos para excluir dados com verificação de dependências
+        public bool PodeExcluirStatusReserva(int statusId)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("SELECT COUNT(*) FROM Reservas WHERE StatusId = @StatusId", connection);
+                command.Parameters.AddWithValue("@StatusId", statusId);
+                int count = (int)command.ExecuteScalar();
+                return count == 0;
+            }
+        }
+
+        public bool PodeExcluirProduto(int produtoId)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("SELECT COUNT(*) FROM ReservaItens WHERE ProdutoId = @ProdutoId", connection);
+                command.Parameters.AddWithValue("@ProdutoId", produtoId);
+                int count = (int)command.ExecuteScalar();
+                return count == 0;
+            }
+        }
+
+        public bool PodeExcluirCliente(int clienteId)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("SELECT COUNT(*) FROM Reservas WHERE ClienteId = @ClienteId", connection);
+                command.Parameters.AddWithValue("@ClienteId", clienteId);
+                int count = (int)command.ExecuteScalar();
+                return count == 0;
+            }
+        }
+
+        public void ExcluirStatusReserva(int statusId)
+        {
+            if (!PodeExcluirStatusReserva(statusId))
+            {
+                throw new Exception("Não é possível excluir este status pois existem reservas associadas a ele.");
+            }
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("DELETE FROM StatusReserva WHERE Id = @Id", connection);
+                command.Parameters.AddWithValue("@Id", statusId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        public void ExcluirProduto(int produtoId)
+        {
+            if (!PodeExcluirProduto(produtoId))
+            {
+                throw new Exception("Não é possível excluir este produto pois existem reservas associadas a ele.");
+            }
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("DELETE FROM Produtos WHERE Id = @Id", connection);
+                command.Parameters.AddWithValue("@Id", produtoId);
+                command.ExecuteNonQuery();
+            }
+        }
+
+        public void ExcluirCliente(int clienteId)
+        {
+            if (!PodeExcluirCliente(clienteId))
+            {
+                throw new Exception("Não é possível excluir este cliente pois existem reservas associadas a ele.");
+            }
+
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("DELETE FROM Clientes WHERE Id = @Id", connection);
+                command.Parameters.AddWithValue("@Id", clienteId);
                 command.ExecuteNonQuery();
             }
         }

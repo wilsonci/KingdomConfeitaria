@@ -32,6 +32,15 @@ namespace KingdomConfeitaria
             string eventTarget = Request["__EVENTTARGET"];
             string eventArgument = Request["__EVENTARGUMENT"];
 
+            if (eventTarget == "CancelarReserva" && !string.IsNullOrEmpty(eventArgument))
+            {
+                int reservaId;
+                if (int.TryParse(eventArgument, out reservaId))
+                {
+                    CancelarReserva(reservaId, clienteId);
+                }
+            }
+
             if (eventTarget == "ExcluirReserva" && !string.IsNullOrEmpty(eventArgument))
             {
                 int reservaId;
@@ -52,7 +61,8 @@ namespace KingdomConfeitaria
             try
             {
                 var reservas = _databaseService.ObterReservasPorCliente(clienteId);
-                var baseUrl = System.Configuration.ConfigurationManager.AppSettings["BaseUrl"] ?? Request.Url.GetLeftPart(UriPartial.Authority);
+                // Usar a URL atual da requisição para garantir que a porta esteja correta
+                var baseUrl = Request.Url.GetLeftPart(UriPartial.Authority);
 
                 if (reservas == null || reservas.Count == 0)
                 {
@@ -86,7 +96,20 @@ namespace KingdomConfeitaria
                         observacoesHtml = string.Format("<p><strong>Observações:</strong> {0}</p>", reserva.Observacoes);
                     }
 
-                    string linkReserva = string.Format("{0}/VerReserva.aspx?token={1}", baseUrl, reserva.TokenAcesso);
+                    // Verificar se TokenAcesso existe, se não, gerar um
+                    string token = reserva.TokenAcesso;
+                    if (string.IsNullOrEmpty(token))
+                    {
+                        // Se não tem token, usar o ID da reserva como fallback (não ideal, mas funcional)
+                        token = reserva.Id.ToString();
+                    }
+                    
+                    // Usar URL relativa para o link (evita problemas com porta/domínio)
+                    string linkReserva = ResolveUrl("~/VerReserva.aspx?token=" + System.Web.HttpUtility.UrlEncode(token));
+                    
+                    // URL completa para compartilhamento (precisa ser absoluta)
+                    string linkReservaCompleto = baseUrl.TrimEnd('/') + "/VerReserva.aspx?token=" + System.Web.HttpUtility.UrlEncode(token);
+                    
                     string textoCompartilhar = string.Format("Minha reserva na Kingdom Confeitaria - Valor: R$ {0} - Data de Retirada: {1}",
                         reserva.ValorTotal.ToString("F2"), reserva.DataRetirada.ToString("dd/MM/yyyy"));
 
@@ -125,25 +148,24 @@ namespace KingdomConfeitaria
                             
                             <div class='d-flex justify-content-between align-items-center mt-3'>
                                 <div>
-                                    <a href='{10}' class='btn btn-primary btn-sm' target='_blank'>
+                                    <a href='{10}' class='btn btn-primary btn-sm'>
                                         <i class='fas fa-eye'></i> Ver Detalhes
                                     </a>
-                                    <button type='button' class='btn btn-danger btn-sm' onclick='excluirReserva({0})' {11}>
-                                        <i class='fas fa-trash'></i> Excluir
-                                    </button>
+                                    {14}
+                                    {15}
                                 </div>
                                 <div>
                                     <strong>Compartilhar:</strong>
-                                    <button type='button' class='btn btn-share btn-sm btn-primary' onclick='compartilharFacebook(\""{10}\"", \""{12}\"")'>
+                                    <button type='button' class='btn btn-share btn-sm btn-primary' onclick='compartilharFacebook(\""{13}\"", \""{12}\"")'>
                                         <i class='fab fa-facebook'></i>
                                     </button>
-                                    <button type='button' class='btn btn-share btn-sm btn-success' onclick='compartilharWhatsApp(\""{10}\"", \""{12}\"")'>
+                                    <button type='button' class='btn btn-share btn-sm btn-success' onclick='compartilharWhatsApp(\""{13}\"", \""{12}\"")'>
                                         <i class='fab fa-whatsapp'></i>
                                     </button>
-                                    <button type='button' class='btn btn-share btn-sm btn-info' onclick='compartilharTwitter(\""{10}\"", \""{12}\"")'>
+                                    <button type='button' class='btn btn-share btn-sm btn-info' onclick='compartilharTwitter(\""{13}\"", \""{12}\"")'>
                                         <i class='fab fa-twitter'></i>
                                     </button>
-                                    <button type='button' class='btn btn-share btn-sm btn-secondary' onclick='compartilharEmail(\""{10}\"", \""{12}\"")'>
+                                    <button type='button' class='btn btn-share btn-sm btn-secondary' onclick='compartilharEmail(\""{13}\"", \""{12}\"")'>
                                         <i class='fas fa-envelope'></i>
                                     </button>
                                 </div>
@@ -155,13 +177,22 @@ namespace KingdomConfeitaria
                         reserva.DataRetirada.ToString("dd/MM/yyyy"),
                         reserva.ValorTotal.ToString("F2"),
                         previsaoHtml,
-                        reserva.Email,
-                        reserva.Telefone,
+                        !string.IsNullOrEmpty(reserva.Email) ? System.Web.HttpUtility.HtmlEncode(reserva.Email) : "Não informado",
+                        !string.IsNullOrEmpty(reserva.Telefone) ? System.Web.HttpUtility.HtmlEncode(reserva.Telefone) : "Não informado",
                         itensHtml,
                         observacoesHtml,
-                        linkReserva,
-                        reserva.Cancelado || reserva.Status == "Entregue" ? "disabled" : "",
-                        textoCompartilhar.Replace("\"", "&quot;")
+                        linkReserva, // URL relativa para o link "Ver Detalhes" - {10}
+                        "", // {11} - removido (era disabled do botão excluir)
+                        textoCompartilhar.Replace("\"", "&quot;"), // {12}
+                        linkReservaCompleto, // {13} - URL completa para compartilhamento
+                        // Botão de cancelar (para clientes normais) - verificar PermiteExclusao via StatusId
+                        (!reserva.Cancelado && reserva.StatusId.HasValue && _databaseService.StatusPermiteExclusao(reserva.StatusId.Value)) 
+                            ? string.Format("<button type='button' class='btn btn-warning btn-sm' onclick='cancelarReserva({0})'><i class='fas fa-times-circle'></i> Cancelar</button>", reserva.Id)
+                            : "",
+                        // Botão de excluir (apenas para administradores) - verificar PermiteExclusao via StatusId
+                        (Session["IsAdmin"] != null && (bool)Session["IsAdmin"] && !reserva.Cancelado && reserva.StatusId.HasValue && _databaseService.StatusPermiteExclusao(reserva.StatusId.Value))
+                            ? string.Format("<button type='button' class='btn btn-danger btn-sm' onclick='excluirReserva({0})'><i class='fas fa-trash'></i> Excluir</button>", reserva.Id)
+                            : ""
                     );
                 }
 
@@ -173,13 +204,69 @@ namespace KingdomConfeitaria
             }
         }
 
-        private void ExcluirReserva(int reservaId, int clienteId)
+        private void CancelarReserva(int reservaId, int clienteId)
         {
             try
             {
                 // Verificar se a reserva pertence ao cliente
                 var reserva = _databaseService.ObterReservaPorId(reservaId);
-                if (reserva != null && reserva.ClienteId == clienteId && !reserva.Cancelado && reserva.Status != "Entregue")
+                // Verificar se pode cancelar (usando StatusId para verificar PermiteExclusao)
+                bool podeCancelar = reserva != null && 
+                                  reserva.ClienteId == clienteId && 
+                                  !reserva.Cancelado && 
+                                  reserva.StatusId.HasValue &&
+                                  _databaseService.StatusPermiteExclusao(reserva.StatusId.Value);
+                
+                if (podeCancelar)
+                {
+                    _databaseService.CancelarReserva(reservaId);
+                    MostrarAlerta("Reserva cancelada com sucesso!", "success");
+                    CarregarReservas(clienteId);
+                }
+                else
+                {
+                    string motivo = "Não foi possível cancelar a reserva.";
+                    if (reserva != null)
+                    {
+                        if (reserva.Cancelado)
+                        {
+                            motivo = "Esta reserva já foi cancelada.";
+                        }
+                        else if (reserva.StatusId.HasValue && !_databaseService.StatusPermiteExclusao(reserva.StatusId.Value))
+                        {
+                            motivo = "Esta reserva não pode ser cancelada pois já está em " + reserva.Status + ".";
+                        }
+                    }
+                    MostrarAlerta(motivo, "danger");
+                }
+            }
+            catch (Exception ex)
+            {
+                MostrarAlerta("Erro ao cancelar reserva: " + ex.Message, "danger");
+            }
+        }
+
+        private void ExcluirReserva(int reservaId, int clienteId)
+        {
+            try
+            {
+                // Verificar se o usuário é administrador
+                bool isAdmin = Session["IsAdmin"] != null && (bool)Session["IsAdmin"];
+                if (!isAdmin)
+                {
+                    MostrarAlerta("Apenas administradores podem excluir reservas.", "danger");
+                    return;
+                }
+
+                // Verificar se a reserva existe
+                var reserva = _databaseService.ObterReservaPorId(reservaId);
+                // Verificar se pode excluir (usando StatusId para verificar PermiteExclusao)
+                bool podeExcluir = reserva != null && 
+                                  !reserva.Cancelado && 
+                                  reserva.StatusId.HasValue &&
+                                  _databaseService.StatusPermiteExclusao(reserva.StatusId.Value);
+                
+                if (podeExcluir)
                 {
                     _databaseService.ExcluirReserva(reservaId);
                     MostrarAlerta("Reserva excluída com sucesso!", "success");
@@ -187,7 +274,19 @@ namespace KingdomConfeitaria
                 }
                 else
                 {
-                    MostrarAlerta("Não foi possível excluir esta reserva.", "danger");
+                    string motivo = "Não foi possível excluir a reserva.";
+                    if (reserva != null)
+                    {
+                        if (reserva.StatusId.HasValue && !_databaseService.StatusPermiteExclusao(reserva.StatusId.Value))
+                        {
+                            motivo = "Esta reserva não pode ser excluída pois já está em " + reserva.Status + ".";
+                        }
+                        else if (reserva.Cancelado)
+                        {
+                            motivo = "Esta reserva já foi cancelada.";
+                        }
+                    }
+                    MostrarAlerta(motivo, "danger");
                 }
             }
             catch (Exception ex)

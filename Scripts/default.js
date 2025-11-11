@@ -145,6 +145,12 @@ DefaultPage.ModalReserva = {
         // Verificar se usuário está logado e mostrar/ocultar áreas apropriadas
         var estaLogado = window.usuarioLogado === true;
         
+        // Atualizar título do modal baseado no estado de login
+        var modalReservaLabel = document.getElementById('modalReservaLabel');
+        if (modalReservaLabel) {
+            modalReservaLabel.textContent = estaLogado ? 'Finalizar Reserva' : 'Login';
+        }
+        
         // Tentar encontrar elementos pelos IDs (podem ter ClientIDs do ASP.NET)
         var divAvisoLogin = document.getElementById('divAvisoLogin');
         var divUsuarioLogado = document.getElementById('divUsuarioLogado');
@@ -183,6 +189,12 @@ DefaultPage.ModalReserva = {
                 divBotoesReserva.style.display = 'flex';
             }
             
+            // Ocultar botões de login
+            var divBotoesLogin = document.getElementById('divBotoesLogin');
+            if (divBotoesLogin) {
+                divBotoesLogin.style.display = 'none';
+            }
+            
             // Os dados do cliente já devem estar preenchidos pelo servidor no Page_Load
             // Mas vamos garantir que os campos estejam visíveis
             var txtNome = document.querySelector('[id*="txtNome"]');
@@ -216,6 +228,24 @@ DefaultPage.ModalReserva = {
             var divBotoesReserva = document.getElementById('divBotoesReserva');
             if (divBotoesReserva) {
                 divBotoesReserva.style.display = 'none';
+            }
+            
+            // Ocultar botões de login inicialmente (serão mostrados quando senha for solicitada)
+            var divBotoesLogin = document.getElementById('divBotoesLogin');
+            if (divBotoesLogin) {
+                divBotoesLogin.style.display = 'none';
+            }
+            
+            // Ocultar campo de senha inicialmente
+            var divSenhaReserva = document.querySelector('[id*="divSenhaReserva"]');
+            if (divSenhaReserva) {
+                divSenhaReserva.style.display = 'none';
+            }
+            
+            // Ocultar opção de cadastro inicialmente
+            var divOpcaoCadastro = document.getElementById('divOpcaoCadastro');
+            if (divOpcaoCadastro) {
+                divOpcaoCadastro.style.display = 'none';
             }
         }
         

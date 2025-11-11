@@ -111,7 +111,7 @@ AdminPage.Reservas = {
         var txtObservacoes = document.querySelector('textarea[id*="txtObservacoesReserva"]');
         
         if (hdnReservaId) hdnReservaId.value = id;
-        if (ddlStatus) ddlStatus.value = status || 'Pendente';
+        if (ddlStatus) ddlStatus.value = status || 'Aberta';
         if (txtValorTotal) txtValorTotal.value = valorTotal || '0.00';
         if (chkConvertido) chkConvertido.checked = convertidoEmPedido === true || convertidoEmPedido === 'true' || convertidoEmPedido === 'True';
         if (chkCancelado) chkCancelado.checked = cancelado === true || cancelado === 'true' || cancelado === 'True';

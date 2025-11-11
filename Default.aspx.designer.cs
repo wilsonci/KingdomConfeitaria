@@ -15,8 +15,11 @@ namespace KingdomConfeitaria
         protected global::System.Web.UI.HtmlControls.HtmlAnchor linkAdmin;
         protected global::System.Web.UI.HtmlControls.HtmlAnchor linkLogout;
         protected global::System.Web.UI.WebControls.TextBox txtNome;
+        protected global::System.Web.UI.WebControls.HiddenField hdnNome;
         protected global::System.Web.UI.WebControls.TextBox txtEmail;
+        protected global::System.Web.UI.WebControls.HiddenField hdnEmail;
         protected global::System.Web.UI.WebControls.TextBox txtTelefone;
+        protected global::System.Web.UI.WebControls.HiddenField hdnTelefone;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl divLoginDinamico;
         protected global::System.Web.UI.WebControls.TextBox txtLoginDinamico;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl divSenhaReserva;

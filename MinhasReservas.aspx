@@ -80,10 +80,54 @@
         .btn-share {
             margin: 5px;
         }
+        /* Botão de voltar na lateral esquerda */
+        .btn-voltar {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 999;
+            background: #1a4d2e;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+        .btn-voltar:hover {
+            background: #2d5a3d;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            color: white;
+            text-decoration: none;
+        }
+        .btn-voltar i {
+            margin-right: 0;
+        }
+        @media (max-width: 768px) {
+            .btn-voltar {
+                left: 10px;
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+        }
     </style>
 </head>
 <body>
     <form id="form1" runat="server">
+        <!-- Botão de voltar na lateral esquerda -->
+        <a href="Default.aspx" class="btn-voltar" title="Voltar para fazer nova reserva">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-actions">
@@ -159,8 +203,14 @@
             window.location.href = 'mailto:?subject=Minha Reserva - Kingdom Confeitaria&body=' + encodeURIComponent(texto + '\n\n' + url);
         }
 
+        function cancelarReserva(reservaId) {
+            if (confirm('Tem certeza que deseja cancelar esta reserva? Esta ação não pode ser desfeita.')) {
+                KingdomConfeitaria.Utils.postBack('CancelarReserva', reservaId.toString());
+            }
+        }
+
         function excluirReserva(reservaId) {
-            if (confirm('Tem certeza que deseja excluir esta reserva?')) {
+            if (confirm('Tem certeza que deseja excluir esta reserva? Esta ação não pode ser desfeita.')) {
                 KingdomConfeitaria.Utils.postBack('ExcluirReserva', reservaId.toString());
             }
         }

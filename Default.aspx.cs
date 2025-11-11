@@ -77,6 +77,63 @@ namespace KingdomConfeitaria
                 CarregarProdutos();
                 CarregarDatasRetirada();
                 AtualizarCarrinho(); // Atualizar carrinho na primeira carga
+                
+                // Se usuário acabou de fazer login, preencher dados e preparar para abrir modal
+                bool abrirReserva = Request.QueryString["abrirReserva"] == "true";
+                if (abrirReserva && estaLogado)
+                {
+                    // Preencher dados do cliente nos campos do modal
+                    if (Session["ClienteNome"] != null)
+                    {
+                        string nomeCliente = Session["ClienteNome"].ToString();
+                        txtNome.Text = nomeCliente;
+                        if (hdnNome != null) hdnNome.Value = nomeCliente;
+                    }
+                    if (Session["ClienteEmail"] != null)
+                    {
+                        string emailCliente = Session["ClienteEmail"].ToString();
+                        txtEmail.Text = emailCliente;
+                        if (hdnEmail != null) hdnEmail.Value = emailCliente;
+                    }
+                    if (Session["ClienteTelefone"] != null)
+                    {
+                        string telefoneCliente = Session["ClienteTelefone"].ToString();
+                        txtTelefone.Text = telefoneCliente;
+                        if (hdnTelefone != null) hdnTelefone.Value = telefoneCliente.Replace("(", "").Replace(")", "").Replace("-", "").Replace(" ", "");
+                    }
+                    
+                    // Configurar visibilidade dos elementos
+                    divSenhaReserva.Visible = true;
+                    divSenhaReserva.Style["display"] = "none";
+                    divLoginDinamico.Visible = false;
+                    divDadosReserva.Visible = true;
+                    btnConfirmarReserva.Style["display"] = "inline-block";
+                    
+                    // Script para abrir modal automaticamente após carregar a página
+                    string scriptAbrirModal = $@"
+                        window.usuarioLogado = true;
+                        setTimeout(function() {{
+                            // Atualizar título do modal
+                            var modalReservaLabel = document.getElementById('modalReservaLabel');
+                            if (modalReservaLabel) modalReservaLabel.textContent = 'Finalizar Reserva';
+                            
+                            if (typeof DefaultPage !== 'undefined' && DefaultPage.ModalReserva) {{
+                                DefaultPage.ModalReserva.abrir();
+                            }} else if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {{
+                                KingdomConfeitaria.Modal.show('modalReserva');
+                            }}
+                            
+                            // Garantir que os dados estejam visíveis
+                            var divLoginDinamico = document.getElementById('{divLoginDinamico.ClientID}');
+                            var divDadosReserva = document.getElementById('{divDadosReserva.ClientID}');
+                            var btnConfirmarReserva = document.getElementById('{btnConfirmarReserva.ClientID}');
+                            if (divLoginDinamico) divLoginDinamico.style.display = 'none';
+                            if (divDadosReserva) divDadosReserva.style.display = 'block';
+                            if (btnConfirmarReserva) btnConfirmarReserva.style.display = 'inline-block';
+                        }}, 300);
+                    ";
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "AbrirModalAposLogin", scriptAbrirModal, true);
+                }
             }
 
             string eventTarget = Request["__EVENTTARGET"];
@@ -533,19 +590,27 @@ namespace KingdomConfeitaria
             {
                 if (Session["ClienteNome"] != null)
                 {
-                    txtNome.Text = Session["ClienteNome"].ToString();
+                    string nomeCliente = Session["ClienteNome"].ToString();
+                    txtNome.Text = nomeCliente;
+                    if (hdnNome != null) hdnNome.Value = nomeCliente;
                 }
                 if (Session["ClienteEmail"] != null)
                 {
-                    txtEmail.Text = Session["ClienteEmail"].ToString();
+                    string emailCliente = Session["ClienteEmail"].ToString();
+                    txtEmail.Text = emailCliente;
+                    if (hdnEmail != null) hdnEmail.Value = emailCliente;
                 }
                 if (Session["ClienteTelefone"] != null)
                 {
-                    txtTelefone.Text = Session["ClienteTelefone"].ToString();
+                    string telefoneCliente = Session["ClienteTelefone"].ToString();
+                    txtTelefone.Text = telefoneCliente;
+                    if (hdnTelefone != null) hdnTelefone.Value = telefoneCliente.Replace("(", "").Replace(")", "").Replace("-", "").Replace(" ", "");
                 }
                 
                 // Ocultar campo de senha e área de login se estiver logado
-                divSenhaReserva.Visible = false;
+                // IMPORTANTE: NÃO usar Visible = false, usar apenas CSS para manter elemento no DOM
+                divSenhaReserva.Visible = true; // SEMPRE renderizar no HTML
+                divSenhaReserva.Style["display"] = "none"; // Ocultar via CSS
                 divLoginDinamico.Visible = false;
                 divDadosReserva.Visible = true;
                 btnConfirmarReserva.Style["display"] = "inline-block";
@@ -553,12 +618,35 @@ namespace KingdomConfeitaria
                 // Adicionar script para indicar que está logado e mostrar área de reserva
                 string script = $@"
                     window.usuarioLogado = true;
+                    var modalReservaLabel = document.getElementById('modalReservaLabel');
+                    if (modalReservaLabel) modalReservaLabel.textContent = 'Finalizar Reserva';
                     var divLoginDinamico = document.getElementById('{divLoginDinamico.ClientID}');
                     var divDadosReserva = document.getElementById('{divDadosReserva.ClientID}');
+                    if (!divDadosReserva) divDadosReserva = document.querySelector('[id*=""divDadosReserva""]');
                     var btnConfirmarReserva = document.getElementById('{btnConfirmarReserva.ClientID}');
-                    if (divLoginDinamico) divLoginDinamico.style.display = 'none';
-                    if (divDadosReserva) divDadosReserva.style.display = 'block';
-                    if (btnConfirmarReserva) btnConfirmarReserva.style.display = 'inline-block';
+                    if (!btnConfirmarReserva) btnConfirmarReserva = document.querySelector('[id*=""btnConfirmarReserva""]');
+                    var divBotoesReserva = document.getElementById('divBotoesReserva');
+                    
+                    if (divLoginDinamico) {{
+                        divLoginDinamico.style.display = 'none';
+                        divLoginDinamico.style.visibility = 'hidden';
+                    }}
+                    if (divDadosReserva) {{
+                        divDadosReserva.style.display = 'block';
+                        divDadosReserva.style.visibility = 'visible';
+                        divDadosReserva.style.opacity = '1';
+                        divDadosReserva.removeAttribute('hidden');
+                        divDadosReserva.classList.remove('d-none');
+                        divDadosReserva.classList.add('d-block');
+                    }}
+                    if (btnConfirmarReserva) {{
+                        btnConfirmarReserva.style.display = 'inline-block';
+                        btnConfirmarReserva.style.visibility = 'visible';
+                    }}
+                    if (divBotoesReserva) {{
+                        divBotoesReserva.style.display = 'flex';
+                        divBotoesReserva.style.visibility = 'visible';
+                    }}
                 ";
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "UsuarioLogado", script, true);
             }
@@ -571,14 +659,20 @@ namespace KingdomConfeitaria
                 txtSenhaReserva.Text = "";
                 
                 // Mostrar área de login e ocultar área de reserva se não estiver logado
+                // IMPORTANTE: NÃO usar Visible = false, pois isso impede a renderização no HTML
+                // Usar apenas CSS para ocultar, assim o elemento sempre estará no DOM
                 divLoginDinamico.Visible = true;
-                divDadosReserva.Visible = false;
-                divSenhaReserva.Visible = false; // Será mostrado dinamicamente quando cliente for encontrado
+                divDadosReserva.Visible = true; // SEMPRE renderizar no HTML, controlar visibilidade via CSS/JS
+                divDadosReserva.Style["display"] = "none"; // Ocultar via CSS, não via Visible
+                divSenhaReserva.Visible = true; // SEMPRE renderizar no HTML, controlar visibilidade via CSS/JS
+                divSenhaReserva.Style["display"] = "none"; // Ocultar via CSS, não via Visible
                 btnConfirmarReserva.Style["display"] = "none";
                 
                 // Adicionar script para indicar que não está logado
                 string scriptNaoLogado = $@"
                     window.usuarioLogado = false;
+                    var modalReservaLabel = document.getElementById('modalReservaLabel');
+                    if (modalReservaLabel) modalReservaLabel.textContent = 'Login';
                     var divLoginDinamico = document.getElementById('{divLoginDinamico.ClientID}');
                     var divDadosReserva = document.getElementById('{divDadosReserva.ClientID}');
                     var btnConfirmarReserva = document.getElementById('{btnConfirmarReserva.ClientID}');
@@ -618,21 +712,40 @@ namespace KingdomConfeitaria
             }
 
             // Validar campos obrigatórios
-            if (string.IsNullOrWhiteSpace(txtNome.Text))
+            // Como os campos são ReadOnly, usar valores dos HiddenFields se os campos estiverem vazios
+            string nome = !string.IsNullOrWhiteSpace(txtNome.Text) ? txtNome.Text.Trim() : (hdnNome != null ? hdnNome.Value : "");
+            string email = !string.IsNullOrWhiteSpace(txtEmail.Text) ? txtEmail.Text.Trim() : (hdnEmail != null ? hdnEmail.Value : "");
+            string telefone = !string.IsNullOrWhiteSpace(txtTelefone.Text) ? txtTelefone.Text.Trim() : (hdnTelefone != null ? hdnTelefone.Value : "");
+            
+            // Se ainda estiver vazio, tentar obter da sessão (caso o usuário esteja logado)
+            if (string.IsNullOrWhiteSpace(nome) && Session["ClienteNome"] != null)
+            {
+                nome = Session["ClienteNome"].ToString();
+            }
+            if (string.IsNullOrWhiteSpace(email) && Session["ClienteEmail"] != null)
+            {
+                email = Session["ClienteEmail"].ToString();
+            }
+            if (string.IsNullOrWhiteSpace(telefone) && Session["ClienteTelefone"] != null)
+            {
+                telefone = Session["ClienteTelefone"].ToString();
+            }
+            
+            if (string.IsNullOrWhiteSpace(nome))
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "NomeVazio", 
                     $"alert('{EscapeJavaScript("Por favor, preencha o nome.")}');", true);
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(txtEmail.Text) || !txtEmail.Text.Contains("@"))
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "EmailInvalido", 
                     $"alert('{EscapeJavaScript("Por favor, preencha um email válido.")}');", true);
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(txtTelefone.Text))
+            if (string.IsNullOrWhiteSpace(telefone))
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "TelefoneVazio", 
                     $"alert('{EscapeJavaScript("Por favor, preencha o telefone.")}');", true);
@@ -646,9 +759,9 @@ namespace KingdomConfeitaria
                 return;
             }
 
-            // Formatar email e telefone antes de processar
-            string emailFormatado = txtEmail.Text.Trim().ToLowerInvariant();
-            string telefoneFormatado = System.Text.RegularExpressions.Regex.Replace(txtTelefone.Text, @"[^\d]", "");
+            // Formatar email e telefone antes de processar (usar valores já obtidos acima)
+            string emailFormatado = email.Trim().ToLowerInvariant();
+            string telefoneFormatado = System.Text.RegularExpressions.Regex.Replace(telefone, @"[^\d]", "");
 
             // Verificar se cliente está logado, se não estiver, fazer login automático
             int clienteId = 0;
@@ -717,6 +830,14 @@ namespace KingdomConfeitaria
                         
                         // Senha válida ou cliente sem senha - fazer login
                         clienteId = cliente.Id;
+                        
+                        // Atualizar último acesso (isso também atualizará IsAdmin se necessário)
+                        cliente.UltimoAcesso = DateTime.Now;
+                        _databaseService.CriarOuAtualizarCliente(cliente);
+                        
+                        // Buscar cliente atualizado para garantir que IsAdmin está correto
+                        cliente = _databaseService.ObterClientePorId(cliente.Id);
+                        
                         Session["ClienteId"] = cliente.Id;
                         Session["ClienteNome"] = cliente.Nome;
                         Session["ClienteEmail"] = cliente.Email;
@@ -727,10 +848,6 @@ namespace KingdomConfeitaria
                         }
                         Session["SessionStartTime"] = DateTime.Now;
                         
-                        // Atualizar último acesso
-                        cliente.UltimoAcesso = DateTime.Now;
-                        _databaseService.CriarOuAtualizarCliente(cliente);
-                        
                         // Atualizar links do header após login
                         VerificarLogin();
                     }
@@ -739,24 +856,27 @@ namespace KingdomConfeitaria
                         // Cliente não existe - criar novo cliente e fazer login
                         cliente = new Cliente
                         {
-                            Nome = txtNome.Text.Trim(),
+                            Nome = nome.Trim(),
                             Email = emailFormatado,
                             Telefone = telefoneFormatado,
                             TemWhatsApp = !string.IsNullOrEmpty(telefoneFormatado),
                             Provider = "Email",
                             EmailConfirmado = false,
                             WhatsAppConfirmado = false,
-                            IsAdmin = false,
+                            IsAdmin = false, // Será definido automaticamente pelo CriarOuAtualizarCliente se o email for de administrador
                             DataCadastro = DateTime.Now
                         };
                         
                         clienteId = _databaseService.CriarOuAtualizarCliente(cliente);
                         
+                        // Buscar cliente atualizado para obter IsAdmin correto
+                        cliente = _databaseService.ObterClientePorId(clienteId);
+                        
                         // Fazer login automático
                         Session["ClienteId"] = clienteId;
                         Session["ClienteNome"] = cliente.Nome;
                         Session["ClienteEmail"] = cliente.Email;
-                        Session["IsAdmin"] = cliente.IsAdmin;
+                        Session["IsAdmin"] = cliente != null ? cliente.IsAdmin : false;
                         if (!string.IsNullOrEmpty(cliente.Telefone))
                         {
                             Session["ClienteTelefone"] = cliente.Telefone;
@@ -878,14 +998,18 @@ namespace KingdomConfeitaria
                     return;
                 }
 
+                // Obter o StatusId para "Aberta" (ID = 1)
+                var statusAberta = _databaseService.ObterStatusReservaPorNome("Aberta");
+                int statusIdAberta = statusAberta != null ? statusAberta.Id : 1; // Se não encontrar, usar ID 1 como padrão
+                
                 var reserva = new Reserva
                 {
-                    Nome = txtNome.Text.Trim(),
-                    Email = emailFormatado,
-                    Telefone = telefoneFormatado,
+                    // Nome, Email e Telefone não são mais armazenados na tabela Reservas
+                    // Eles são obtidos via JOIN com a tabela Clientes quando a reserva é lida
                     DataRetirada = DateTime.Parse(ddlDataRetirada.SelectedValue),
                     DataReserva = DateTime.Now,
-                    Status = "Pendente",
+                    StatusId = statusIdAberta, // Definir StatusId diretamente como 1 (Aberta)
+                    Status = "Aberta", // Para exibição/compatibilidade
                     ValorTotal = itensValidos.Sum(i => i.Subtotal),
                     Itens = itensValidos, // Usar apenas itens válidos
                     Observacoes = txtObservacoes.Text,
@@ -904,29 +1028,54 @@ namespace KingdomConfeitaria
                 }
 
                 // Salvar no banco de dados
-                _databaseService.SalvarReserva(reserva);
-                
-                // Verificar se todos os itens foram gravados
-                var reservaSalva = _databaseService.ObterReservasPorCliente(clienteId)
-                    .OrderByDescending(r => r.DataReserva)
-                    .FirstOrDefault();
-                
-                if (reservaSalva != null && reservaSalva.Itens != null)
+                try
                 {
+                    _databaseService.SalvarReserva(reserva);
+                    
+                    // Verificar se a reserva foi realmente gravada
+                    if (reserva.Id <= 0)
+                    {
+                        throw new Exception("A reserva não foi gravada. O ID não foi retornado.");
+                    }
+                    
+                    // Verificar se todos os itens foram gravados
+                    var reservaSalva = _databaseService.ObterReservasPorCliente(clienteId)
+                        .OrderByDescending(r => r.DataReserva)
+                        .FirstOrDefault();
+                    
+                    if (reservaSalva == null)
+                    {
+                        throw new Exception("A reserva foi criada mas não foi encontrada ao verificar. ID: " + reserva.Id);
+                    }
+                    
+                    if (reservaSalva.Itens == null || reservaSalva.Itens.Count == 0)
+                    {
+                        throw new Exception("A reserva foi criada mas nenhum item foi gravado. ID da reserva: " + reserva.Id);
+                    }
+                    
                     int itensGravados = reservaSalva.Itens.Count;
                     int itensEsperados = itensValidos.Count;
                     
                     if (itensGravados != itensEsperados)
                     {
                         System.Diagnostics.Debug.WriteLine($"ATENÇÃO: Esperado {itensEsperados} itens, mas apenas {itensGravados} foram gravados!");
+                        throw new Exception($"Apenas {itensGravados} de {itensEsperados} itens foram gravados na reserva.");
                     }
                     else
                     {
                         System.Diagnostics.Debug.WriteLine($"SUCESSO: Todos os {itensGravados} itens foram gravados corretamente na reserva ID {reservaSalva.Id}");
                     }
+                    
+                    System.Diagnostics.Debug.WriteLine("Reserva salva com sucesso! ID: " + reserva.Id);
                 }
-                
-                System.Diagnostics.Debug.WriteLine("Reserva salva com sucesso! ID: " + reserva.Id);
+                catch (Exception exSalvar)
+                {
+                    System.Diagnostics.Debug.WriteLine($"ERRO ao salvar reserva: {exSalvar.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Stack trace: {exSalvar.StackTrace}");
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "ErroSalvarReserva", 
+                        $"alert('{EscapeJavaScript("Erro ao salvar reserva: " + exSalvar.Message)}');", true);
+                    return;
+                }
 
                 // Enviar emails (não bloquear se falhar)
                 try
@@ -958,14 +1107,38 @@ namespace KingdomConfeitaria
                 // Limpar carrinho
                 Carrinho.Clear();
 
+                // Atualizar menu após reserva
+                VerificarLogin();
+                
                 // Fechar modal de reserva e mostrar modal de sucesso
+                // Depois redirecionar para Minhas Reservas
                 string scriptFecharEAbrir = @"
                     setTimeout(function() {
                         if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
                             KingdomConfeitaria.Modal.hide('modalReserva');
                             setTimeout(function() {
                                 KingdomConfeitaria.Modal.show('modalSucesso');
+                                
+                                // Contador de redirecionamento
+                                var contador = 3;
+                                var contadorElement = document.getElementById('contadorRedirecionamento');
+                                var intervalo = setInterval(function() {
+                                    contador--;
+                                    if (contadorElement) {
+                                        contadorElement.textContent = contador;
+                                    }
+                                    if (contador <= 0) {
+                                        clearInterval(intervalo);
+                                        // Redirecionar para Minhas Reservas
+                                        window.location.href = 'MinhasReservas.aspx';
+                                    }
+                                }, 1000);
                             }, 300);
+                        } else {
+                            // Fallback: redirecionar diretamente se modal não estiver disponível
+                            setTimeout(function() {
+                                window.location.href = 'MinhasReservas.aspx';
+                            }, 500);
                         }
                     }, 100);";
                 
@@ -1153,6 +1326,13 @@ namespace KingdomConfeitaria
                     return new { sucesso = false, mensagem = "Cliente não encontrado" };
                 }
                 
+                // Atualizar último acesso (isso também atualizará IsAdmin se necessário)
+                cliente.UltimoAcesso = DateTime.Now;
+                databaseService.CriarOuAtualizarCliente(cliente);
+                
+                // Buscar cliente atualizado para garantir que IsAdmin está correto
+                cliente = databaseService.ObterClientePorId(cliente.Id);
+                
                 // Fazer login na sessão
                 HttpContext.Current.Session["ClienteId"] = cliente.Id;
                 HttpContext.Current.Session["ClienteNome"] = cliente.Nome;
@@ -1164,11 +1344,7 @@ namespace KingdomConfeitaria
                 }
                 HttpContext.Current.Session["SessionStartTime"] = DateTime.Now;
                 
-                // Atualizar último acesso
-                cliente.UltimoAcesso = DateTime.Now;
-                databaseService.CriarOuAtualizarCliente(cliente);
-                
-                return new { sucesso = true };
+                return new { sucesso = true, isAdmin = cliente.IsAdmin };
             }
             catch (Exception ex)
             {
@@ -1191,32 +1367,54 @@ namespace KingdomConfeitaria
                     Session.Remove("ClienteTelefone");
                 }
                 
+                // IMPORTANTE: Sempre renderizar os links no HTML, controlar visibilidade apenas via CSS
+                // Isso garante que os elementos sempre estejam no DOM e possam ser manipulados via JavaScript
                 if (clienteNome != null && linkLogin != null && linkMinhasReservas != null && linkMeusDados != null && linkLogout != null && linkAdmin != null)
                 {
+                    // Sempre renderizar todos os elementos
+                    clienteNome.Visible = true;
+                    linkLogin.Visible = true;
+                    linkMinhasReservas.Visible = true;
+                    linkMeusDados.Visible = true;
+                    linkLogout.Visible = true;
+                    linkAdmin.Visible = true;
+                    
                     if (Session["ClienteId"] != null && !Session.IsNewSession)
                     {
+                        // Usuário logado
                         string nomeCliente = Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "";
                         clienteNome.InnerText = "Olá, " + System.Web.HttpUtility.HtmlEncode(nomeCliente);
-                        clienteNome.Visible = true;
-                        linkLogin.Visible = false;
-                        linkMinhasReservas.Visible = true;
-                        linkMeusDados.Visible = true;
-                        linkLogout.Visible = true;
+                        clienteNome.Style["display"] = "inline";
+                        
+                        // Ocultar link de login, mostrar outros
+                        linkLogin.Style["display"] = "none";
+                        linkMinhasReservas.Style["display"] = "inline";
+                        linkMeusDados.Style["display"] = "inline";
+                        linkLogout.Style["display"] = "inline";
                         
                         // Mostrar link de admin se for administrador
                         bool isAdmin = Session["IsAdmin"] != null && (bool)Session["IsAdmin"];
-                        linkAdmin.Visible = isAdmin;
+                        linkAdmin.Style["display"] = isAdmin ? "inline" : "none";
                     }
                     else
                     {
+                        // Usuário não logado
                         clienteNome.InnerText = "";
-                        clienteNome.Visible = false;
-                        linkLogin.Visible = true;
-                        linkMinhasReservas.Visible = false;
-                        linkMeusDados.Visible = false;
-                        linkLogout.Visible = false;
-                        linkAdmin.Visible = false;
+                        clienteNome.Style["display"] = "none";
+                        
+                        // Mostrar apenas link de login
+                        linkLogin.Style["display"] = "inline";
+                        linkMinhasReservas.Style["display"] = "none";
+                        linkMeusDados.Style["display"] = "none";
+                        linkLogout.Style["display"] = "none";
+                        linkAdmin.Style["display"] = "none";
                     }
+                }
+                else
+                {
+                    // Log de debug se algum controle não foi encontrado
+                    System.Diagnostics.Debug.WriteLine("VerificarLogin: Algum controle não foi encontrado!");
+                    System.Diagnostics.Debug.WriteLine($"clienteNome: {clienteNome != null}, linkLogin: {linkLogin != null}, linkMinhasReservas: {linkMinhasReservas != null}, linkMeusDados: {linkMeusDados != null}, linkLogout: {linkLogout != null}, linkAdmin: {linkAdmin != null}");
                 }
             }
             catch (Exception ex)

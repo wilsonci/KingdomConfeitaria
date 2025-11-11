@@ -272,9 +272,12 @@
                                 <div class="mb-3">
                                     <label class="form-label">Status *</label>
                                     <asp:DropDownList ID="ddlStatus" runat="server" CssClass="form-select">
-                                        <asp:ListItem Value="Pendente" Text="Pendente"></asp:ListItem>
-                                        <asp:ListItem Value="Confirmado" Text="Confirmado"></asp:ListItem>
-                                        <asp:ListItem Value="Pronto" Text="Pronto"></asp:ListItem>
+                                        <asp:ListItem Value="Aberta" Text="Aberta"></asp:ListItem>
+                                        <asp:ListItem Value="Em Produção" Text="Em Produção"></asp:ListItem>
+                                        <asp:ListItem Value="Produção Pronta" Text="Produção Pronta"></asp:ListItem>
+                                        <asp:ListItem Value="Preparando Entrega" Text="Preparando Entrega"></asp:ListItem>
+                                        <asp:ListItem Value="Saiu para Entrega" Text="Saiu para Entrega"></asp:ListItem>
+                                        <asp:ListItem Value="Já Entregue" Text="Já Entregue"></asp:ListItem>
                                         <asp:ListItem Value="Entregue" Text="Entregue"></asp:ListItem>
                                         <asp:ListItem Value="Cancelado" Text="Cancelado"></asp:ListItem>
                                     </asp:DropDownList>

@@ -173,6 +173,52 @@
             width: 80px;
             text-align: center;
         }
+        /* Estilos para o modal de reserva - aumentar tamanho */
+        #modalReserva .modal-dialog {
+            max-width: 650px;
+            min-height: 450px;
+        }
+        #modalReserva .modal-body {
+            min-height: 350px;
+            max-height: 70vh;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+        #modalReserva .modal-content {
+            min-height: 450px;
+        }
+        /* Garantir que o campo de senha tenha espaço e seja visível */
+        #divSenhaReserva {
+            margin-top: 1.5rem !important;
+            margin-bottom: 1.5rem !important;
+            padding: 1rem !important;
+            background-color: #f8f9fa !important;
+            border-radius: 8px !important;
+            border: 1px solid #dee2e6 !important;
+        }
+        #divSenhaReserva[style*="display: block"],
+        #divSenhaReserva.show {
+            display: block !important;
+        }
+        #divSenhaReserva .form-control {
+            font-size: 1.1rem;
+            padding: 0.875rem;
+            min-height: 48px;
+        }
+        #divSenhaReserva label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        /* Espaçamento para os botões de login */
+        #divBotoesLogin {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid #dee2e6;
+        }
+        /* Garantir que a área de login tenha espaço suficiente */
+        #divLoginDinamico {
+            min-height: 250px;
+        }
     </style>
 </head>
 <body>
@@ -181,12 +227,12 @@
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-actions">
-                    <span id="clienteNome" runat="server" style="color: white; margin-right: 15px;"></span>
-                    <a href="Login.aspx" id="linkLogin" runat="server">Entrar</a>
-                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display:none;">Minhas Reservas</a>
-                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display:none;">Meus Dados</a>
-                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display:none;">Painel Gestor</a>
-                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display:none;">Sair</a>
+                    <span id="clienteNome" runat="server" style="color: white; margin-right: 15px; display: none;"></span>
+                    <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;">Entrar</a>
+                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;">Minhas Reservas</a>
+                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;">Meus Dados</a>
+                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;">Painel Gestor</a>
+                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;">Sair</a>
                 </div>
                 <img id="logoImg" src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
                 <h1 id="logoFallback" class="header-title" style="display: none; color: #d4af37; margin: 0;">
@@ -228,12 +274,72 @@
             </div>
         </div>
 
-        <!-- Modal de Reserva -->
-        <div class="modal fade" id="modalReserva" tabindex="-1" aria-labelledby="modalReservaLabel" aria-hidden="true">
-            <div class="modal-dialog">
+        <!-- Modal de Login Dinâmico (Componente Reutilizável) -->
+        <div class="modal fade" id="modalLoginDinamico" tabindex="-1" aria-labelledby="modalLoginDinamicoLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="modalReservaLabel">Finalizar Reserva</h5>
+                        <div class="text-center w-100">
+                            <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 150px; height: auto; margin-bottom: 10px;" />
+                            <h5 class="modal-title mt-2" id="modalLoginDinamicoLabel">Login</h5>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Área de Login Dinâmico -->
+                        <div id="divLoginDinamicoStandalone">
+                            <div class="mb-3">
+                                <label class="form-label">Email ou Telefone *</label>
+                                <input type="text" class="form-control" id="txtLoginDinamicoStandalone" placeholder="exemplo@email.com ou (11) 99999-9999" />
+                                <small class="text-muted">Digite seu email ou telefone (apenas números). O sistema identificará automaticamente.</small>
+                                <div id="divMensagemLoginStandalone" class="mt-2" style="display: none;"></div>
+                            </div>
+                            <div class="mb-3" id="divSenhaStandalone" style="display: none;">
+                                <label class="form-label">Senha *</label>
+                                <input type="password" class="form-control" id="txtSenhaStandalone" />
+                                <small class="text-muted">Digite sua senha para continuar</small>
+                                <div class="mt-2">
+                                    <a href="RecuperarSenha.aspx" class="text-decoration-none small" target="_blank">Esqueci minha senha</a>
+                                </div>
+                            </div>
+                            <div id="divOpcaoCadastroStandalone" class="mb-3" style="display: none;">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> Cliente não encontrado. Deseja se cadastrar?
+                                </div>
+                                <a id="linkIrCadastroStandalone" href="#" class="btn btn-success btn-sm w-100">
+                                    <i class="fas fa-user-plus"></i> Ir para Cadastro
+                                </a>
+                            </div>
+                            
+                            <!-- Opções de ajuda sempre visíveis -->
+                            <div class="mt-3 pt-3 border-top">
+                                <div class="d-flex flex-column gap-2">
+                                    <a href="RecuperarSenha.aspx" class="text-decoration-none small text-center" target="_blank">
+                                        <i class="fas fa-key"></i> Recuperar Senha
+                                    </a>
+                                    <a href="Cadastro.aspx" class="text-decoration-none small text-center" target="_blank">
+                                        <i class="fas fa-user-plus"></i> Cadastrar Novo Usuário
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <!-- Botões da área de login (aparecem quando senha é solicitada) -->
+                            <div id="divBotoesLoginStandalone" class="modal-footer" style="display: none; border-top: 1px solid #dee2e6; margin-top: 1rem; padding-top: 1rem;">
+                                <button type="button" class="btn btn-secondary" onclick="fecharModalLogin();">Cancelar</button>
+                                <button type="button" class="btn btn-primary" id="btnConfirmarLoginStandalone">Confirmar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de Reserva -->
+        <div class="modal fade" id="modalReserva" tabindex="-1" aria-labelledby="modalReservaLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalReservaLabel">Login</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
                     <div class="modal-body">
@@ -254,9 +360,26 @@
                                 </div>
                             </div>
                             <div id="divOpcaoCadastro" class="mb-3" style="display: none;">
-                                <p class="text-info"><i class="fas fa-info-circle"></i> Cliente não encontrado. Deseja se cadastrar?</p>
-                                <a id="linkIrCadastro" href="#" class="btn btn-success btn-sm">Ir para Cadastro</a>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i> Cliente não encontrado. Deseja se cadastrar?
+                                </div>
+                                <a id="linkIrCadastro" href="#" class="btn btn-success btn-sm w-100">
+                                    <i class="fas fa-user-plus"></i> Ir para Cadastro
+                                </a>
                             </div>
+                            
+                            <!-- Opções de ajuda sempre visíveis -->
+                            <div class="mt-3 pt-3 border-top">
+                                <div class="d-flex flex-column gap-2">
+                                    <a href="RecuperarSenha.aspx" class="text-decoration-none small text-center" target="_blank">
+                                        <i class="fas fa-key"></i> Recuperar Senha
+                                    </a>
+                                    <a href="Cadastro.aspx" class="text-decoration-none small text-center" target="_blank">
+                                        <i class="fas fa-user-plus"></i> Cadastrar Novo Usuário
+                                    </a>
+                                </div>
+                            </div>
+                            
                             <!-- Botões da área de login (aparecem quando senha é solicitada) -->
                             <div id="divBotoesLogin" class="modal-footer" style="display: none; border-top: 1px solid #dee2e6; margin-top: 1rem; padding-top: 1rem;">
                                 <button type="button" class="btn btn-secondary" id="btnCancelarLogin">Cancelar</button>
@@ -272,15 +395,18 @@
                             <div class="mb-3">
                                 <label class="form-label">Nome *</label>
                                 <asp:TextBox ID="txtNome" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa"></asp:TextBox>
+                                <asp:HiddenField ID="hdnNome" runat="server" />
                                 <small class="text-muted">Para alterar seus dados, acesse "Meus Dados" no menu</small>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Email *</label>
                                 <asp:TextBox ID="txtEmail" runat="server" CssClass="form-control" TextMode="Email" ReadOnly="true" BackColor="#f8f9fa"></asp:TextBox>
+                                <asp:HiddenField ID="hdnEmail" runat="server" />
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Telefone/WhatsApp *</label>
                                 <asp:TextBox ID="txtTelefone" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa"></asp:TextBox>
+                                <asp:HiddenField ID="hdnTelefone" runat="server" />
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Data de Retirada *</label>
@@ -306,17 +432,21 @@
         </div>
 
         <!-- Modal de Sucesso -->
-        <div class="modal fade" id="modalSucesso" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
+        <div class="modal fade" id="modalSucesso" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header bg-success text-white">
                         <h5 class="modal-title"><i class="fas fa-check-circle"></i> Reserva Confirmada!</h5>
                     </div>
-                    <div class="modal-body">
-                        <p>Sua reserva foi realizada com sucesso! Você receberá um email de confirmação em breve.</p>
+                    <div class="modal-body text-center">
+                        <i class="fas fa-check-circle text-success" style="font-size: 4rem; margin-bottom: 1rem;"></i>
+                        <p class="h5 mb-3">Sua reserva foi realizada com sucesso!</p>
+                        <p>Você receberá um email de confirmação em breve.</p>
+                        <p class="text-muted small mt-3">Redirecionando para Minhas Reservas em <span id="contadorRedirecionamento">3</span> segundos...</p>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="location.reload();">OK</button>
+                    <div class="modal-footer justify-content-center">
+                        <button type="button" class="btn btn-primary" onclick="window.location.href='MinhasReservas.aspx';">Ir para Minhas Reservas</button>
+                        <button type="button" class="btn btn-secondary" onclick="location.reload();">Fazer Nova Reserva</button>
                     </div>
                 </div>
             </div>
@@ -384,7 +514,13 @@
             var txtEmail = document.getElementById('<%= txtEmail.ClientID %>');
             var txtTelefone = document.getElementById('<%= txtTelefone.ClientID %>');
             var divDadosReserva = document.getElementById('<%= divDadosReserva.ClientID %>');
+            if (!divDadosReserva) {
+                divDadosReserva = document.querySelector('[id*="divDadosReserva"]');
+            }
             var btnConfirmarReserva = document.getElementById('<%= btnConfirmarReserva.ClientID %>');
+            if (!btnConfirmarReserva) {
+                btnConfirmarReserva = document.querySelector('[id*="btnConfirmarReserva"]');
+            }
             var nomeReserva = txtNome; // Alias para compatibilidade
             var emailReserva = txtEmail; // Alias para compatibilidade
             var telefoneReserva = txtTelefone; // Alias para compatibilidade
@@ -465,26 +601,123 @@
                             }
                             
                             if (result.temSenha) {
-                                // Cliente encontrado e tem senha - mostrar campo de senha e botões
-                                // Usar ClientID para garantir que encontre o elemento correto
-                                var divSenhaReservaElement = document.getElementById('<%= divSenhaReserva.ClientID %>');
-                                var txtSenhaReservaElement = document.getElementById('<%= txtSenhaReserva.ClientID %>');
+                                // Cliente encontrado e tem senha - MOSTRAR CAMPO DE SENHA IMEDIATAMENTE
+                                console.log('Cliente encontrado com senha! Mostrando campo de senha...');
                                 
-                                console.log('Tentando mostrar campo de senha. divSenhaReserva encontrado:', divSenhaReservaElement !== null);
-                                
-                                if (divSenhaReservaElement) {
-                                    divSenhaReservaElement.style.display = 'block';
-                                    console.log('Campo de senha exibido');
+                                // Função para mostrar campo de senha
+                                function mostrarCampoSenha() {
+                                    console.log('=== INICIANDO mostrarCampoSenha ===');
                                     
-                                    if (txtSenhaReservaElement) {
-                                        txtSenhaReservaElement.required = true;
-                                        setTimeout(function() {
-                                            txtSenhaReservaElement.focus();
-                                        }, 100);
+                                    // Garantir que o divLoginDinamico esteja visível
+                                    var divLoginDinamicoElement = document.getElementById('<%= divLoginDinamico.ClientID %>');
+                                    if (!divLoginDinamicoElement) {
+                                        divLoginDinamicoElement = document.querySelector('[id*="divLoginDinamico"]');
                                     }
-                                } else {
-                                    console.error('divSenhaReserva não encontrado! ClientID:', '<%= divSenhaReserva.ClientID %>');
+                                    console.log('divLoginDinamico encontrado:', divLoginDinamicoElement !== null);
+                                    if (divLoginDinamicoElement) {
+                                        divLoginDinamicoElement.style.display = 'block';
+                                        console.log('divLoginDinamico display definido como block');
+                                    }
+                                    
+                                    // Encontrar o campo de senha - tentar múltiplas formas
+                                    var divSenhaReservaElement = document.getElementById('<%= divSenhaReserva.ClientID %>');
+                                    console.log('Tentativa 1 - getElementById:', divSenhaReservaElement !== null, 'ID procurado:', '<%= divSenhaReserva.ClientID %>');
+                                    
+                                    if (!divSenhaReservaElement) {
+                                        divSenhaReservaElement = document.querySelector('[id*="divSenhaReserva"]');
+                                        console.log('Tentativa 2 - querySelector:', divSenhaReservaElement !== null);
+                                    }
+                                    
+                                    if (!divSenhaReservaElement) {
+                                        // Tentar encontrar todos os elementos com "Senha" no ID
+                                        var todosElementos = document.querySelectorAll('[id*="Senha"]');
+                                        console.log('Tentativa 3 - Todos elementos com "Senha":', todosElementos.length);
+                                        todosElementos.forEach(function(el, index) {
+                                            console.log('  Elemento ' + index + ':', el.id, 'Tag:', el.tagName);
+                                        });
+                                        if (todosElementos.length > 0) {
+                                            divSenhaReservaElement = todosElementos[0];
+                                            console.log('Usando primeiro elemento encontrado:', divSenhaReservaElement.id);
+                                        }
+                                    }
+                                    
+                                    if (divSenhaReservaElement) {
+                                        console.log('SUCESSO: divSenhaReserva encontrado! ID:', divSenhaReservaElement.id);
+                                        // FORÇAR EXIBIÇÃO - método mais direto
+                                        divSenhaReservaElement.removeAttribute('style');
+                                        divSenhaReservaElement.style.display = 'block';
+                                        divSenhaReservaElement.style.visibility = 'visible';
+                                        divSenhaReservaElement.style.marginTop = '1.5rem';
+                                        divSenhaReservaElement.style.marginBottom = '1.5rem';
+                                        divSenhaReservaElement.style.padding = '1rem';
+                                        divSenhaReservaElement.style.backgroundColor = '#f8f9fa';
+                                        divSenhaReservaElement.style.borderRadius = '8px';
+                                        divSenhaReservaElement.style.border = '1px solid #dee2e6';
+                                        divSenhaReservaElement.classList.add('show');
+                                        divSenhaReservaElement.removeAttribute('hidden');
+                                        
+                                        console.log('Campo de senha exibido! Display:', divSenhaReservaElement.style.display);
+                                        
+                                        // Criar estilo dinâmico para garantir que fique visível
+                                        var styleId = 'style-for-divSenhaReserva';
+                                        var existingStyle = document.getElementById(styleId);
+                                        if (existingStyle) {
+                                            existingStyle.remove();
+                                        }
+                                        var style = document.createElement('style');
+                                        style.id = styleId;
+                                        style.textContent = '#' + divSenhaReservaElement.id + ' { display: block !important; visibility: visible !important; }';
+                                        document.head.appendChild(style);
+                                        
+                                        // Scroll para o campo
+                                        setTimeout(function() {
+                                            divSenhaReservaElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                            
+                                            // Focar no campo de senha
+                                            var txtSenhaReservaElement = document.getElementById('<%= txtSenhaReserva.ClientID %>');
+                                            if (!txtSenhaReservaElement) {
+                                                txtSenhaReservaElement = document.querySelector('[id*="txtSenhaReserva"]');
+                                            }
+                                            if (txtSenhaReservaElement) {
+                                                txtSenhaReservaElement.required = true;
+                                                txtSenhaReservaElement.focus();
+                                            }
+                                        }, 100);
+                                        
+                                        return true;
+                                    } else {
+                                        console.error('ERRO: divSenhaReserva não encontrado!');
+                                        return false;
+                                    }
                                 }
+                                
+                                // Mostrar campo de senha IMEDIATAMENTE
+                                mostrarCampoSenha();
+                                
+                                // Mostrar botões de login (Confirmar, Cancelar)
+                                var divBotoesLogin = document.getElementById('divBotoesLogin');
+                                if (divBotoesLogin) {
+                                    divBotoesLogin.style.display = 'flex';
+                                    console.log('Botões de login exibidos');
+                                }
+                                
+                                // Ocultar botões de reserva
+                                var divBotoesReserva = document.getElementById('divBotoesReserva');
+                                if (divBotoesReserva) {
+                                    divBotoesReserva.style.display = 'none';
+                                }
+                                
+                                // Tentar novamente após um pequeno delay para garantir
+                                setTimeout(function() {
+                                    var divSenhaReservaElement = document.getElementById('<%= divSenhaReserva.ClientID %>');
+                                    if (!divSenhaReservaElement) {
+                                        divSenhaReservaElement = document.querySelector('[id*="divSenhaReserva"]');
+                                    }
+                                    if (divSenhaReservaElement && window.getComputedStyle(divSenhaReservaElement).display === 'none') {
+                                        console.warn('Campo ainda oculto, tentando novamente...');
+                                        mostrarCampoSenha();
+                                    }
+                                }, 100);
                                 
                                 // Atualizar link de recuperar senha com email/telefone
                                 var linkRecuperarSenha = document.getElementById('linkRecuperarSenha');
@@ -494,22 +727,11 @@
                                     linkRecuperarSenha.href = 'RecuperarSenha.aspx?' + loginParam + '=' + encodeURIComponent(login);
                                 }
                                 
-                                // Mostrar botões de login (Confirmar, Cancelar)
-                                var divBotoesLogin = document.getElementById('divBotoesLogin');
-                                if (divBotoesLogin) {
-                                    divBotoesLogin.style.display = 'flex';
-                                }
-                                
-                                // Ocultar botões de reserva
-                                var divBotoesReserva = document.getElementById('divBotoesReserva');
-                                if (divBotoesReserva) {
-                                    divBotoesReserva.style.display = 'none';
-                                }
-                                
                                 mostrarMensagem('<i class="fas fa-user-check"></i> Cliente encontrado! Digite sua senha para continuar.', 'success');
                             } else {
                                 // Cliente encontrado mas não tem senha - fazer login automático e mostrar área de reserva
-                                mostrarMensagem('<i class="fas fa-spinner fa-spin"></i> Fazendo login...', 'info');
+                                // Continuar direto para a tela de reserva sem confirmação
+                                ocultarMensagem();
                                 preencherDadosCliente(result.cliente);
                             }
                         } else {
@@ -555,9 +777,12 @@
                 }
             }
             
-            // Função para preencher dados do cliente e mostrar área de reserva
+            // Função para preencher dados do cliente e mostrar área de reserva AUTOMATICAMENTE
+            // Esta função é chamada após login bem-sucedido e continua direto para a tela de reserva
             function preencherDadosCliente(cliente) {
                 if (!cliente) return;
+                
+                console.log('Preenchendo dados do cliente e continuando para reserva...');
                 
                 // Fazer login na sessão via PageMethod
                 var login = txtLoginDinamico ? txtLoginDinamico.value.trim() : '';
@@ -566,24 +791,49 @@
                 if (typeof PageMethods !== 'undefined') {
                     PageMethods.FazerLoginSessao(cliente.id, function(result) {
                         if (result && result.sucesso) {
-                            // Preencher campos do formulário
-                            if (txtNome && cliente.nome) txtNome.value = cliente.nome;
-                            if (txtEmail && cliente.email) txtEmail.value = cliente.email;
-                            if (txtTelefone && cliente.telefone) {
-                                // Formatar telefone
-                                var tel = cliente.telefone.replace(/\D/g, '');
-                                if (tel.length <= 10) {
-                                    tel = tel.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
-                                } else {
-                                    tel = tel.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+                            console.log('Login na sessão realizado com sucesso. Preenchendo dados...');
+                            
+                            // Preencher campos do formulário IMEDIATAMENTE (visuais e hidden)
+                            if (txtNome && cliente.nome) {
+                                txtNome.value = cliente.nome;
+                                // Preencher campo hidden para garantir que o valor seja enviado no postback
+                                var hdnNome = document.getElementById('<%= hdnNome.ClientID %>');
+                                if (hdnNome) {
+                                    hdnNome.value = cliente.nome;
                                 }
-                                txtTelefone.value = tel;
+                                console.log('Nome preenchido:', cliente.nome);
+                            }
+                            if (txtEmail && cliente.email) {
+                                txtEmail.value = cliente.email;
+                                // Preencher campo hidden para garantir que o valor seja enviado no postback
+                                var hdnEmail = document.getElementById('<%= hdnEmail.ClientID %>');
+                                if (hdnEmail) {
+                                    hdnEmail.value = cliente.email;
+                                }
+                                console.log('Email preenchido:', cliente.email);
+                            }
+                            if (txtTelefone && cliente.telefone) {
+                                // Formatar telefone para exibição
+                                var telFormatado = cliente.telefone.replace(/\D/g, '');
+                                if (telFormatado.length <= 10) {
+                                    telFormatado = telFormatado.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+                                } else {
+                                    telFormatado = telFormatado.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, '($1) $2-$3');
+                                }
+                                txtTelefone.value = telFormatado;
+                                // Preencher campo hidden com telefone sem formatação para garantir que o valor seja enviado no postback
+                                var hdnTelefone = document.getElementById('<%= hdnTelefone.ClientID %>');
+                                if (hdnTelefone) {
+                                    hdnTelefone.value = cliente.telefone.replace(/\D/g, '');
+                                }
+                                console.log('Telefone preenchido:', telFormatado);
                             }
                             
-                            // Ocultar área de login
+                            // Ocultar área de login IMEDIATAMENTE
                             var divLoginDinamicoElement = document.getElementById('<%= divLoginDinamico.ClientID %>');
                             if (divLoginDinamicoElement) {
                                 divLoginDinamicoElement.style.display = 'none';
+                                console.log('Área de login ocultada');
                             }
                             
                             // Ocultar campo de senha
@@ -600,26 +850,125 @@
                             // Ocultar mensagem de login
                             ocultarMensagem();
                             
-                            // Mostrar área de reserva
+                            // Atualizar título do modal para "Finalizar Reserva"
+                            var modalReservaLabel = document.getElementById('modalReservaLabel');
+                            if (modalReservaLabel) {
+                                modalReservaLabel.textContent = 'Finalizar Reserva';
+                                console.log('Título do modal atualizado para "Finalizar Reserva"');
+                            }
+                            
+                            // Mostrar área de reserva IMEDIATAMENTE (sem confirmação)
+                            var divDadosReserva = document.getElementById('<%= divDadosReserva.ClientID %>');
+                            if (!divDadosReserva) {
+                                divDadosReserva = document.querySelector('[id*="divDadosReserva"]');
+                            }
                             if (divDadosReserva) {
+                                // Forçar exibição com múltiplas propriedades
                                 divDadosReserva.style.display = 'block';
+                                divDadosReserva.style.visibility = 'visible';
+                                divDadosReserva.style.opacity = '1';
+                                divDadosReserva.removeAttribute('hidden');
+                                divDadosReserva.classList.remove('d-none');
+                                divDadosReserva.classList.add('d-block');
+                                console.log('Área de reserva exibida - ID:', divDadosReserva.id);
+                                
+                                // Garantir que todos os campos dentro estejam visíveis
+                                var campos = divDadosReserva.querySelectorAll('input, select, textarea, label, .form-label, .mb-3, .form-control, .form-select');
+                                campos.forEach(function(campo) {
+                                    campo.style.display = '';
+                                    campo.style.visibility = 'visible';
+                                    campo.style.opacity = '1';
+                                    campo.removeAttribute('hidden');
+                                });
+                                
+                                // Garantir que os labels e divs também estejam visíveis
+                                var labels = divDadosReserva.querySelectorAll('label, .form-label, .mb-3, .small, .text-muted');
+                                labels.forEach(function(label) {
+                                    label.style.display = '';
+                                    label.style.visibility = 'visible';
+                                });
+                            } else {
+                                console.error('ERRO: divDadosReserva não encontrado! Tentando novamente...');
+                                // Tentar novamente após um pequeno delay
+                                setTimeout(function() {
+                                    divDadosReserva = document.getElementById('<%= divDadosReserva.ClientID %>');
+                                    if (!divDadosReserva) {
+                                        divDadosReserva = document.querySelector('[id*="divDadosReserva"]');
+                                    }
+                                    if (divDadosReserva) {
+                                        divDadosReserva.style.display = 'block';
+                                        divDadosReserva.style.visibility = 'visible';
+                                        console.log('Área de reserva exibida na segunda tentativa');
+                                    }
+                                }, 200);
                             }
                             
                             // Mostrar botões de reserva
                             var divBotoesReserva = document.getElementById('divBotoesReserva');
                             if (divBotoesReserva) {
                                 divBotoesReserva.style.display = 'flex';
+                                divBotoesReserva.style.visibility = 'visible';
+                                console.log('Botões de reserva exibidos');
+                            } else {
+                                console.warn('divBotoesReserva não encontrado');
                             }
                             
                             // Mostrar botão Confirmar Reserva
+                            var btnConfirmarReserva = document.getElementById('<%= btnConfirmarReserva.ClientID %>');
+                            if (!btnConfirmarReserva) {
+                                btnConfirmarReserva = document.querySelector('[id*="btnConfirmarReserva"]');
+                            }
                             if (btnConfirmarReserva) {
                                 btnConfirmarReserva.style.display = 'inline-block';
+                                btnConfirmarReserva.style.visibility = 'visible';
+                                btnConfirmarReserva.removeAttribute('hidden');
+                                console.log('Botão Confirmar Reserva exibido - ID:', btnConfirmarReserva.id);
+                            } else {
+                                console.error('ERRO: btnConfirmarReserva não encontrado!');
                             }
                             
                             // Atualizar variável global
                             window.usuarioLogado = true;
                             
-                            console.log('Login realizado com sucesso. Área de reserva exibida.');
+                            // Scroll suave para a área de reserva
+                            setTimeout(function() {
+                                if (divDadosReserva) {
+                                    divDadosReserva.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                }
+                            }, 100);
+                            
+                            // Atualizar menu do header via JavaScript
+                            setTimeout(function() {
+                                var linkLogin = document.querySelector('[id*="linkLogin"]');
+                                var linkMinhasReservas = document.querySelector('[id*="linkMinhasReservas"]');
+                                var linkMeusDados = document.querySelector('[id*="linkMeusDados"]');
+                                var linkLogout = document.querySelector('[id*="linkLogout"]');
+                                var clienteNome = document.querySelector('[id*="clienteNome"]');
+                                
+                                if (linkLogin) linkLogin.style.display = 'none';
+                                if (linkMinhasReservas) linkMinhasReservas.style.display = 'inline';
+                                if (linkMeusDados) linkMeusDados.style.display = 'inline';
+                                if (linkLogout) linkLogout.style.display = 'inline';
+                                if (clienteNome && cliente.nome) {
+                                    clienteNome.textContent = 'Olá, ' + cliente.nome;
+                                    clienteNome.style.display = 'inline';
+                                }
+                                
+                                // Atualizar isAdmin do cliente se retornado
+                                if (result.isAdmin !== undefined) {
+                                    cliente.isAdmin = result.isAdmin;
+                                }
+                                
+                                // Se for admin, mostrar link de admin
+                                var linkAdmin = document.querySelector('[id*="linkAdmin"]');
+                                if (cliente.isAdmin || (result.isAdmin === true)) {
+                                    if (linkAdmin) linkAdmin.style.display = 'inline';
+                                } else {
+                                    if (linkAdmin) linkAdmin.style.display = 'none';
+                                }
+                            }, 100);
+                            
+                            console.log('Login realizado com sucesso. Área de reserva exibida automaticamente.');
                         } else {
                             mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login: ' + (result.mensagem || 'Erro desconhecido'), 'danger');
                         }
@@ -657,8 +1006,9 @@
                     
                     PageMethods.ValidarSenhaCliente(login, senha, function(result) {
                         if (result && result.valido) {
-                            // Senha válida - fazer login e mostrar área de reserva
-                            mostrarMensagem('<i class="fas fa-spinner fa-spin"></i> Fazendo login...', 'info');
+                            // Senha válida - fazer login e mostrar área de reserva AUTOMATICAMENTE
+                            // Sem pedir confirmação, continuar direto para a tela de reserva
+                            ocultarMensagem();
                             preencherDadosCliente(result.cliente);
                         } else {
                             // Senha inválida
@@ -974,14 +1324,25 @@
                     var email = document.getElementById('<%= txtEmail.ClientID %>');
                     var telefone = document.getElementById('<%= txtTelefone.ClientID %>');
                     var dataRetirada = document.getElementById('<%= ddlDataRetirada.ClientID %>');
+                    
+                    // Verificar também os hidden fields (caso os campos readonly estejam vazios)
+                    var hdnNome = document.getElementById('<%= hdnNome.ClientID %>');
+                    var hdnEmail = document.getElementById('<%= hdnEmail.ClientID %>');
+                    var hdnTelefone = document.getElementById('<%= hdnTelefone.ClientID %>');
+                    
+                    // Se os campos visuais estiverem vazios (readonly), verificar hidden fields
+                    var nomeValor = (nome && nome.value) ? nome.value.trim() : (hdnNome ? hdnNome.value : '');
+                    var emailValor = (email && email.value) ? email.value.trim() : (hdnEmail ? hdnEmail.value : '');
+                    var telefoneValor = (telefone && telefone.value) ? telefone.value.trim() : (hdnTelefone ? hdnTelefone.value : '');
 
                     var primeiroInvalido = null;
-                    var nomeValido = DefaultPage.Validacao.validarNome(nome);
-                    if (!nomeValido && !primeiroInvalido) primeiroInvalido = nome;
-                    var emailValido = DefaultPage.Validacao.validarEmail(email);
-                    if (!emailValido && !primeiroInvalido) primeiroInvalido = email;
-                    var telefoneValido = DefaultPage.Validacao.validarTelefone(telefone);
-                    if (!telefoneValido && !primeiroInvalido) primeiroInvalido = telefone;
+                    var nomeValido = nomeValor.length >= 3;
+                    if (!nomeValido && !primeiroInvalido) primeiroInvalido = nome || hdnNome;
+                    var emailValido = emailValor.length > 0 && emailValor.indexOf('@') > -1;
+                    if (!emailValido && !primeiroInvalido) primeiroInvalido = email || hdnEmail;
+                    var telefoneValorLimpo = telefoneValor.replace(/\D/g, '');
+                    var telefoneValido = telefoneValorLimpo.length >= 10 && telefoneValorLimpo.length <= 11;
+                    if (!telefoneValido && !primeiroInvalido) primeiroInvalido = telefone || hdnTelefone;
                     var dataValida = dataRetirada && dataRetirada.value && dataRetirada.value !== '';
                     if (!dataValida && !primeiroInvalido) primeiroInvalido = dataRetirada;
 
@@ -997,6 +1358,281 @@
                     }
                     return true;
                 };
+            }
+        });
+    </script>
+    
+    <!-- Componente Modal de Login Dinâmico -->
+    <script>
+        // Função global para abrir modal de login
+        function abrirModalLogin() {
+            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
+                KingdomConfeitaria.Modal.show('modalLoginDinamico');
+                // Resetar campos
+                var txtLogin = document.getElementById('txtLoginDinamicoStandalone');
+                var divSenha = document.getElementById('divSenhaStandalone');
+                var divOpcaoCadastro = document.getElementById('divOpcaoCadastroStandalone');
+                var divBotoesLogin = document.getElementById('divBotoesLoginStandalone');
+                var divMensagem = document.getElementById('divMensagemLoginStandalone');
+                
+                if (txtLogin) txtLogin.value = '';
+                if (divSenha) divSenha.style.display = 'none';
+                if (divOpcaoCadastro) divOpcaoCadastro.style.display = 'none';
+                if (divBotoesLogin) divBotoesLogin.style.display = 'none';
+                if (divMensagem) {
+                    divMensagem.style.display = 'none';
+                    divMensagem.innerHTML = '';
+                }
+                
+                // Focar no campo de login
+                setTimeout(function() {
+                    if (txtLogin) txtLogin.focus();
+                }, 300);
+            }
+        }
+        
+        // Função global para fechar modal de login
+        function fecharModalLogin() {
+            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
+                KingdomConfeitaria.Modal.hide('modalLoginDinamico');
+            }
+        }
+        
+        // Inicializar componente de login dinâmico standalone
+        KingdomConfeitaria.Utils.ready(function() {
+            var txtLoginStandalone = document.getElementById('txtLoginDinamicoStandalone');
+            var txtSenhaStandalone = document.getElementById('txtSenhaStandalone');
+            var btnConfirmarLoginStandalone = document.getElementById('btnConfirmarLoginStandalone');
+            var clienteEncontradoStandalone = null;
+            
+            if (!txtLoginStandalone) return;
+            
+            // Função para mostrar mensagem
+            function mostrarMensagemStandalone(mensagem, tipo) {
+                var divMensagem = document.getElementById('divMensagemLoginStandalone');
+                if (!divMensagem) return;
+                divMensagem.style.display = 'block';
+                divMensagem.className = 'mt-2 alert alert-' + (tipo || 'info');
+                divMensagem.innerHTML = mensagem;
+            }
+            
+            function ocultarMensagemStandalone() {
+                var divMensagem = document.getElementById('divMensagemLoginStandalone');
+                if (divMensagem) {
+                    divMensagem.style.display = 'none';
+                    divMensagem.innerHTML = '';
+                }
+            }
+            
+            // Função para verificar cliente
+            function verificarClienteStandalone(login) {
+                if (!login || login.trim() === '') {
+                    ocultarMensagemStandalone();
+                    return;
+                }
+                
+                if (typeof PageMethods === 'undefined') {
+                    console.error('PageMethods não disponível');
+                    return;
+                }
+                
+                mostrarMensagemStandalone('<i class="fas fa-spinner fa-spin"></i> Verificando...', 'info');
+                
+                PageMethods.VerificarClienteCadastrado(login, function(result) {
+                    if (result && result.existe) {
+                        clienteEncontradoStandalone = result.cliente;
+                        
+                        var divOpcaoCadastro = document.getElementById('divOpcaoCadastroStandalone');
+                        var divBotoesLogin = document.getElementById('divBotoesLoginStandalone');
+                        var divSenha = document.getElementById('divSenhaStandalone');
+                        
+                        if (divOpcaoCadastro) divOpcaoCadastro.style.display = 'none';
+                        
+                        if (result.temSenha) {
+                            // Mostrar campo de senha
+                            if (divSenha) {
+                                divSenha.style.display = 'block';
+                                setTimeout(function() {
+                                    if (txtSenhaStandalone) txtSenhaStandalone.focus();
+                                }, 100);
+                            }
+                            if (divBotoesLogin) divBotoesLogin.style.display = 'flex';
+                            mostrarMensagemStandalone('<i class="fas fa-user-check"></i> Cliente encontrado! Digite sua senha.', 'success');
+                        } else {
+                            // Cliente sem senha - fazer login automático
+                            fazerLoginStandalone(result.cliente);
+                        }
+                    } else {
+                        clienteEncontradoStandalone = null;
+                        var divSenha = document.getElementById('divSenhaStandalone');
+                        var divBotoesLogin = document.getElementById('divBotoesLoginStandalone');
+                        var divOpcaoCadastro = document.getElementById('divOpcaoCadastroStandalone');
+                        var linkIrCadastro = document.getElementById('linkIrCadastroStandalone');
+                        
+                        if (divSenha) divSenha.style.display = 'none';
+                        if (divBotoesLogin) divBotoesLogin.style.display = 'none';
+                        if (divOpcaoCadastro) divOpcaoCadastro.style.display = 'block';
+                        if (linkIrCadastro) {
+                            var isEmail = login.indexOf('@') > -1;
+                            var loginParam = isEmail ? 'email' : 'telefone';
+                            linkIrCadastro.href = 'Cadastro.aspx?' + loginParam + '=' + encodeURIComponent(login);
+                        }
+                        mostrarMensagemStandalone('<i class="fas fa-info-circle"></i> Cliente não encontrado. Clique no botão abaixo para se cadastrar.', 'info');
+                    }
+                }, function(error) {
+                    console.error('Erro ao verificar cliente:', error);
+                    mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao verificar cliente. Tente novamente.', 'danger');
+                });
+            }
+            
+            // Função para fazer login
+            function fazerLoginStandalone(cliente) {
+                if (!cliente) return;
+                
+                if (typeof PageMethods === 'undefined') {
+                    console.error('PageMethods não disponível');
+                    return;
+                }
+                
+                mostrarMensagemStandalone('<i class="fas fa-spinner fa-spin"></i> Fazendo login...', 'info');
+                
+                PageMethods.FazerLoginSessao(cliente.id, function(result) {
+                    if (result && result.sucesso) {
+                        ocultarMensagemStandalone();
+                        mostrarMensagemStandalone('<i class="fas fa-check-circle"></i> Login realizado com sucesso!', 'success');
+                        
+                        // Atualizar variável global
+                        window.usuarioLogado = true;
+                        
+                        // Atualizar menu do header
+                        setTimeout(function() {
+                            var linkLogin = document.querySelector('[id*="linkLogin"]');
+                            var linkMinhasReservas = document.querySelector('[id*="linkMinhasReservas"]');
+                            var linkMeusDados = document.querySelector('[id*="linkMeusDados"]');
+                            var linkLogout = document.querySelector('[id*="linkLogout"]');
+                            var clienteNome = document.querySelector('[id*="clienteNome"]');
+                            
+                            if (linkLogin) linkLogin.style.display = 'none';
+                            if (linkMinhasReservas) linkMinhasReservas.style.display = 'inline';
+                            if (linkMeusDados) linkMeusDados.style.display = 'inline';
+                            if (linkLogout) linkLogout.style.display = 'inline';
+                            if (clienteNome && cliente.nome) {
+                                clienteNome.textContent = 'Olá, ' + cliente.nome;
+                                clienteNome.style.display = 'inline';
+                            }
+                            
+                            // Atualizar isAdmin do cliente se retornado
+                            if (result.isAdmin !== undefined) {
+                                cliente.isAdmin = result.isAdmin;
+                            }
+                            
+                            // Mostrar link de admin se for administrador
+                            var linkAdmin = document.querySelector('[id*="linkAdmin"]');
+                            if (cliente.isAdmin || (result.isAdmin === true)) {
+                                if (linkAdmin) linkAdmin.style.display = 'inline';
+                            } else {
+                                if (linkAdmin) linkAdmin.style.display = 'none';
+                            }
+                        }, 100);
+                        
+                        // Fechar modal e redirecionar para Minhas Reservas
+                        setTimeout(function() {
+                            fecharModalLogin();
+                            // Redirecionar para Minhas Reservas após login
+                            window.location.href = 'MinhasReservas.aspx';
+                        }, 1000);
+                    } else {
+                        mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login: ' + (result.mensagem || 'Erro desconhecido'), 'danger');
+                    }
+                }, function(error) {
+                    console.error('Erro ao fazer login:', error);
+                    mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login. Tente novamente.', 'danger');
+                });
+            }
+            
+            // Função para validar senha
+            function validarSenhaStandalone() {
+                if (!clienteEncontradoStandalone) {
+                    mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Cliente não encontrado. Por favor, digite seu email ou telefone primeiro.', 'warning');
+                    return;
+                }
+                
+                var senha = txtSenhaStandalone ? txtSenhaStandalone.value : '';
+                var login = txtLoginStandalone ? txtLoginStandalone.value.trim() : '';
+                
+                if (!senha) {
+                    mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Por favor, digite sua senha.', 'warning');
+                    if (txtSenhaStandalone) txtSenhaStandalone.focus();
+                    return;
+                }
+                
+                if (typeof PageMethods === 'undefined') {
+                    console.error('PageMethods não disponível');
+                    return;
+                }
+                
+                mostrarMensagemStandalone('<i class="fas fa-spinner fa-spin"></i> Validando senha...', 'info');
+                
+                PageMethods.ValidarSenhaCliente(login, senha, function(result) {
+                    if (result && result.valido) {
+                        fazerLoginStandalone(result.cliente);
+                    } else {
+                        mostrarMensagemStandalone('<i class="fas fa-times-circle"></i> ' + (result.mensagem || 'Senha incorreta.'), 'danger');
+                        if (txtSenhaStandalone) {
+                            txtSenhaStandalone.value = '';
+                            txtSenhaStandalone.focus();
+                        }
+                    }
+                }, function(error) {
+                    console.error('Erro ao validar senha:', error);
+                    mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao validar senha. Tente novamente.', 'danger');
+                });
+            }
+            
+            // Event listeners
+            var timeoutVerificacao = null;
+            
+            txtLoginStandalone.addEventListener('input', function() {
+                clearTimeout(timeoutVerificacao);
+                var login = this.value.trim();
+                
+                // Filtrar entrada
+                var isEmail = login.indexOf('@') > -1 || /[a-zA-Z]/.test(login);
+                if (isEmail) {
+                    this.value = login.toLowerCase().replace(/[^a-z0-9@._-]/g, '');
+                } else {
+                    this.value = login.replace(/\D/g, '');
+                }
+                
+                if (login.length >= 3) {
+                    timeoutVerificacao = setTimeout(function() {
+                        verificarClienteStandalone(login);
+                    }, 500);
+                } else {
+                    ocultarMensagemStandalone();
+                    var divSenha = document.getElementById('divSenhaStandalone');
+                    var divBotoesLogin = document.getElementById('divBotoesLoginStandalone');
+                    var divOpcaoCadastro = document.getElementById('divOpcaoCadastroStandalone');
+                    if (divSenha) divSenha.style.display = 'none';
+                    if (divBotoesLogin) divBotoesLogin.style.display = 'none';
+                    if (divOpcaoCadastro) divOpcaoCadastro.style.display = 'none';
+                }
+            });
+            
+            if (txtSenhaStandalone) {
+                txtSenhaStandalone.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        validarSenhaStandalone();
+                    }
+                });
+            }
+            
+            if (btnConfirmarLoginStandalone) {
+                btnConfirmarLoginStandalone.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    validarSenhaStandalone();
+                });
             }
         });
     </script>

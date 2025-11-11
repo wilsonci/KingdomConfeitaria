@@ -11,7 +11,8 @@ namespace KingdomConfeitaria.Models
         public string Telefone { get; set; }
         public DateTime DataRetirada { get; set; }
         public DateTime DataReserva { get; set; }
-        public string Status { get; set; } // "Pendente", "Confirmado", "Pronto", "Entregue", "Cancelado"
+        public int? StatusId { get; set; }
+        public string Status { get; set; } // Propriedade calculada/join - não armazenada diretamente
         public decimal ValorTotal { get; set; }
         public List<ItemPedido> Itens { get; set; }
         public string Observacoes { get; set; }

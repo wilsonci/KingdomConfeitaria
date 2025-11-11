@@ -165,6 +165,7 @@
     <Compile Include="Models\ItemPedido.cs" />
     <Compile Include="Models\Produto.cs" />
     <Compile Include="Models\Reserva.cs" />
+    <Compile Include="Models\StatusReserva.cs" />
     <Compile Include="Services\EmailService.cs" />
     <Compile Include="Services\DatabaseService.cs" />
     <Compile Include="Services\WhatsAppService.cs" />

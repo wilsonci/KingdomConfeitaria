@@ -62,15 +62,24 @@ namespace KingdomConfeitaria
                 int totalClientesNormais = totalClientes - totalAdmins;
                 
                 int totalReservas = reservas.Count;
-                int reservasPendentes = reservas.Count(r => r.Status == "Pendente");
-                int reservasConfirmadas = reservas.Count(r => r.Status == "Confirmado");
-                int reservasProntas = reservas.Count(r => r.Status == "Pronto");
-                int reservasEntregues = reservas.Count(r => r.Status == "Entregue");
-                int reservasCanceladas = reservas.Count(r => r.Status == "Cancelado" || r.Cancelado);
+                // Obter status por nome para contagem
+                var statusAberta = _databaseService.ObterStatusReservaPorNome("Aberta");
+                var statusEmProducao = _databaseService.ObterStatusReservaPorNome("Em Produção");
+                var statusProducaoPronta = _databaseService.ObterStatusReservaPorNome("Produção Pronta");
+                var statusJaEntregue = _databaseService.ObterStatusReservaPorNome("Já Entregue");
+                var statusEntregue = _databaseService.ObterStatusReservaPorNome("Entregue");
+                
+                int reservasAbertas = reservas.Count(r => statusAberta != null && r.StatusId == statusAberta.Id);
+                int reservasEmProducao = reservas.Count(r => statusEmProducao != null && r.StatusId == statusEmProducao.Id);
+                int reservasProducaoPronta = reservas.Count(r => statusProducaoPronta != null && r.StatusId == statusProducaoPronta.Id);
+                int reservasEntregues = reservas.Count(r => 
+                    (statusJaEntregue != null && r.StatusId == statusJaEntregue.Id) || 
+                    (statusEntregue != null && r.StatusId == statusEntregue.Id));
+                int reservasCanceladas = reservas.Count(r => r.Cancelado);
                 
                 decimal valorTotalReservas = reservas.Where(r => !r.Cancelado).Sum(r => r.ValorTotal);
-                decimal valorPendente = reservas.Where(r => r.Status == "Pendente" && !r.Cancelado).Sum(r => r.ValorTotal);
-                decimal valorConfirmado = reservas.Where(r => r.Status == "Confirmado" && !r.Cancelado).Sum(r => r.ValorTotal);
+                decimal valorAberto = reservas.Where(r => statusAberta != null && r.StatusId == statusAberta.Id && !r.Cancelado).Sum(r => r.ValorTotal);
+                decimal valorEmProducao = reservas.Where(r => statusEmProducao != null && r.StatusId == statusEmProducao.Id && !r.Cancelado).Sum(r => r.ValorTotal);
                 
                 string html = $@"
                     <div class='row mb-4'>
@@ -121,16 +130,16 @@ namespace KingdomConfeitaria
                                 <div class='card-body'>
                                     <ul class='list-group list-group-flush'>
                                         <li class='list-group-item d-flex justify-content-between align-items-center'>
-                                            <span class='status-badge status-pendente'>Pendente</span>
-                                            <span class='badge bg-primary rounded-pill'>{reservasPendentes}</span>
+                                            <span class='status-badge status-aberta'>Aberta</span>
+                                            <span class='badge bg-primary rounded-pill'>{reservasAbertas}</span>
                                         </li>
                                         <li class='list-group-item d-flex justify-content-between align-items-center'>
-                                            <span class='status-badge status-confirmado'>Confirmado</span>
-                                            <span class='badge bg-primary rounded-pill'>{reservasConfirmadas}</span>
+                                            <span class='status-badge status-em-produção'>Em Produção</span>
+                                            <span class='badge bg-primary rounded-pill'>{reservasEmProducao}</span>
                                         </li>
                                         <li class='list-group-item d-flex justify-content-between align-items-center'>
-                                            <span class='status-badge status-pronto'>Pronto</span>
-                                            <span class='badge bg-primary rounded-pill'>{reservasProntas}</span>
+                                            <span class='status-badge status-produção-pronta'>Produção Pronta</span>
+                                            <span class='badge bg-primary rounded-pill'>{reservasProducaoPronta}</span>
                                         </li>
                                         <li class='list-group-item d-flex justify-content-between align-items-center'>
                                             <span class='status-badge status-entregue'>Entregue</span>
@@ -152,12 +161,12 @@ namespace KingdomConfeitaria
                                 <div class='card-body'>
                                     <ul class='list-group list-group-flush'>
                                         <li class='list-group-item d-flex justify-content-between align-items-center'>
-                                            <span>Pendente</span>
-                                            <strong>R$ {valorPendente:F2}</strong>
+                                            <span>Aberta</span>
+                                            <strong>R$ {valorAberto:F2}</strong>
                                         </li>
                                         <li class='list-group-item d-flex justify-content-between align-items-center'>
-                                            <span>Confirmado</span>
-                                            <strong>R$ {valorConfirmado:F2}</strong>
+                                            <span>Em Produção</span>
+                                            <strong>R$ {valorEmProducao:F2}</strong>
                                         </li>
                                         <li class='list-group-item d-flex justify-content-between align-items-center'>
                                             <span>Total Geral</span>

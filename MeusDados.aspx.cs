@@ -14,6 +14,10 @@ namespace KingdomConfeitaria
             // Configurar encoding UTF-8
             Response.ContentEncoding = System.Text.Encoding.UTF8;
             Response.Charset = "UTF-8";
+            Response.ContentType = "text/html; charset=utf-8";
+            
+            // Garantir que o Request também está em UTF-8
+            Request.ContentEncoding = System.Text.Encoding.UTF8;
             
             _databaseService = new DatabaseService();
 
@@ -39,7 +43,8 @@ namespace KingdomConfeitaria
 
                 if (cliente != null)
                 {
-                    txtNome.Value = cliente.Nome;
+                    // Garantir que os dados são exibidos corretamente em UTF-8
+                    txtNome.Value = cliente.Nome ?? "";
                     txtEmail.Value = cliente.Email ?? "";
                     
                     if (!string.IsNullOrEmpty(cliente.Telefone))
