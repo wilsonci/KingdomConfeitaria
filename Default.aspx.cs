@@ -724,8 +724,18 @@ namespace KingdomConfeitaria
                         // Fallback: usar Bootstrap diretamente
                         var modalElement = document.getElementById('modalReserva');
                         if (modalElement) {
-                            var modal = new bootstrap.Modal(modalElement);
-                            modal.show();
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var modal = new bootstrap.Modal(modalElement);
+                                modal.show();
+                            } else {
+                                modalElement.classList.add('show');
+                                modalElement.style.display = 'block';
+                                modalElement.setAttribute('aria-hidden', 'false');
+                                document.body.classList.add('modal-open');
+                                var backdrop = document.createElement('div');
+                                backdrop.className = 'modal-backdrop fade show';
+                                document.body.appendChild(backdrop);
+                            }
                         }
                     }
                 }, 100);";
@@ -879,6 +889,10 @@ namespace KingdomConfeitaria
                         }
                         Session["SessionStartTime"] = DateTime.Now;
                         
+                        // Registrar log de login
+                        string usuarioLog = LogService.ObterUsuarioAtual(Session);
+                        LogService.RegistrarLogin(usuarioLog, "Default.aspx", $"Login automático durante reserva - Email: {cliente.Email}");
+                        
                         // Atualizar links do header após login
                         VerificarLogin();
                     }
@@ -900,6 +914,14 @@ namespace KingdomConfeitaria
                         
                         clienteId = _databaseService.CriarOuAtualizarCliente(cliente);
                         
+                        // Registrar log de cadastro
+                        LogService.RegistrarInsercao(
+                            $"Cliente ID: {clienteId}",
+                            "Cliente",
+                            "Default.aspx",
+                            $"Cadastro automático durante reserva - Nome: {cliente.Nome}, Email: {cliente.Email}, Telefone: {cliente.Telefone ?? "N/A"}"
+                        );
+                        
                         // Buscar cliente atualizado para obter IsAdmin correto
                         cliente = _databaseService.ObterClientePorId(clienteId);
                         
@@ -913,6 +935,10 @@ namespace KingdomConfeitaria
                             Session["ClienteTelefone"] = cliente.Telefone;
                         }
                         Session["SessionStartTime"] = DateTime.Now;
+                        
+                        // Registrar log de login após cadastro
+                        string usuarioLogCadastro = LogService.ObterUsuarioAtual(Session);
+                        LogService.RegistrarLogin(usuarioLogCadastro, "Default.aspx", $"Login automático após cadastro durante reserva - Email: {cliente.Email}");
                         
                         // Atualizar links do header após login automático
                         VerificarLogin();
@@ -1360,6 +1386,10 @@ namespace KingdomConfeitaria
                     HttpContext.Current.Session["ClienteTelefone"] = cliente.Telefone;
                 }
                 HttpContext.Current.Session["SessionStartTime"] = DateTime.Now;
+                
+                // Registrar log de login
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current.Session);
+                LogService.RegistrarLogin(usuarioLog, "Default.aspx", $"Login via FazerLoginSessao - Email: {cliente.Email}");
                 
                 return new { sucesso = true, isAdmin = cliente.IsAdmin };
             }

@@ -90,13 +90,13 @@
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-actions">
-                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
                     <span id="clienteNome" runat="server" style="color: white; margin-right: 15px;"></span>
-                    <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;">Entrar</a>
-                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display:none;">Minhas Reservas</a>
-                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display:none;">Meus Dados</a>
-                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display:none;">Painel Gestor</a>
-                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display:none;">Sair</a>
+                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
+                    <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;"><i class="fas fa-sign-in-alt"></i> Entrar</a>
+                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display:none;"><i class="fas fa-clipboard-list"></i> Minhas Reservas</a>
+                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display:none;"><i class="fas fa-user"></i> Meus Dados</a>
+                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display:none;"><i class="fas fa-cog"></i> Painel Gestor</a>
+                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display:none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
                 </div>
                 <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
                 <h1 style="display:none; color: white; margin: 0;">Kingdom Confeitaria</h1>
@@ -606,8 +606,18 @@
             }
             
             try {
-                var modal = bootstrap.Modal.getOrCreateInstance(modalElement);
-                modal.show();
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    var modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                    modal.show();
+                } else {
+                    modalElement.classList.add('show');
+                    modalElement.style.display = 'block';
+                    modalElement.setAttribute('aria-hidden', 'false');
+                    document.body.classList.add('modal-open');
+                    var backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    document.body.appendChild(backdrop);
+                }
             } catch (e) {
                 alert('Erro ao abrir modal: ' + e.message);
             }
@@ -714,12 +724,21 @@
             // Fechar modal
             var modalElement = document.getElementById('modalEditarProdutosSaco');
             if (modalElement) {
-                var modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) {
-                    modal.hide();
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    var modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) {
+                        modal.hide();
+                    } else {
+                        modal = new bootstrap.Modal(modalElement);
+                        modal.hide();
+                    }
                 } else {
-                    modal = new bootstrap.Modal(modalElement);
-                    modal.hide();
+                    modalElement.classList.remove('show');
+                    modalElement.style.display = 'none';
+                    modalElement.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('modal-open');
+                    var backdrop = document.querySelector('.modal-backdrop');
+                    if (backdrop) backdrop.remove();
                 }
             }
         }

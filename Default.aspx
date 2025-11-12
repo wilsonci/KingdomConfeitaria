@@ -228,13 +228,13 @@
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-actions">
-                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
                     <span id="clienteNome" runat="server" style="color: white; margin-right: 15px; display: none;"></span>
-                    <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;">Entrar</a>
-                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;">Minhas Reservas</a>
-                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;">Meus Dados</a>
-                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;">Painel Gestor</a>
-                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;">Sair</a>
+                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
+                    <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;"><i class="fas fa-sign-in-alt"></i> Entrar</a>
+                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;"><i class="fas fa-clipboard-list"></i> Minhas Reservas</a>
+                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;"><i class="fas fa-user"></i> Meus Dados</a>
+                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;"><i class="fas fa-cog"></i> Painel Gestor</a>
+                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
                 </div>
                 <img id="logoImg" src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
                 <h1 id="logoFallback" class="header-title" style="display: none; color: #d4af37; margin: 0;">
@@ -293,19 +293,17 @@
                             <div class="mb-3">
                                 <label for="txtLoginDinamicoStandalone" class="form-label">Email ou Telefone *</label>
                                 <input type="text" class="form-control" id="txtLoginDinamicoStandalone" name="txtLoginDinamicoStandalone" placeholder="exemplo@email.com ou (11) 99999-9999" aria-label="Email ou Telefone" />
-                                <small class="text-muted">Digite seu email ou telefone (apenas números). O sistema identificará automaticamente.</small>
-                                <div id="divMensagemLoginStandalone" class="mt-2" style="display: none;"></div>
                             </div>
                             <div class="mb-3" id="divSenhaStandalone" style="display: none;">
                                 <label for="txtSenhaStandalone" class="form-label">Senha *</label>
                                 <input type="password" class="form-control" id="txtSenhaStandalone" name="txtSenhaStandalone" aria-label="Senha" />
-                                <small class="text-muted">Digite sua senha para continuar</small>
-                                <div class="mt-2">
-                                    <a href="RecuperarSenha.aspx" class="text-decoration-none small" target="_blank">Esqueci minha senha</a>
-                                </div>
                             </div>
+                            
+                            <!-- Mensagens aparecem aqui, abaixo dos campos mas antes dos botões -->
+                            <div id="divMensagemLoginStandalone" class="mb-3" style="display: none;"></div>
+                            
                             <div id="divOpcaoCadastroStandalone" class="mb-3" style="display: none;">
-                                <div class="alert alert-info">
+                                <div class="alert alert-info mb-3">
                                     <i class="fas fa-info-circle"></i> Cliente não encontrado. Deseja se cadastrar?
                                 </div>
                                 <a id="linkIrCadastroStandalone" href="#" class="btn btn-success btn-sm w-100">
@@ -313,7 +311,16 @@
                                 </a>
                             </div>
                             
-                            <!-- Opções de ajuda sempre visíveis -->
+                            <!-- Botões da área de login (aparecem quando senha é solicitada) -->
+                            <div id="divBotoesLoginStandalone" class="d-flex gap-2 mb-3" style="display: none;">
+                                <button type="button" class="btn btn-secondary flex-fill" onclick="fecharModalLogin();">Cancelar</button>
+                                <button type="button" class="btn btn-primary flex-fill" id="btnConfirmarLoginStandalone">Confirmar</button>
+                            </div>
+                            
+                            <!-- Mensagens aparecem abaixo dos botões -->
+                            <div id="divMensagensAbaixoBotoesStandalone" class="mb-3" style="display: none;"></div>
+                            
+                            <!-- Opções de ajuda sempre visíveis, abaixo de tudo -->
                             <div class="mt-3 pt-3 border-top">
                                 <div class="d-flex flex-column gap-2">
                                     <a href="RecuperarSenha.aspx" class="text-decoration-none small text-center" target="_blank">
@@ -323,12 +330,6 @@
                                         <i class="fas fa-user-plus"></i> Cadastrar Novo Usuário
                                     </a>
                                 </div>
-                            </div>
-                            
-                            <!-- Botões da área de login (aparecem quando senha é solicitada) -->
-                            <div id="divBotoesLoginStandalone" class="modal-footer" style="display: none; border-top: 1px solid #dee2e6; margin-top: 1rem; padding-top: 1rem;">
-                                <button type="button" class="btn btn-secondary" onclick="fecharModalLogin();">Cancelar</button>
-                                <button type="button" class="btn btn-primary" id="btnConfirmarLoginStandalone">Confirmar</button>
                             </div>
                         </div>
                     </div>
@@ -350,19 +351,17 @@
                             <div class="mb-3">
                                 <asp:Label ID="lblLoginDinamico" runat="server" AssociatedControlID="txtLoginDinamico" CssClass="form-label">Email ou Telefone *</asp:Label>
                                 <asp:TextBox ID="txtLoginDinamico" runat="server" CssClass="form-control" placeholder="exemplo@email.com ou (11) 99999-9999" aria-label="Email ou Telefone"></asp:TextBox>
-                                <small class="text-muted">Digite seu email ou telefone (apenas números). O sistema identificará automaticamente.</small>
-                                <div id="divMensagemLogin" class="mt-2" style="display: none;"></div>
                             </div>
                             <div class="mb-3" id="divSenhaReserva" runat="server" style="display: none;">
                                 <asp:Label ID="lblSenhaReserva" runat="server" AssociatedControlID="txtSenhaReserva" CssClass="form-label">Senha *</asp:Label>
                                 <asp:TextBox ID="txtSenhaReserva" runat="server" CssClass="form-control" TextMode="Password" aria-label="Senha"></asp:TextBox>
-                                <small class="text-muted">Digite sua senha para continuar</small>
-                                <div class="mt-2">
-                                    <a id="linkRecuperarSenha" href="RecuperarSenha.aspx" class="text-decoration-none small" target="_blank">Esqueci minha senha</a>
-                                </div>
                             </div>
+                            
+                            <!-- Mensagens aparecem aqui, abaixo dos campos mas antes dos botões -->
+                            <div id="divMensagemLogin" class="mb-3" style="display: none;"></div>
+                            
                             <div id="divOpcaoCadastro" class="mb-3" style="display: none;">
-                                <div class="alert alert-info">
+                                <div class="alert alert-info mb-3">
                                     <i class="fas fa-info-circle"></i> Cliente não encontrado. Deseja se cadastrar?
                                 </div>
                                 <a id="linkIrCadastro" href="#" class="btn btn-success btn-sm w-100">
@@ -370,7 +369,16 @@
                                 </a>
                             </div>
                             
-                            <!-- Opções de ajuda sempre visíveis -->
+                            <!-- Botões da área de login (aparecem quando senha é solicitada) -->
+                            <div id="divBotoesLogin" class="d-flex gap-2 mb-3" style="display: none;">
+                                <button type="button" class="btn btn-secondary flex-fill" id="btnCancelarLogin">Cancelar</button>
+                                <button type="button" class="btn btn-primary flex-fill" id="btnConfirmarLogin">Confirmar</button>
+                            </div>
+                            
+                            <!-- Mensagens aparecem abaixo dos botões -->
+                            <div id="divMensagensAbaixoBotoes" class="mb-3" style="display: none;"></div>
+                            
+                            <!-- Opções de ajuda sempre visíveis, abaixo de tudo -->
                             <div class="mt-3 pt-3 border-top">
                                 <div class="d-flex flex-column gap-2">
                                     <a href="RecuperarSenha.aspx" class="text-decoration-none small text-center" target="_blank">
@@ -380,12 +388,6 @@
                                         <i class="fas fa-user-plus"></i> Cadastrar Novo Usuário
                                     </a>
                                 </div>
-                            </div>
-                            
-                            <!-- Botões da área de login (aparecem quando senha é solicitada) -->
-                            <div id="divBotoesLogin" class="modal-footer" style="display: none; border-top: 1px solid #dee2e6; margin-top: 1rem; padding-top: 1rem;">
-                                <button type="button" class="btn btn-secondary" id="btnCancelarLogin">Cancelar</button>
-                                <button type="button" class="btn btn-primary" id="btnConfirmarLogin">Confirmar</button>
                             </div>
                         </div>
                         
@@ -698,7 +700,7 @@
                                     linkRecuperarSenha.href = 'RecuperarSenha.aspx?' + loginParam + '=' + encodeURIComponent(login);
                                 }
                                 
-                                mostrarMensagem('<i class="fas fa-user-check"></i> Cliente encontrado! Digite sua senha para continuar.', 'success');
+                                // Cliente encontrado, aguardando senha
                             } else {
                                 // Cliente encontrado mas não tem senha - fazer login automático e mostrar área de reserva
                                 // Continuar direto para a tela de reserva sem confirmação
@@ -1451,7 +1453,6 @@
                 PageMethods.FazerLoginSessao(cliente.id, function(result) {
                     if (result && result.sucesso) {
                         ocultarMensagemStandalone();
-                        mostrarMensagemStandalone('<i class="fas fa-check-circle"></i> Login realizado com sucesso!', 'success');
                         
                         // Atualizar variável global
                         window.usuarioLogado = true;
@@ -1487,12 +1488,9 @@
                             }
                         }, 100);
                         
-                        // Fechar modal e redirecionar para Minhas Reservas
-                        setTimeout(function() {
-                            fecharModalLogin();
-                            // Redirecionar para Minhas Reservas após login
-                            window.location.href = 'MinhasReservas.aspx';
-                        }, 1000);
+                        // Fechar modal e redirecionar para Minhas Reservas imediatamente
+                        fecharModalLogin();
+                        window.location.href = 'MinhasReservas.aspx';
                     } else {
                         mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login: ' + (result.mensagem || 'Erro desconhecido'), 'danger');
                     }

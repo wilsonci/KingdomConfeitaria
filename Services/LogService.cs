@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Web;
 
 namespace KingdomConfeitaria.Services
@@ -76,6 +78,54 @@ namespace KingdomConfeitaria.Services
         }
 
         /// <summary>
+        /// Registra uma atualização com comparação de valores antigos vs novos
+        /// </summary>
+        public static void RegistrarAtualizacaoComComparacao(string quem, string oque, string onde, string id, Dictionary<string, string> valoresAntigos, Dictionary<string, string> valoresNovos)
+        {
+            var alteracoes = new List<string>();
+            var todasChaves = new HashSet<string>();
+            
+            if (valoresAntigos != null)
+            {
+                foreach (var chave in valoresAntigos.Keys)
+                {
+                    todasChaves.Add(chave);
+                }
+            }
+            
+            if (valoresNovos != null)
+            {
+                foreach (var chave in valoresNovos.Keys)
+                {
+                    todasChaves.Add(chave);
+                }
+            }
+            
+            foreach (var chave in todasChaves)
+            {
+                string valorAntigo = valoresAntigos?.ContainsKey(chave) == true ? valoresAntigos[chave] : "(não existia)";
+                string valorNovo = valoresNovos?.ContainsKey(chave) == true ? valoresNovos[chave] : "(removido)";
+                
+                if (valorAntigo != valorNovo)
+                {
+                    alteracoes.Add($"{chave}: '{valorAntigo}' -> '{valorNovo}'");
+                }
+            }
+            
+            string detalhes = $"ID: {id}";
+            if (alteracoes.Count > 0)
+            {
+                detalhes += $" | Alterações: {string.Join("; ", alteracoes)}";
+            }
+            else
+            {
+                detalhes += " | (sem alterações detectadas)";
+            }
+            
+            Registrar("UPDATE", quem, oque, onde, detalhes);
+        }
+
+        /// <summary>
         /// Registra uma exclusão
         /// </summary>
         public static void RegistrarExclusao(string quem, string oque, string onde, string detalhes = "")
@@ -147,6 +197,146 @@ namespace KingdomConfeitaria.Services
 
             return "Anônimo";
         }
+
+        /// <summary>
+        /// Obtém todos os logs dos últimos N dias
+        /// </summary>
+        public static List<LogEntry> ObterLogs(int dias = 7)
+        {
+            var logs = new List<LogEntry>();
+            
+            try
+            {
+                if (!Directory.Exists(_logDirectory))
+                {
+                    return logs;
+                }
+
+                var arquivosLog = Directory.GetFiles(_logDirectory, "log_*.txt")
+                    .OrderByDescending(f => f)
+                    .Take(dias)
+                    .ToList();
+
+                foreach (var arquivo in arquivosLog)
+                {
+                    try
+                    {
+                        var linhas = File.ReadAllLines(arquivo);
+                        foreach (var linha in linhas)
+                        {
+                            if (string.IsNullOrWhiteSpace(linha))
+                                continue;
+
+                            var logEntry = ParseLogLine(linha);
+                            if (logEntry != null)
+                            {
+                                logs.Add(logEntry);
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Ignorar erros ao ler arquivos individuais
+                    }
+                }
+            }
+            catch
+            {
+                // Retornar lista vazia em caso de erro
+            }
+
+            return logs.OrderByDescending(l => l.Timestamp).ToList();
+        }
+
+        /// <summary>
+        /// Faz o parse de uma linha de log
+        /// </summary>
+        private static LogEntry ParseLogLine(string linha)
+        {
+            try
+            {
+                // Formato: [YYYY-MM-DD HH:mm:ss] [TIPO] Quem: [quem] | O que: [oque] | Onde: [onde] | Detalhes: [detalhes]
+                
+                var entry = new LogEntry();
+                
+                // Extrair timestamp
+                int timestampStart = linha.IndexOf('[');
+                int timestampEnd = linha.IndexOf(']', timestampStart);
+                if (timestampStart >= 0 && timestampEnd > timestampStart)
+                {
+                    string timestampStr = linha.Substring(timestampStart + 1, timestampEnd - timestampStart - 1);
+                    if (DateTime.TryParse(timestampStr, out DateTime timestamp))
+                    {
+                        entry.Timestamp = timestamp;
+                    }
+                }
+
+                // Extrair tipo
+                int tipoStart = linha.IndexOf('[', timestampEnd);
+                int tipoEnd = linha.IndexOf(']', tipoStart);
+                if (tipoStart >= 0 && tipoEnd > tipoStart)
+                {
+                    entry.Tipo = linha.Substring(tipoStart + 1, tipoEnd - tipoStart - 1);
+                }
+
+                // Extrair "Quem"
+                int quemIndex = linha.IndexOf("Quem: ", tipoEnd);
+                if (quemIndex >= 0)
+                {
+                    int quemStart = quemIndex + 6;
+                    int quemEnd = linha.IndexOf(" | O que:", quemStart);
+                    if (quemEnd < 0) quemEnd = linha.Length;
+                    entry.Quem = linha.Substring(quemStart, quemEnd - quemStart).Trim();
+                }
+
+                // Extrair "O que"
+                int oqueIndex = linha.IndexOf("O que: ", tipoEnd);
+                if (oqueIndex >= 0)
+                {
+                    int oqueStart = oqueIndex + 7;
+                    int oqueEnd = linha.IndexOf(" | Onde:", oqueStart);
+                    if (oqueEnd < 0) oqueEnd = linha.Length;
+                    entry.OQue = linha.Substring(oqueStart, oqueEnd - oqueStart).Trim();
+                }
+
+                // Extrair "Onde"
+                int ondeIndex = linha.IndexOf("Onde: ", tipoEnd);
+                if (ondeIndex >= 0)
+                {
+                    int ondeStart = ondeIndex + 6;
+                    int ondeEnd = linha.IndexOf(" | Detalhes:", ondeStart);
+                    if (ondeEnd < 0) ondeEnd = linha.Length;
+                    entry.Onde = linha.Substring(ondeStart, ondeEnd - ondeStart).Trim();
+                }
+
+                // Extrair "Detalhes"
+                int detalhesIndex = linha.IndexOf("Detalhes: ", tipoEnd);
+                if (detalhesIndex >= 0)
+                {
+                    entry.Detalhes = linha.Substring(detalhesIndex + 10).Trim();
+                }
+
+                return entry;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Classe para representar uma entrada de log
+        /// </summary>
+        public class LogEntry
+        {
+            public DateTime Timestamp { get; set; }
+            public string Tipo { get; set; }
+            public string Quem { get; set; }
+            public string OQue { get; set; }
+            public string Onde { get; set; }
+            public string Detalhes { get; set; }
+        }
     }
 }
+
 

@@ -39,6 +39,15 @@ namespace KingdomConfeitaria
         protected global::System.Web.UI.WebControls.TextBox txtObservacoesReserva;
         protected global::System.Web.UI.WebControls.Button btnSalvarReserva;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl alertContainer;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl logsContainer;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl statusReservaTableBody;
+        protected global::System.Web.UI.WebControls.HiddenField hdnStatusReservaId;
+        protected global::System.Web.UI.WebControls.TextBox txtStatusReservaNome;
+        protected global::System.Web.UI.WebControls.TextBox txtStatusReservaDescricao;
+        protected global::System.Web.UI.WebControls.TextBox txtStatusReservaOrdem;
+        protected global::System.Web.UI.WebControls.CheckBox chkStatusReservaPermiteAlteracao;
+        protected global::System.Web.UI.WebControls.CheckBox chkStatusReservaPermiteExclusao;
+        protected global::System.Web.UI.WebControls.Button btnSalvarStatusReserva;
     }
 }
 

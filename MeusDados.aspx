@@ -5,6 +5,7 @@
 <head runat="server">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Meus Dados - Kingdom Confeitaria</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
@@ -89,39 +90,49 @@
     <form id="form1" runat="server">
         <div class="header-logo">
             <div class="header-actions">
-                <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
                 <span id="clienteNome" runat="server" style="color: white; margin-right: 15px;"></span>
-                <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;">Minhas Reservas</a>
-                <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;">Meus Dados</a>
-                <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;">Painel Gestor</a>
-                <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;">Sair</a>
+                <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
+                <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;"><i class="fas fa-clipboard-list"></i> Minhas Reservas</a>
+                <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;"><i class="fas fa-user"></i> Meus Dados</a>
+                <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;"><i class="fas fa-cog"></i> Painel Gestor</a>
+                <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
             </div>
             <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
         </div>
         
         <div class="dados-container">
-            <h2 class="text-center mb-4" style="color: #1a4d2e;">Meus Dados</h2>
+            <h2 class="text-center mb-4" style="color: #1a4d2e;">
+                <i class="fas fa-user-circle"></i> Meus Dados
+            </h2>
             
             <div id="alertContainer" runat="server"></div>
             
             <div class="mb-3">
-                <label for="txtNome" class="form-label">Nome Completo</label>
+                <label for="txtNome" class="form-label">
+                    <i class="fas fa-user"></i> Nome Completo
+                </label>
                 <input type="text" class="form-control" id="txtNome" runat="server" required />
             </div>
             
             <div class="mb-3">
-                <label for="txtEmail" class="form-label">Email</label>
+                <label for="txtEmail" class="form-label">
+                    <i class="fas fa-envelope"></i> Email
+                </label>
                 <input type="email" class="form-control" id="txtEmail" runat="server" required />
             </div>
             
             <div class="mb-3">
-                <label for="txtTelefone" class="form-label">Telefone</label>
+                <label for="txtTelefone" class="form-label">
+                    <i class="fas fa-phone"></i> Telefone / WhatsApp
+                </label>
                 <input type="tel" class="form-control" id="txtTelefone" runat="server" placeholder="(11) 99999-9999" />
             </div>
             
             <hr class="my-4" />
             
-            <h5 class="mb-3" style="color: #1a4d2e;">Alterar Senha</h5>
+            <h5 class="mb-3" style="color: #1a4d2e;">
+                <i class="fas fa-lock"></i> Alterar Senha
+            </h5>
             <small class="text-muted d-block mb-3">Deixe em branco se não quiser alterar a senha</small>
             
             <div class="mb-3">
@@ -140,12 +151,11 @@
                 <input type="password" class="form-control" id="txtConfirmarNovaSenha" runat="server" />
             </div>
             
-            <div class="d-grid mb-3">
+            <div class="d-grid gap-2 mb-3">
                 <asp:Button ID="btnSalvar" runat="server" Text="Salvar Alterações" CssClass="btn btn-success btn-lg" OnClick="btnSalvar_Click" />
-            </div>
-            
-            <div class="text-center">
-                <a href="Default.aspx" class="text-decoration-none">Voltar para a página inicial</a>
+                <a href="Default.aspx" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
             </div>
         </div>
     </form>

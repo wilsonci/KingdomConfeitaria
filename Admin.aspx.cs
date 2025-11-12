@@ -73,12 +73,64 @@ namespace KingdomConfeitaria
                 if (linkLogout != null) linkLogout.Style["display"] = "none";
             }
 
+            // Verificar se é uma requisição para carregar logs
+            string eventTargetLogs = Request["__EVENTTARGET"];
+            string eventArgumentLogs = Request["__EVENTARGUMENT"];
+            
+            if (eventTargetLogs == "carregarLogs" && !string.IsNullOrEmpty(eventArgumentLogs))
+            {
+                int dias = 7;
+                if (int.TryParse(eventArgumentLogs, out int diasParsed))
+                {
+                    dias = diasParsed;
+                }
+                CarregarLogs(dias);
+                return;
+            }
+
             if (!IsPostBack)
             {
                 CarregarResumo();
                 CarregarProdutos();
                 CarregarReservas();
                 CarregarListaProdutosPermitidos();
+                CarregarLogs();
+                CarregarStatusReserva();
+                CarregarDropdownStatus();
+            }
+            
+            // Verificar se é uma requisição para editar ou excluir status
+            string eventTarget = Request["__EVENTTARGET"];
+            string eventArgument = Request["__EVENTARGUMENT"];
+            
+            if (eventTarget == "editarStatusReserva" && !string.IsNullOrEmpty(eventArgument))
+            {
+                int statusId = 0;
+                if (int.TryParse(eventArgument, out statusId))
+                {
+                    EditarStatusReserva(statusId);
+                }
+                return;
+            }
+            
+            if (eventTarget == "excluirStatusReserva" && !string.IsNullOrEmpty(eventArgument))
+            {
+                int statusId = 0;
+                if (int.TryParse(eventArgument, out statusId))
+                {
+                    ExcluirStatusReserva(statusId);
+                }
+                return;
+            }
+            
+            if (eventTarget == "excluirReserva" && !string.IsNullOrEmpty(eventArgument))
+            {
+                int reservaId = 0;
+                if (int.TryParse(eventArgument, out reservaId))
+                {
+                    ExcluirReserva(reservaId);
+                }
+                return;
             }
         }
 
@@ -491,8 +543,33 @@ namespace KingdomConfeitaria
 
                 CarregarProdutos();
                 CarregarListaProdutosPermitidos(); // Recarregar lista para garantir que está atualizada
-                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", 
-                    "var modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarProduto')); modal.hide();", true);
+                string scriptFecharModalProduto = @"
+                    setTimeout(function() {
+                        var modalElement = document.getElementById('modalEditarProduto');
+                        if (modalElement) {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var modal = bootstrap.Modal.getInstance(modalElement);
+                                if (modal) {
+                                    modal.hide();
+                                } else {
+                                    modalElement.classList.remove('show');
+                                    modalElement.style.display = 'none';
+                                    modalElement.setAttribute('aria-hidden', 'true');
+                                    document.body.classList.remove('modal-open');
+                                    var backdrop = document.querySelector('.modal-backdrop');
+                                    if (backdrop) backdrop.remove();
+                                }
+                            } else {
+                                modalElement.classList.remove('show');
+                                modalElement.style.display = 'none';
+                                modalElement.setAttribute('aria-hidden', 'true');
+                                document.body.classList.remove('modal-open');
+                                var backdrop = document.querySelector('.modal-backdrop');
+                                if (backdrop) backdrop.remove();
+                            }
+                        }
+                    }, 100);";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", scriptFecharModalProduto, true);
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
                     $"alert('{EscapeJavaScript("Produto atualizado com sucesso!")}');", true);
             }
@@ -588,8 +665,33 @@ namespace KingdomConfeitaria
 
                 CarregarProdutos();
                 CarregarListaProdutosPermitidos(); // Recarregar lista para garantir que está atualizada
-                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", 
-                    "var modal = bootstrap.Modal.getInstance(document.getElementById('modalNovoProduto')); modal.hide();", true);
+                string scriptFecharModalNovoProduto = @"
+                    setTimeout(function() {
+                        var modalElement = document.getElementById('modalNovoProduto');
+                        if (modalElement) {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var modal = bootstrap.Modal.getInstance(modalElement);
+                                if (modal) {
+                                    modal.hide();
+                                } else {
+                                    modalElement.classList.remove('show');
+                                    modalElement.style.display = 'none';
+                                    modalElement.setAttribute('aria-hidden', 'true');
+                                    document.body.classList.remove('modal-open');
+                                    var backdrop = document.querySelector('.modal-backdrop');
+                                    if (backdrop) backdrop.remove();
+                                }
+                            } else {
+                                modalElement.classList.remove('show');
+                                modalElement.style.display = 'none';
+                                modalElement.setAttribute('aria-hidden', 'true');
+                                document.body.classList.remove('modal-open');
+                                var backdrop = document.querySelector('.modal-backdrop');
+                                if (backdrop) backdrop.remove();
+                            }
+                        }
+                    }, 100);";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", scriptFecharModalNovoProduto, true);
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
                     $"alert('{EscapeJavaScript("Produto adicionado com sucesso!")}');", true);
             }
@@ -597,6 +699,27 @@ namespace KingdomConfeitaria
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
                     string.Format("alert('Erro ao adicionar produto: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void CarregarDropdownStatus()
+        {
+            try
+            {
+                var statusList = _databaseService.ObterTodosStatusReserva();
+                ddlStatus.Items.Clear();
+                foreach (var status in statusList)
+                {
+                    ddlStatus.Items.Add(new ListItem(status.Nome, status.Id.ToString()));
+                }
+            }
+            catch
+            {
+                // Se houver erro, manter os valores padrão ou adicionar valores básicos
+                if (ddlStatus.Items.Count == 0)
+                {
+                    ddlStatus.Items.Add(new ListItem("Aberta", "1"));
+                }
             }
         }
 
@@ -641,6 +764,14 @@ namespace KingdomConfeitaria
                     string previsaoValue = reserva.PrevisaoEntrega.HasValue 
                         ? reserva.PrevisaoEntrega.Value.ToString("yyyy-MM-ddTHH:mm") 
                         : "";
+                    
+                    string nomeEscapado = EscapeJavaScript(reserva.Nome);
+                    string botaoExcluir = reserva.Cancelado 
+                        ? $@"<button type='button' class='btn btn-danger btn-sm ms-2' 
+                                    onclick='excluirReserva({reserva.Id}, ""{nomeEscapado}"")'>
+                                    <i class='fas fa-trash'></i> Excluir Reserva
+                                </button>" 
+                        : "";
 
                     string html = string.Format(@"
                         <div class='reserva-card'>
@@ -666,9 +797,10 @@ namespace KingdomConfeitaria
                             </div>
                             <div class='text-end'>
                                 <button type='button' class='btn btn-primary btn-sm' 
-                                    onclick='editarReserva({12}, ""{13}"", {10}, {14}, {15}, ""{16}"", ""{17}"")'>
+                                    onclick='editarReserva({12}, {18}, {10}, {14}, {15}, ""{16}"", ""{17}"")'>
                                     <i class='fas fa-edit'></i> Editar Reserva
                                 </button>
+                                {19}
                             </div>
                         </div>",
                         reserva.Nome,
@@ -688,7 +820,9 @@ namespace KingdomConfeitaria
                         reserva.ConvertidoEmPedido.ToString().ToLower(),
                         reserva.Cancelado.ToString().ToLower(),
                         previsaoValue,
-                        observacoesEscapadas);
+                        observacoesEscapadas,
+                        reserva.StatusId.HasValue ? reserva.StatusId.Value.ToString() : "0",
+                        botaoExcluir);
                     reservasContainer.InnerHtml += html;
                 }
             }
@@ -702,79 +836,245 @@ namespace KingdomConfeitaria
         {
             try
             {
-                int reservaId = int.Parse(hdnReservaId.Value);
+                // Validar se hdnReservaId tem valor
+                if (string.IsNullOrEmpty(hdnReservaId.Value) || !int.TryParse(hdnReservaId.Value, out int reservaId) || reservaId <= 0)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Erro: ID da reserva não encontrado.")}');", true);
+                    return;
+                }
+                
                 var reserva = _databaseService.ObterReservaPorId(reservaId);
                 
-                if (reserva != null)
+                if (reserva == null)
                 {
-                    reserva.Status = ddlStatus.SelectedValue;
-                    reserva.ConvertidoEmPedido = chkConvertidoEmPedido.Checked;
-                    reserva.Cancelado = chkCancelado.Checked;
-                    reserva.Observacoes = txtObservacoesReserva.Text;
-                    
-                    if (!string.IsNullOrEmpty(txtValorTotal.Text))
-                    {
-                        reserva.ValorTotal = decimal.Parse(txtValorTotal.Text);
-                    }
-                    
-                    if (!string.IsNullOrEmpty(txtPrevisaoEntrega.Text))
-                    {
-                        reserva.PrevisaoEntrega = DateTime.Parse(txtPrevisaoEntrega.Text);
-                    }
-                    else
-                    {
-                        reserva.PrevisaoEntrega = null;
-                    }
-
-                    _databaseService.AtualizarReserva(reserva);
-                    
-                    // Buscar dados do cliente antes de enviar email
-                    if (reserva.ClienteId.HasValue)
-                    {
-                        var cliente = _databaseService.ObterClientePorId(reserva.ClienteId.Value);
-                        if (cliente != null)
-                        {
-                            reserva.Nome = cliente.Nome;
-                            reserva.Email = cliente.Email;
-                            reserva.Telefone = cliente.Telefone;
-                        }
-                    }
-                    
-                    // Buscar status atualizado
-                    if (reserva.StatusId.HasValue)
-                    {
-                        var statusReserva = _databaseService.ObterStatusReservaPorId(reserva.StatusId.Value);
-                        if (statusReserva != null)
-                        {
-                            reserva.Status = statusReserva.Nome;
-                        }
-                    }
-                    
-                    // Enviar email de forma assíncrona
-                    System.Threading.Tasks.Task.Run(() =>
-                    {
-                        try
-                        {
-                            var emailService = new EmailService();
-                            emailService.EnviarEmailReservaAlterada(reserva);
-                        }
-                        catch
-                        {
-                            // Erro ao enviar email - não bloquear
-                        }
-                    });
-
-                    CarregarReservas();
-                    Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", 
-                        "var modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarReserva')); modal.hide();", true);
-                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
-                        $"alert('{EscapeJavaScript("Reserva atualizada com sucesso!")}');", true);
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Erro: Reserva não encontrada.")}');", true);
+                    return;
                 }
+                
+                // Obter StatusId do dropdown selecionado
+                int statusId = 0;
+                if (!string.IsNullOrEmpty(ddlStatus.SelectedValue) && int.TryParse(ddlStatus.SelectedValue, out statusId) && statusId > 0)
+                {
+                    reserva.StatusId = statusId;
+                }
+                else if (reserva.StatusId.HasValue)
+                {
+                    // Manter o StatusId atual se não foi selecionado um novo
+                    statusId = reserva.StatusId.Value;
+                }
+                else
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Erro: Status não selecionado.")}');", true);
+                    return;
+                }
+                
+                // Atualizar Status (nome) baseado no StatusId
+                if (reserva.StatusId.HasValue)
+                {
+                    var statusReserva = _databaseService.ObterStatusReservaPorId(reserva.StatusId.Value);
+                    if (statusReserva != null)
+                    {
+                        reserva.Status = statusReserva.Nome;
+                    }
+                }
+                
+                reserva.ConvertidoEmPedido = chkConvertidoEmPedido.Checked;
+                reserva.Cancelado = chkCancelado.Checked;
+                reserva.Observacoes = txtObservacoesReserva.Text ?? "";
+                
+                if (!string.IsNullOrEmpty(txtValorTotal.Text))
+                {
+                    if (decimal.TryParse(txtValorTotal.Text.Replace(",", "."), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal valorTotal))
+                    {
+                        reserva.ValorTotal = valorTotal;
+                    }
+                }
+                
+                if (!string.IsNullOrEmpty(txtPrevisaoEntrega.Text))
+                {
+                    if (DateTime.TryParse(txtPrevisaoEntrega.Text, out DateTime previsaoEntrega))
+                    {
+                        reserva.PrevisaoEntrega = previsaoEntrega;
+                    }
+                }
+                else
+                {
+                    reserva.PrevisaoEntrega = null;
+                }
+
+                _databaseService.AtualizarReserva(reserva);
+                
+                // Buscar dados do cliente antes de enviar email
+                if (reserva.ClienteId.HasValue)
+                {
+                    var cliente = _databaseService.ObterClientePorId(reserva.ClienteId.Value);
+                    if (cliente != null)
+                    {
+                        reserva.Nome = cliente.Nome;
+                        reserva.Email = cliente.Email;
+                        reserva.Telefone = cliente.Telefone;
+                    }
+                }
+                
+                // Buscar status atualizado
+                if (reserva.StatusId.HasValue)
+                {
+                    var statusReserva = _databaseService.ObterStatusReservaPorId(reserva.StatusId.Value);
+                    if (statusReserva != null)
+                    {
+                        reserva.Status = statusReserva.Nome;
+                    }
+                }
+                
+                // Enviar email de forma assíncrona
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        var emailService = new EmailService();
+                        emailService.EnviarEmailReservaAlterada(reserva);
+                    }
+                    catch
+                    {
+                        // Erro ao enviar email - não bloquear
+                    }
+                });
+
+                CarregarReservas();
+                CarregarDropdownStatus(); // Recarregar dropdown para garantir que está atualizado
+                
+                // Fechar modal e mostrar mensagem de sucesso
+                string scriptFecharModal = @"
+                    setTimeout(function() {
+                        var modalElement = document.getElementById('modalEditarReserva');
+                        if (modalElement) {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var modal = bootstrap.Modal.getInstance(modalElement);
+                                if (modal) {
+                                    modal.hide();
+                                } else {
+                                    modalElement.classList.remove('show');
+                                    modalElement.style.display = 'none';
+                                    modalElement.setAttribute('aria-hidden', 'true');
+                                    document.body.classList.remove('modal-open');
+                                    var backdrop = document.querySelector('.modal-backdrop');
+                                    if (backdrop) backdrop.remove();
+                                }
+                            } else {
+                                modalElement.classList.remove('show');
+                                modalElement.style.display = 'none';
+                                modalElement.setAttribute('aria-hidden', 'true');
+                                document.body.classList.remove('modal-open');
+                                var backdrop = document.querySelector('.modal-backdrop');
+                                if (backdrop) backdrop.remove();
+                            }
+                        }
+                        alert('Reserva atualizada com sucesso!');
+                    }, 100);";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModalESucesso", scriptFecharModal, true);
             }
             catch (Exception ex)
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
                     string.Format("alert('Erro ao salvar reserva: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void CarregarLogs(int dias = 7)
+        {
+            try
+            {
+                var logs = LogService.ObterLogs(dias);
+                
+                // Agrupar por "Quem" e depois por "O que"
+                var logsAgrupados = logs
+                    .GroupBy(l => l.Quem ?? "Anônimo")
+                    .OrderBy(g => g.Key)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.GroupBy(l => l.OQue ?? "N/A")
+                            .OrderBy(g2 => g2.Key)
+                            .ToDictionary(g2 => g2.Key, g2 => g2.OrderByDescending(l => l.Timestamp).ToList())
+                    );
+
+                var html = new System.Text.StringBuilder();
+                html.AppendLine("<div class='log-tree'>");
+
+                foreach (var usuarioGroup in logsAgrupados)
+                {
+                    string usuario = usuarioGroup.Key;
+                    int totalAcoes = usuarioGroup.Value.Sum(g => g.Value.Count);
+                    
+                    html.AppendLine($@"
+                        <div class='log-user-group'>
+                            <div class='log-user-header' onclick='toggleLogGroup(this)'>
+                                <span><i class='fas fa-user'></i> {System.Web.HttpUtility.HtmlEncode(usuario)}</span>
+                                <span class='log-count'>{totalAcoes} ação(ões)</span>
+                            </div>
+                            <div class='log-user-content'>");
+
+                    foreach (var entidadeGroup in usuarioGroup.Value)
+                    {
+                        string entidade = entidadeGroup.Key;
+                        var entradas = entidadeGroup.Value;
+                        
+                        html.AppendLine($@"
+                            <div class='log-entity-group'>
+                                <div class='log-entity-header' onclick='toggleLogGroup(this)'>
+                                    <span><i class='fas fa-cube'></i> {System.Web.HttpUtility.HtmlEncode(entidade)}</span>
+                                    <span class='log-count'>{entradas.Count} registro(s)</span>
+                                </div>
+                                <div class='log-entity-content'>");
+
+                        foreach (var log in entradas)
+                        {
+                            string tipoClass = $"log-tipo-{log.Tipo}";
+                            string timestamp = log.Timestamp.ToString("dd/MM/yyyy HH:mm:ss");
+                            string onde = !string.IsNullOrEmpty(log.Onde) ? log.Onde : "N/A";
+                            
+                            html.AppendLine($@"
+                                <div class='log-entry'>
+                                    <span class='log-timestamp'>{timestamp}</span>
+                                    <span class='log-tipo {tipoClass}'>{log.Tipo}</span>
+                                    <span class='log-onde'>{System.Web.HttpUtility.HtmlEncode(onde)}</span>");
+
+                            if (!string.IsNullOrEmpty(log.Detalhes))
+                            {
+                                html.AppendLine($@"
+                                    <div class='log-detalhes'>
+                                        <strong>Detalhes:</strong> {System.Web.HttpUtility.HtmlEncode(log.Detalhes)}
+                                    </div>");
+                            }
+
+                            html.AppendLine("</div>");
+                        }
+
+                        html.AppendLine(@"
+                                </div>
+                            </div>");
+                    }
+
+                    html.AppendLine(@"
+                            </div>
+                        </div>");
+                }
+
+                html.AppendLine("</div>");
+
+                if (logs.Count == 0)
+                {
+                    html.Clear();
+                    html.AppendLine("<div class='alert alert-info'><i class='fas fa-info-circle'></i> Nenhum log encontrado para o período selecionado.</div>");
+                }
+
+                logsContainer.InnerHtml = html.ToString();
+            }
+            catch (Exception ex)
+            {
+                logsContainer.InnerHtml = $"<div class='alert alert-danger'>Erro ao carregar logs: {EscapeJavaScript(ex.Message)}</div>";
             }
         }
 
@@ -820,6 +1120,279 @@ namespace KingdomConfeitaria
             
             var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
             return serializer.Serialize(produtosIds);
+        }
+
+        private void CarregarStatusReserva()
+        {
+            try
+            {
+                var statusList = _databaseService.ObterTodosStatusReserva();
+                var tableBody = FindControl("statusReservaTableBody") as System.Web.UI.HtmlControls.HtmlGenericControl;
+                
+                if (tableBody == null) return;
+                
+                tableBody.InnerHtml = "";
+                
+                if (statusList.Count == 0)
+                {
+                    tableBody.InnerHtml = "<tr><td colspan='7' class='text-center'>Nenhum status cadastrado.</td></tr>";
+                    return;
+                }
+                
+                foreach (var status in statusList)
+                {
+                    string permiteAlteracao = status.PermiteAlteracao ? "<i class='fas fa-check text-success'></i> Sim" : "<i class='fas fa-times text-danger'></i> Não";
+                    string permiteExclusao = status.PermiteExclusao ? "<i class='fas fa-check text-success'></i> Sim" : "<i class='fas fa-times text-danger'></i> Não";
+                    bool podeExcluir = _databaseService.PodeExcluirStatusReserva(status.Id);
+                    
+                    tableBody.InnerHtml += $@"
+                        <tr>
+                            <td>{status.Id}</td>
+                            <td>{System.Web.HttpUtility.HtmlEncode(status.Nome)}</td>
+                            <td>{System.Web.HttpUtility.HtmlEncode(status.Descricao)}</td>
+                            <td>{permiteAlteracao}</td>
+                            <td>{permiteExclusao}</td>
+                            <td>{status.Ordem}</td>
+                            <td>
+                                <button type='button' class='btn btn-sm btn-primary' onclick='editarStatusReserva({status.Id})'>
+                                    <i class='fas fa-edit'></i> Editar
+                                </button>
+                                {(podeExcluir ? $@"<button type='button' class='btn btn-sm btn-danger' onclick='excluirStatusReserva({status.Id}, ""{EscapeJavaScript(status.Nome)}"")'>
+                                    <i class='fas fa-trash'></i> Excluir
+                                </button>" : "<span class='text-muted'><i class='fas fa-lock'></i> Em uso</span>")}
+                            </td>
+                        </tr>";
+                }
+            }
+            catch (Exception ex)
+            {
+                var tableBody = FindControl("statusReservaTableBody") as System.Web.UI.HtmlControls.HtmlGenericControl;
+                if (tableBody != null)
+                {
+                    tableBody.InnerHtml = $"<tr><td colspan='7' class='text-center text-danger'>Erro ao carregar status: {EscapeJavaScript(ex.Message)}</td></tr>";
+                }
+            }
+        }
+
+        protected void btnSalvarStatusReserva_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                int statusId = 0;
+                int.TryParse(hdnStatusReservaId.Value, out statusId);
+                
+                var status = new StatusReserva
+                {
+                    Id = statusId,
+                    Nome = txtStatusReservaNome.Text.Trim(),
+                    Descricao = txtStatusReservaDescricao.Text.Trim(),
+                    PermiteAlteracao = chkStatusReservaPermiteAlteracao.Checked,
+                    PermiteExclusao = chkStatusReservaPermiteExclusao.Checked,
+                    Ordem = int.TryParse(txtStatusReservaOrdem.Text, out int ordem) ? ordem : 0
+                };
+                
+                if (string.IsNullOrEmpty(status.Nome))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Nome é obrigatório.")}');", true);
+                    return;
+                }
+                
+                if (statusId == 0)
+                {
+                    // Criar novo
+                    _databaseService.CriarStatusReserva(status);
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
+                        $"alert('{EscapeJavaScript("Status adicionado com sucesso!")}');", true);
+                }
+                else
+                {
+                    // Atualizar existente
+                    _databaseService.AtualizarStatusReserva(status);
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
+                        $"alert('{EscapeJavaScript("Status atualizado com sucesso!")}');", true);
+                }
+                
+                // Limpar campos
+                hdnStatusReservaId.Value = "0";
+                txtStatusReservaNome.Text = "";
+                txtStatusReservaDescricao.Text = "";
+                txtStatusReservaOrdem.Text = "0";
+                chkStatusReservaPermiteAlteracao.Checked = true;
+                chkStatusReservaPermiteExclusao.Checked = true;
+                
+                CarregarStatusReserva();
+                string scriptFecharModalStatus = @"
+                    setTimeout(function() {
+                        var modalElement = document.getElementById('modalNovoStatusReserva');
+                        if (modalElement) {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var modal = bootstrap.Modal.getInstance(modalElement);
+                                if (modal) {
+                                    modal.hide();
+                                } else {
+                                    modalElement.classList.remove('show');
+                                    modalElement.style.display = 'none';
+                                    modalElement.setAttribute('aria-hidden', 'true');
+                                    document.body.classList.remove('modal-open');
+                                    var backdrop = document.querySelector('.modal-backdrop');
+                                    if (backdrop) backdrop.remove();
+                                }
+                            } else {
+                                modalElement.classList.remove('show');
+                                modalElement.style.display = 'none';
+                                modalElement.setAttribute('aria-hidden', 'true');
+                                document.body.classList.remove('modal-open');
+                                var backdrop = document.querySelector('.modal-backdrop');
+                                if (backdrop) backdrop.remove();
+                            }
+                        }
+                    }, 100);";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", scriptFecharModalStatus, true);
+            }
+            catch (Exception ex)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao salvar status: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void EditarStatusReserva(int statusId)
+        {
+            try
+            {
+                var status = _databaseService.ObterStatusReservaPorId(statusId);
+                if (status == null)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Status não encontrado.")}');", true);
+                    return;
+                }
+                
+                hdnStatusReservaId.Value = status.Id.ToString();
+                txtStatusReservaNome.Text = status.Nome;
+                txtStatusReservaDescricao.Text = status.Descricao;
+                txtStatusReservaOrdem.Text = status.Ordem.ToString();
+                chkStatusReservaPermiteAlteracao.Checked = status.PermiteAlteracao;
+                chkStatusReservaPermiteExclusao.Checked = status.PermiteExclusao;
+                
+                string scriptAbrirModalStatus = @"
+                    setTimeout(function() {
+                        var modalElement = document.getElementById('modalNovoStatusReserva');
+                        var titleElement = document.getElementById('modalStatusReservaTitle');
+                        if (titleElement) {
+                            titleElement.textContent = 'Editar Status de Reserva';
+                        }
+                        if (modalElement) {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var modal = new bootstrap.Modal(modalElement);
+                                modal.show();
+                            } else {
+                                modalElement.classList.add('show');
+                                modalElement.style.display = 'block';
+                                modalElement.setAttribute('aria-hidden', 'false');
+                                document.body.classList.add('modal-open');
+                                var backdrop = document.createElement('div');
+                                backdrop.className = 'modal-backdrop fade show';
+                                document.body.appendChild(backdrop);
+                            }
+                        }
+                    }, 100);";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "AbrirModal", scriptAbrirModalStatus, true);
+            }
+            catch (Exception ex)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao carregar status: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void ExcluirStatusReserva(int statusId)
+        {
+            try
+            {
+                _databaseService.ExcluirStatusReserva(statusId);
+                CarregarStatusReserva();
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
+                    $"alert('{EscapeJavaScript("Status excluído com sucesso!")}');", true);
+            }
+            catch (Exception ex)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao excluir status: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void ExcluirReserva(int reservaId)
+        {
+            try
+            {
+                // Buscar reserva antes de excluir para enviar email
+                var reserva = _databaseService.ObterReservaPorId(reservaId);
+                
+                if (reserva == null)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Reserva não encontrada.")}');", true);
+                    return;
+                }
+                
+                // Verificar se a reserva está cancelada (apenas administradores podem excluir reservas canceladas)
+                if (!reserva.Cancelado)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Apenas reservas canceladas podem ser excluídas.")}');", true);
+                    return;
+                }
+                
+                // Buscar dados do cliente antes de excluir
+                if (reserva.ClienteId.HasValue)
+                {
+                    var cliente = _databaseService.ObterClientePorId(reserva.ClienteId.Value);
+                    if (cliente != null)
+                    {
+                        reserva.Nome = cliente.Nome;
+                        reserva.Email = cliente.Email;
+                        reserva.Telefone = cliente.Telefone;
+                    }
+                }
+                
+                // Buscar status antes de excluir
+                if (reserva.StatusId.HasValue)
+                {
+                    var statusReserva = _databaseService.ObterStatusReservaPorId(reserva.StatusId.Value);
+                    if (statusReserva != null)
+                    {
+                        reserva.Status = statusReserva.Nome;
+                    }
+                }
+                
+                // Excluir reserva
+                _databaseService.ExcluirReserva(reservaId);
+                
+                // Enviar email de forma assíncrona
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        var emailService = new EmailService();
+                        emailService.EnviarEmailReservaExcluida(reserva);
+                    }
+                    catch
+                    {
+                        // Erro ao enviar email - não bloquear
+                    }
+                });
+                
+                CarregarReservas();
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
+                    $"alert('{EscapeJavaScript("Reserva excluída com sucesso!")}');", true);
+            }
+            catch (Exception ex)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao excluir reserva: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
         }
 
     }

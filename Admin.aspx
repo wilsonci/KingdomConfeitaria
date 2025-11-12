@@ -96,6 +96,117 @@
         .status-pronto { background-color: #28a745; color: #fff; }
         .status-entregue { background-color: #6c757d; color: #fff; }
         .status-cancelado { background-color: #dc3545; color: #fff; }
+        
+        /* Estilos para visualização de logs em árvore */
+        .log-tree {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .log-user-group {
+            margin-bottom: 15px;
+        }
+        .log-user-header {
+            background-color: #1a4d2e;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .log-user-header:hover {
+            background-color: #2d5a3d;
+        }
+        .log-user-header i {
+            transition: transform 0.3s;
+        }
+        .log-user-header.collapsed i {
+            transform: rotate(-90deg);
+        }
+        .log-user-content {
+            margin-left: 20px;
+            border-left: 2px solid #1a4d2e;
+            padding-left: 15px;
+        }
+        .log-entity-group {
+            margin-bottom: 10px;
+        }
+        .log-entity-header {
+            background-color: #6c757d;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .log-entity-header:hover {
+            background-color: #5a6268;
+        }
+        .log-entity-header i {
+            transition: transform 0.3s;
+        }
+        .log-entity-header.collapsed i {
+            transform: rotate(-90deg);
+        }
+        .log-entity-content {
+            margin-left: 20px;
+            border-left: 2px solid #6c757d;
+            padding-left: 12px;
+        }
+        .log-entry {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px 10px;
+            margin-bottom: 5px;
+            font-size: 0.85em;
+        }
+        .log-entry:hover {
+            background-color: #e9ecef;
+        }
+        .log-timestamp {
+            color: #6c757d;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        .log-tipo {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        .log-tipo-INSERT { background-color: #28a745; color: white; }
+        .log-tipo-UPDATE { background-color: #ffc107; color: #000; }
+        .log-tipo-DELETE { background-color: #dc3545; color: white; }
+        .log-tipo-CANCEL { background-color: #fd7e14; color: white; }
+        .log-tipo-LOGIN { background-color: #17a2b8; color: white; }
+        .log-tipo-LOGOUT { background-color: #6c757d; color: white; }
+        .log-onde {
+            color: #007bff;
+            font-style: italic;
+            margin-left: 8px;
+        }
+        .log-detalhes {
+            color: #495057;
+            margin-top: 5px;
+            padding-left: 15px;
+            font-size: 0.9em;
+        }
+        .log-count {
+            background-color: rgba(255, 255, 255, 0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+        }
     </style>
 </head>
 <body>
@@ -103,13 +214,13 @@
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-actions">
-                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
                     <span id="clienteNome" runat="server" style="color: white; margin-right: 15px;"></span>
-                    <a href="#" id="linkLogin" runat="server" style="display: none;" onclick="abrirModalLogin(); return false;">Entrar</a>
-                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;">Minhas Reservas</a>
-                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;">Meus Dados</a>
-                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;">Painel Gestor</a>
-                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;">Sair</a>
+                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
+                    <a href="#" id="linkLogin" runat="server" style="display: none;" onclick="abrirModalLogin(); return false;"><i class="fas fa-sign-in-alt"></i> Entrar</a>
+                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;"><i class="fas fa-clipboard-list"></i> Minhas Reservas</a>
+                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;"><i class="fas fa-user"></i> Meus Dados</a>
+                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;"><i class="fas fa-cog"></i> Painel Gestor</a>
+                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
                 </div>
                 <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
             </div>
@@ -132,6 +243,16 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="reservas-tab" data-bs-toggle="tab" data-bs-target="#reservas" type="button" role="tab">
                             <i class="fas fa-clipboard-list"></i> Reservas
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tabelas-tab" data-bs-toggle="tab" data-bs-target="#tabelas" type="button" role="tab">
+                            <i class="fas fa-tag"></i> Status
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">
+                            <i class="fas fa-file-alt"></i> Logs
                         </button>
                     </li>
                 </ul>
@@ -164,6 +285,70 @@
                             <!-- Reservas serão carregadas aqui -->
                         </div>
                     </div>
+
+                    <!-- Aba Status -->
+                    <div class="tab-pane fade" id="tabelas" role="tabpanel">
+                        <ul class="nav nav-pills mb-3" id="tabelasTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="statusreserva-tab" data-bs-toggle="pill" data-bs-target="#statusreserva" type="button" role="tab">
+                                    <i class="fas fa-tag"></i> Status de Reserva
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="tabelasTabContent">
+                            <div class="tab-pane fade show active" id="statusreserva" role="tabpanel">
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNovoStatusReserva">
+                                        <i class="fas fa-plus"></i> Novo Status
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Nome</th>
+                                                <th>Descrição</th>
+                                                <th>Permite Alteração</th>
+                                                <th>Permite Exclusão</th>
+                                                <th>Ordem</th>
+                                                <th>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="statusReservaTableBody" runat="server">
+                                            <!-- Status serão carregados aqui -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aba Logs -->
+                    <div class="tab-pane fade" id="logs" role="tabpanel">
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="diasLogs" class="form-label">Período (dias):</label>
+                                    <select class="form-select" id="diasLogs" onchange="carregarLogs()">
+                                        <option value="1">Último dia</option>
+                                        <option value="3">Últimos 3 dias</option>
+                                        <option value="7" selected>Últimos 7 dias</option>
+                                        <option value="15">Últimos 15 dias</option>
+                                        <option value="30">Últimos 30 dias</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button type="button" class="btn btn-primary" onclick="carregarLogs()">
+                                        <i class="fas fa-sync-alt"></i> Atualizar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="logsContainer" runat="server">
+                            <!-- Logs serão carregados aqui -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -180,7 +365,7 @@
                         <asp:HiddenField ID="hdnProdutoId" runat="server" />
                         <div class="mb-3">
                             <label class="form-label">Nome *</label>
-                            <asp:TextBox ID="txtNomeProduto" runat="server" CssClass="form-control" required></asp:TextBox>
+                            <asp:TextBox ID="txtNomeProduto" runat="server" CssClass="form-control"></asp:TextBox>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Descrição</label>
@@ -188,12 +373,12 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Preço (R$) *</label>
-                            <asp:TextBox ID="txtPreco" runat="server" CssClass="form-control" TextMode="Number" step="0.01" required></asp:TextBox>
+                            <asp:TextBox ID="txtPreco" runat="server" CssClass="form-control" TextMode="Number" step="0.01"></asp:TextBox>
                             <small class="text-muted">O tamanho (Pequeno/Grande) deve ser incluído no nome do produto</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">URL da Imagem *</label>
-                            <asp:TextBox ID="txtImagemUrl" runat="server" CssClass="form-control" required></asp:TextBox>
+                            <asp:TextBox ID="txtImagemUrl" runat="server" CssClass="form-control"></asp:TextBox>
                             <small class="text-muted">Cole aqui a URL da imagem (pode ser do Google Drive, Imgur, etc)</small>
                         </div>
                         <div class="mb-3">
@@ -348,14 +533,6 @@
                                 <div class="mb-3">
                                     <label class="form-label">Status *</label>
                                     <asp:DropDownList ID="ddlStatus" runat="server" CssClass="form-select">
-                                        <asp:ListItem Value="Aberta" Text="Aberta"></asp:ListItem>
-                                        <asp:ListItem Value="Em Produção" Text="Em Produção"></asp:ListItem>
-                                        <asp:ListItem Value="Produção Pronta" Text="Produção Pronta"></asp:ListItem>
-                                        <asp:ListItem Value="Preparando Entrega" Text="Preparando Entrega"></asp:ListItem>
-                                        <asp:ListItem Value="Saiu para Entrega" Text="Saiu para Entrega"></asp:ListItem>
-                                        <asp:ListItem Value="Já Entregue" Text="Já Entregue"></asp:ListItem>
-                                        <asp:ListItem Value="Entregue" Text="Entregue"></asp:ListItem>
-                                        <asp:ListItem Value="Cancelado" Text="Cancelado"></asp:ListItem>
                                     </asp:DropDownList>
                                 </div>
                             </div>
@@ -399,7 +576,55 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <asp:Button ID="btnSalvarReserva" runat="server" Text="Salvar" CssClass="btn btn-primary" OnClick="btnSalvarReserva_Click" />
+                        <asp:Button ID="btnSalvarReserva" runat="server" Text="Salvar" CssClass="btn btn-primary" OnClick="btnSalvarReserva_Click" OnClientClick="return validarESalvarReserva();" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Novo/Editar StatusReserva -->
+        <div class="modal fade" id="modalNovoStatusReserva" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalStatusReservaTitle">Novo Status de Reserva</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <asp:HiddenField ID="hdnStatusReservaId" runat="server" Value="0" />
+                        <div class="mb-3">
+                            <label class="form-label">Nome *</label>
+                            <asp:TextBox ID="txtStatusReservaNome" runat="server" CssClass="form-control" MaxLength="100"></asp:TextBox>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descrição *</label>
+                            <asp:TextBox ID="txtStatusReservaDescricao" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="3" MaxLength="500"></asp:TextBox>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ordem</label>
+                            <asp:TextBox ID="txtStatusReservaOrdem" runat="server" CssClass="form-control" TextMode="Number" value="0"></asp:TextBox>
+                            <small class="text-muted">Ordem de exibição (menor número aparece primeiro)</small>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <asp:CheckBox ID="chkStatusReservaPermiteAlteracao" runat="server" CssClass="form-check-input" Checked="true" />
+                                <label class="form-check-label" for="<%= chkStatusReservaPermiteAlteracao.ClientID %>">
+                                    Permite Alteração
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <asp:CheckBox ID="chkStatusReservaPermiteExclusao" runat="server" CssClass="form-check-input" Checked="true" />
+                                <label class="form-check-label" for="<%= chkStatusReservaPermiteExclusao.ClientID %>">
+                                    Permite Exclusão
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <asp:Button ID="btnSalvarStatusReserva" runat="server" Text="Salvar" CssClass="btn btn-primary" OnClick="btnSalvarStatusReserva_Click" />
                     </div>
                 </div>
             </div>
@@ -447,10 +672,45 @@
     <!-- Scripts específicos da página Admin -->
     <script src="Scripts/admin.js"></script>
     <script type="text/javascript">
+        // Função para expandir/colapsar grupos de log
+        function toggleLogGroup(element) {
+            var content = element.nextElementSibling;
+            if (content) {
+                if (content.style.display === 'none') {
+                    content.style.display = 'block';
+                    element.classList.remove('collapsed');
+                } else {
+                    content.style.display = 'none';
+                    element.classList.add('collapsed');
+                }
+            }
+        }
+
+        // Função para carregar logs com período selecionado
+        function carregarLogs() {
+            var dias = document.getElementById('diasLogs').value;
+            // Fazer postback para recarregar os logs
+            __doPostBack('carregarLogs', dias);
+        }
+
         function toggleSacoPromocional(checkbox) {
             var div = document.getElementById('divSacoPromocional');
             if (div) {
                 div.style.display = checkbox.checked ? 'block' : 'none';
+                // Desabilitar validação quando div estiver oculta
+                var txtQuantidadeSaco = document.getElementById('<%= txtQuantidadeSaco.ClientID %>');
+                if (txtQuantidadeSaco) {
+                    if (!checkbox.checked) {
+                        txtQuantidadeSaco.removeAttribute('min');
+                        txtQuantidadeSaco.removeAttribute('max');
+                        txtQuantidadeSaco.setAttribute('formnovalidate', 'true');
+                        txtQuantidadeSaco.setAttribute('disabled', 'disabled');
+                    } else {
+                        txtQuantidadeSaco.removeAttribute('disabled');
+                        txtQuantidadeSaco.removeAttribute('formnovalidate');
+                        txtQuantidadeSaco.setAttribute('min', '1');
+                    }
+                }
             }
         }
         
@@ -458,8 +718,138 @@
             var div = document.getElementById('divNovoSacoPromocional');
             if (div) {
                 div.style.display = checkbox.checked ? 'block' : 'none';
+                // Desabilitar validação quando div estiver oculta
+                var txtNovaQuantidadeSaco = document.getElementById('<%= txtNovaQuantidadeSaco.ClientID %>');
+                if (txtNovaQuantidadeSaco) {
+                    if (!checkbox.checked) {
+                        txtNovaQuantidadeSaco.removeAttribute('min');
+                        txtNovaQuantidadeSaco.removeAttribute('max');
+                        txtNovaQuantidadeSaco.setAttribute('formnovalidate', 'true');
+                        txtNovaQuantidadeSaco.setAttribute('disabled', 'disabled');
+                    } else {
+                        txtNovaQuantidadeSaco.removeAttribute('disabled');
+                        txtNovaQuantidadeSaco.removeAttribute('formnovalidate');
+                    }
+                }
             }
         }
+
+        function editarStatusReserva(statusId) {
+            __doPostBack('editarStatusReserva', statusId);
+        }
+
+        function excluirStatusReserva(statusId, nome) {
+            if (confirm('Tem certeza que deseja excluir o status "' + nome + '"?\n\nEsta ação não pode ser desfeita.')) {
+                __doPostBack('excluirStatusReserva', statusId);
+            }
+        }
+
+        function excluirReserva(reservaId, nome) {
+            if (confirm('Tem certeza que deseja excluir a reserva de "' + nome + '"?\n\nEsta ação não pode ser desfeita e enviará um email ao cliente.')) {
+                __doPostBack('excluirReserva', reservaId);
+            }
+        }
+
+        function validarESalvarReserva() {
+            // Desabilitar validação de todos os campos em modais de produto (que podem estar ocultos)
+            var modais = ['modalEditarProduto', 'modalNovoProduto'];
+            modais.forEach(function(modalId) {
+                var modal = document.getElementById(modalId);
+                if (modal) {
+                    // Remover required de todos os campos
+                    var campos = modal.querySelectorAll('[required]');
+                    campos.forEach(function(campo) {
+                        campo.removeAttribute('required');
+                    });
+                    
+                    // Desabilitar validação de campos com min/max
+                    var camposComValidacao = modal.querySelectorAll('input[type="number"][min], input[type="number"][max]');
+                    camposComValidacao.forEach(function(campo) {
+                        campo.removeAttribute('min');
+                        campo.removeAttribute('max');
+                        campo.setAttribute('formnovalidate', 'true');
+                    });
+                }
+            });
+            
+            // Desabilitar validação de campos específicos que podem estar ocultos
+            var txtQuantidadeSaco = document.getElementById('<%= txtQuantidadeSaco.ClientID %>');
+            if (txtQuantidadeSaco) {
+                var divSaco = document.getElementById('divSacoPromocional');
+                if (divSaco) {
+                    var isDivVisible = divSaco.style.display !== 'none' && divSaco.offsetParent !== null;
+                    if (!isDivVisible) {
+                        txtQuantidadeSaco.removeAttribute('min');
+                        txtQuantidadeSaco.removeAttribute('max');
+                        txtQuantidadeSaco.setAttribute('formnovalidate', 'true');
+                        txtQuantidadeSaco.setAttribute('disabled', 'disabled');
+                    }
+                } else {
+                    // Se a div não existe, desabilitar validação
+                    txtQuantidadeSaco.removeAttribute('min');
+                    txtQuantidadeSaco.removeAttribute('max');
+                    txtQuantidadeSaco.setAttribute('formnovalidate', 'true');
+                }
+            }
+            
+            var txtNovaQuantidadeSaco = document.getElementById('<%= txtNovaQuantidadeSaco.ClientID %>');
+            if (txtNovaQuantidadeSaco) {
+                var divNovoSaco = document.getElementById('divNovoSacoPromocional');
+                if (divNovoSaco) {
+                    var isDivVisible = divNovoSaco.style.display !== 'none' && divNovoSaco.offsetParent !== null;
+                    if (!isDivVisible) {
+                        txtNovaQuantidadeSaco.removeAttribute('min');
+                        txtNovaQuantidadeSaco.removeAttribute('max');
+                        txtNovaQuantidadeSaco.setAttribute('formnovalidate', 'true');
+                        txtNovaQuantidadeSaco.setAttribute('disabled', 'disabled');
+                    }
+                } else {
+                    // Se a div não existe, desabilitar validação
+                    txtNovaQuantidadeSaco.removeAttribute('min');
+                    txtNovaQuantidadeSaco.removeAttribute('max');
+                    txtNovaQuantidadeSaco.setAttribute('formnovalidate', 'true');
+                }
+            }
+            
+            return true;
+        }
+
+        // Resetar modal quando fechar e desabilitar validação de campos ocultos
+        document.addEventListener('DOMContentLoaded', function() {
+            var modalStatusReserva = document.getElementById('modalNovoStatusReserva');
+            if (modalStatusReserva) {
+                modalStatusReserva.addEventListener('hidden.bs.modal', function() {
+                    document.getElementById('modalStatusReservaTitle').textContent = 'Novo Status de Reserva';
+                });
+            }
+            
+            // Desabilitar validação de campos ocultos quando modais de produto forem fechados
+            var modalEditarProduto = document.getElementById('modalEditarProduto');
+            if (modalEditarProduto) {
+                modalEditarProduto.addEventListener('hidden.bs.modal', function() {
+                    var txtQuantidadeSaco = document.getElementById('<%= txtQuantidadeSaco.ClientID %>');
+                    if (txtQuantidadeSaco) {
+                        txtQuantidadeSaco.removeAttribute('min');
+                        txtQuantidadeSaco.removeAttribute('max');
+                        txtQuantidadeSaco.setAttribute('formnovalidate', 'true');
+                        txtQuantidadeSaco.setAttribute('disabled', 'disabled');
+                    }
+                });
+            }
+            
+            var modalNovoProduto = document.getElementById('modalNovoProduto');
+            if (modalNovoProduto) {
+                modalNovoProduto.addEventListener('hidden.bs.modal', function() {
+                    var txtNovaQuantidadeSaco = document.getElementById('<%= txtNovaQuantidadeSaco.ClientID %>');
+                    if (txtNovaQuantidadeSaco) {
+                        txtNovaQuantidadeSaco.removeAttribute('min');
+                        txtNovaQuantidadeSaco.removeAttribute('max');
+                        txtNovaQuantidadeSaco.setAttribute('formnovalidate', 'true');
+                        txtNovaQuantidadeSaco.setAttribute('disabled', 'disabled');
+                    }
+                });
+            }
+        });
     </script>
     <script>
         // Scripts inline apenas para dados dinâmicos do servidor (ClientIDs)

@@ -568,6 +568,24 @@ namespace KingdomConfeitaria.Services
                             ALTER TABLE [dbo].[Clientes] ADD [IsAdmin] [bit] NOT NULL DEFAULT(0)
                         END";
                     checkTable.ExecuteNonQuery();
+                    
+                    // Garantir que a coluna computada para telefone sem formatação existe
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.computed_columns WHERE name = 'TelefoneSemFormatacao' AND object_id = OBJECT_ID(N'[dbo].[Clientes]'))
+                        BEGIN
+                            ALTER TABLE [dbo].[Clientes] ADD [TelefoneSemFormatacao] AS 
+                                LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefone, ''), '(', ''), ')', ''), '-', ''), ' ', ''), '.', ''), '/', ''))) PERSISTED
+                        END";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se já existe ou houver erro */ }
+                    
+                    // Garantir que o índice único de Telefone existe
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Clientes_Telefone' AND object_id = OBJECT_ID(N'[dbo].[Clientes]'))
+                        BEGIN
+                            CREATE UNIQUE INDEX [IX_Clientes_Telefone] ON [dbo].[Clientes]([TelefoneSemFormatacao]) 
+                            WHERE [TelefoneSemFormatacao] IS NOT NULL AND [TelefoneSemFormatacao] != ''
+                        END";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se já existe ou houver erro */ }
 
                     // Adicionar coluna TokenRecuperacaoSenha se não existir
                     checkTable.CommandText = @"
@@ -873,6 +891,39 @@ namespace KingdomConfeitaria.Services
             return produtos;
         }
 
+        public Produto ObterProdutoPorId(int id)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var command = new SqlCommand("SELECT Id, Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), ISNULL(Produtos, ''), ReservavelAte, VendivelAte FROM Produtos WHERE Id = @Id", connection);
+                command.Parameters.AddWithValue("@Id", id);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new Produto
+                        {
+                            Id = reader.GetInt32(0),
+                            Nome = reader.GetString(1),
+                            Descricao = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            Preco = reader.GetDecimal(3),
+                            ImagemUrl = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            Ativo = reader.GetBoolean(5),
+                            Ordem = reader.GetInt32(6),
+                            EhSacoPromocional = reader.IsDBNull(7) ? false : reader.GetBoolean(7),
+                            QuantidadeSaco = reader.IsDBNull(8) ? 0 : reader.GetInt32(8),
+                            Produtos = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            ReservavelAte = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            VendivelAte = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
+                        };
+                    }
+                }
+            }
+            return null;
+        }
+
         public void SalvarReserva(Reserva reserva)
         {
             using (var connection = new SqlConnection(_connectionString))
@@ -1041,6 +1092,37 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
+                
+                // Buscar dados antigos para comparação
+                var produtoAntigo = ObterProdutoPorId(produto.Id);
+                var valoresAntigos = new Dictionary<string, string>();
+                var valoresNovos = new Dictionary<string, string>();
+                
+                if (produtoAntigo != null)
+                {
+                    valoresAntigos["Nome"] = produtoAntigo.Nome ?? "null";
+                    valoresAntigos["Descricao"] = produtoAntigo.Descricao ?? "null";
+                    valoresAntigos["Preco"] = produtoAntigo.Preco.ToString("F2");
+                    valoresAntigos["ImagemUrl"] = produtoAntigo.ImagemUrl ?? "null";
+                    valoresAntigos["Ativo"] = produtoAntigo.Ativo.ToString();
+                    valoresAntigos["Ordem"] = produtoAntigo.Ordem.ToString();
+                    valoresAntigos["EhSacoPromocional"] = produtoAntigo.EhSacoPromocional.ToString();
+                    valoresAntigos["QuantidadeSaco"] = produtoAntigo.QuantidadeSaco.ToString();
+                    valoresAntigos["ReservavelAte"] = produtoAntigo.ReservavelAte?.ToString("dd/MM/yyyy") ?? "null";
+                    valoresAntigos["VendivelAte"] = produtoAntigo.VendivelAte?.ToString("dd/MM/yyyy") ?? "null";
+                }
+                
+                valoresNovos["Nome"] = produto.Nome ?? "null";
+                valoresNovos["Descricao"] = produto.Descricao ?? "null";
+                valoresNovos["Preco"] = produto.Preco.ToString("F2");
+                valoresNovos["ImagemUrl"] = produto.ImagemUrl ?? "null";
+                valoresNovos["Ativo"] = produto.Ativo.ToString();
+                valoresNovos["Ordem"] = produto.Ordem.ToString();
+                valoresNovos["EhSacoPromocional"] = produto.EhSacoPromocional.ToString();
+                valoresNovos["QuantidadeSaco"] = produto.QuantidadeSaco.ToString();
+                valoresNovos["ReservavelAte"] = produto.ReservavelAte?.ToString("dd/MM/yyyy") ?? "null";
+                valoresNovos["VendivelAte"] = produto.VendivelAte?.ToString("dd/MM/yyyy") ?? "null";
+                
                 var command = new SqlCommand(@"
                     UPDATE Produtos 
                     SET Nome = @Nome, Descricao = @Descricao, Preco = @Preco, 
@@ -1064,10 +1146,9 @@ namespace KingdomConfeitaria.Services
                 
                 command.ExecuteNonQuery();
                 
-                // Registrar log
+                // Registrar log com comparação
                 string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
-                string detalhes = $"ID: {produto.Id}, Nome: {produto.Nome}, Preco: R$ {produto.Preco:F2}, Ativo: {produto.Ativo}";
-                LogService.RegistrarAtualizacao(usuarioLog, "Produto", "DatabaseService.AtualizarProduto", detalhes);
+                LogService.RegistrarAtualizacaoComComparacao(usuarioLog, "Produto", "DatabaseService.AtualizarProduto", produto.Id.ToString(), valoresAntigos, valoresNovos);
             }
         }
 
@@ -1255,6 +1336,23 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 
+                // Buscar dados antigos para comparação
+                Reserva reservaAntiga = ObterReservaPorId(reserva.Id);
+                var valoresAntigos = new Dictionary<string, string>();
+                var valoresNovos = new Dictionary<string, string>();
+                
+                if (reservaAntiga != null)
+                {
+                    valoresAntigos["StatusId"] = reservaAntiga.StatusId?.ToString() ?? "null";
+                    valoresAntigos["Status"] = reservaAntiga.Status ?? "null";
+                    valoresAntigos["ValorTotal"] = reservaAntiga.ValorTotal.ToString("F2");
+                    valoresAntigos["DataRetirada"] = reservaAntiga.DataRetirada.ToString("dd/MM/yyyy");
+                    valoresAntigos["ConvertidoEmPedido"] = reservaAntiga.ConvertidoEmPedido.ToString();
+                    valoresAntigos["Cancelado"] = reservaAntiga.Cancelado.ToString();
+                    valoresAntigos["Observacoes"] = reservaAntiga.Observacoes ?? "null";
+                    valoresAntigos["PrevisaoEntrega"] = reservaAntiga.PrevisaoEntrega?.ToString("dd/MM/yyyy") ?? "null";
+                }
+                
                 // Se StatusId não estiver definido, obter pelo nome do Status
                 if (!reserva.StatusId.HasValue && !string.IsNullOrEmpty(reserva.Status))
                 {
@@ -1268,12 +1366,21 @@ namespace KingdomConfeitaria.Services
                 // Se ainda não tiver StatusId, manter o atual
                 if (!reserva.StatusId.HasValue)
                 {
-                    var reservaAtual = ObterReservaPorId(reserva.Id);
-                    if (reservaAtual != null)
+                    if (reservaAntiga != null)
                     {
-                        reserva.StatusId = reservaAtual.StatusId;
+                        reserva.StatusId = reservaAntiga.StatusId;
                     }
                 }
+                
+                // Preparar valores novos
+                valoresNovos["StatusId"] = reserva.StatusId?.ToString() ?? "null";
+                valoresNovos["Status"] = reserva.Status ?? "null";
+                valoresNovos["ValorTotal"] = reserva.ValorTotal.ToString("F2");
+                valoresNovos["DataRetirada"] = reserva.DataRetirada.ToString("dd/MM/yyyy");
+                valoresNovos["ConvertidoEmPedido"] = reserva.ConvertidoEmPedido.ToString();
+                valoresNovos["Cancelado"] = reserva.Cancelado.ToString();
+                valoresNovos["Observacoes"] = reserva.Observacoes ?? "null";
+                valoresNovos["PrevisaoEntrega"] = reserva.PrevisaoEntrega?.ToString("dd/MM/yyyy") ?? "null";
                 
                 var command = new SqlCommand(@"
                     UPDATE Reservas 
@@ -1294,11 +1401,18 @@ namespace KingdomConfeitaria.Services
                 
                 command.ExecuteNonQuery();
                 
-                // Registrar log
+                // Registrar log com comparação
                 string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
-                string detalhes = $"ID: {reserva.Id}, StatusId: {reserva.StatusId}, Status: {reserva.Status}, ValorTotal: R$ {reserva.ValorTotal:F2}";
-                LogService.RegistrarAtualizacao(usuarioLog, "Reserva", "DatabaseService.AtualizarReserva", detalhes);
+                LogService.RegistrarAtualizacaoComComparacao(usuarioLog, "Reserva", "DatabaseService.AtualizarReserva", reserva.Id.ToString(), valoresAntigos, valoresNovos);
             }
+        }
+
+        // Classe auxiliar para armazenar item com ID do banco
+        private class ItemComId
+        {
+            public int Id { get; set; }
+            public ItemPedido Item { get; set; }
+            public string Chave { get; set; } // Chave para comparação: ProdutoId_Tamanho_Produtos
         }
 
         public void AtualizarItensReserva(int reservaId, List<ItemPedido> novosItens)
@@ -1307,10 +1421,38 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 
-                // Deletar todos os itens antigos
-                var deleteCommand = new SqlCommand("DELETE FROM ReservaItens WHERE ReservaId = @ReservaId", connection);
-                deleteCommand.Parameters.AddWithValue("@ReservaId", reservaId);
-                deleteCommand.ExecuteNonQuery();
+                // Buscar itens antigos do banco com seus IDs
+                var itensAntigos = new List<ItemComId>();
+                var itensAntigosCommand = new SqlCommand(@"
+                    SELECT Id, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, ISNULL(Produtos, '')
+                    FROM ReservaItens
+                    WHERE ReservaId = @ReservaId", connection);
+                itensAntigosCommand.Parameters.AddWithValue("@ReservaId", reservaId);
+                
+                using (var reader = itensAntigosCommand.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var item = new ItemPedido
+                        {
+                            ProdutoId = reader.GetInt32(1),
+                            NomeProduto = reader.GetString(2),
+                            Tamanho = reader.GetString(3),
+                            Quantidade = reader.GetInt32(4),
+                            PrecoUnitario = reader.GetDecimal(5),
+                            Subtotal = reader.GetDecimal(6),
+                            Produtos = reader.IsDBNull(7) ? "" : reader.GetString(7)
+                        };
+                        
+                        string chave = $"{item.ProdutoId}_{item.Tamanho}_{(item.Produtos ?? "")}";
+                        itensAntigos.Add(new ItemComId
+                        {
+                            Id = reader.GetInt32(0),
+                            Item = item,
+                            Chave = chave
+                        });
+                    }
+                }
                 
                 // Obter lista de produtos existentes
                 var produtosExistentes = new HashSet<int>();
@@ -1323,7 +1465,8 @@ namespace KingdomConfeitaria.Services
                     }
                 }
                 
-                // Inserir novos itens
+                // Criar dicionário de itens novos por chave
+                var novosItensPorChave = new Dictionary<string, ItemPedido>();
                 foreach (var item in novosItens)
                 {
                     // Validar se o produto existe
@@ -1332,20 +1475,114 @@ namespace KingdomConfeitaria.Services
                         continue; // Pular produtos que não existem mais
                     }
                     
+                    string chave = $"{item.ProdutoId}_{item.Tamanho}_{(item.Produtos ?? "")}";
+                    novosItensPorChave[chave] = item;
+                }
+                
+                // Processar itens: atualizar, inserir ou deletar
+                int itensAtualizados = 0;
+                int itensInseridos = 0;
+                int itensDeletados = 0;
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                
+                // Processar itens antigos: atualizar ou deletar
+                foreach (var itemAntigo in itensAntigos)
+                {
+                    if (novosItensPorChave.TryGetValue(itemAntigo.Chave, out var itemNovo))
+                    {
+                        // Item existe nos dois - verificar se precisa atualizar
+                        bool precisaAtualizar = 
+                            itemAntigo.Item.Quantidade != itemNovo.Quantidade ||
+                            itemAntigo.Item.PrecoUnitario != itemNovo.PrecoUnitario ||
+                            itemAntigo.Item.Subtotal != itemNovo.Subtotal ||
+                            itemAntigo.Item.NomeProduto != itemNovo.NomeProduto ||
+                            (itemAntigo.Item.Produtos ?? "") != (itemNovo.Produtos ?? "");
+                        
+                        if (precisaAtualizar)
+                        {
+                            var updateCommand = new SqlCommand(@"
+                                UPDATE ReservaItens 
+                                SET NomeProduto = @NomeProduto, Quantidade = @Quantidade, 
+                                    PrecoUnitario = @PrecoUnitario, Subtotal = @Subtotal, Produtos = @Produtos
+                                WHERE Id = @Id", connection);
+                            
+                            updateCommand.Parameters.AddWithValue("@Id", itemAntigo.Id);
+                            updateCommand.Parameters.AddWithValue("@NomeProduto", itemNovo.NomeProduto ?? "");
+                            updateCommand.Parameters.AddWithValue("@Quantidade", itemNovo.Quantidade);
+                            updateCommand.Parameters.AddWithValue("@PrecoUnitario", itemNovo.PrecoUnitario);
+                            updateCommand.Parameters.AddWithValue("@Subtotal", itemNovo.Subtotal);
+                            updateCommand.Parameters.AddWithValue("@Produtos", itemNovo.Produtos ?? (object)DBNull.Value);
+                            
+                            updateCommand.ExecuteNonQuery();
+                            itensAtualizados++;
+                            
+                            // Registrar log de atualização
+                            var valoresAntigos = new Dictionary<string, string>
+                            {
+                                ["Quantidade"] = itemAntigo.Item.Quantidade.ToString(),
+                                ["PrecoUnitario"] = itemAntigo.Item.PrecoUnitario.ToString("F2"),
+                                ["Subtotal"] = itemAntigo.Item.Subtotal.ToString("F2"),
+                                ["NomeProduto"] = itemAntigo.Item.NomeProduto ?? "",
+                                ["Produtos"] = itemAntigo.Item.Produtos ?? ""
+                            };
+                            var valoresNovos = new Dictionary<string, string>
+                            {
+                                ["Quantidade"] = itemNovo.Quantidade.ToString(),
+                                ["PrecoUnitario"] = itemNovo.PrecoUnitario.ToString("F2"),
+                                ["Subtotal"] = itemNovo.Subtotal.ToString("F2"),
+                                ["NomeProduto"] = itemNovo.NomeProduto ?? "",
+                                ["Produtos"] = itemNovo.Produtos ?? ""
+                            };
+                            LogService.RegistrarAtualizacaoComComparacao(usuarioLog, "ReservaItens", 
+                                "DatabaseService.AtualizarItensReserva", itemAntigo.Id.ToString(), valoresAntigos, valoresNovos);
+                        }
+                        
+                        // Remover da lista de novos para não inserir novamente
+                        novosItensPorChave.Remove(itemAntigo.Chave);
+                    }
+                    else
+                    {
+                        // Item não existe mais nos novos - deletar
+                        var deleteCommand = new SqlCommand("DELETE FROM ReservaItens WHERE Id = @Id", connection);
+                        deleteCommand.Parameters.AddWithValue("@Id", itemAntigo.Id);
+                        deleteCommand.ExecuteNonQuery();
+                        itensDeletados++;
+                        
+                        // Registrar log de exclusão
+                        LogService.RegistrarExclusao(usuarioLog, "ReservaItens", "DatabaseService.AtualizarItensReserva", 
+                            $"Id: {itemAntigo.Id}, ReservaId: {reservaId}, ProdutoId: {itemAntigo.Item.ProdutoId}, Tamanho: {itemAntigo.Item.Tamanho}");
+                    }
+                }
+                
+                // Inserir itens novos que não existiam antes
+                foreach (var itemNovo in novosItensPorChave.Values)
+                {
                     var insertCommand = new SqlCommand(@"
                         INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, Produtos)
                         VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal, @Produtos)", connection);
                     
                     insertCommand.Parameters.AddWithValue("@ReservaId", reservaId);
-                    insertCommand.Parameters.AddWithValue("@ProdutoId", item.ProdutoId);
-                    insertCommand.Parameters.AddWithValue("@NomeProduto", item.NomeProduto ?? "");
-                    insertCommand.Parameters.AddWithValue("@Tamanho", item.Tamanho ?? "");
-                    insertCommand.Parameters.AddWithValue("@Quantidade", item.Quantidade);
-                    insertCommand.Parameters.AddWithValue("@PrecoUnitario", item.PrecoUnitario);
-                    insertCommand.Parameters.AddWithValue("@Subtotal", item.Subtotal);
-                    insertCommand.Parameters.AddWithValue("@Produtos", item.Produtos ?? (object)DBNull.Value);
+                    insertCommand.Parameters.AddWithValue("@ProdutoId", itemNovo.ProdutoId);
+                    insertCommand.Parameters.AddWithValue("@NomeProduto", itemNovo.NomeProduto ?? "");
+                    insertCommand.Parameters.AddWithValue("@Tamanho", itemNovo.Tamanho ?? "");
+                    insertCommand.Parameters.AddWithValue("@Quantidade", itemNovo.Quantidade);
+                    insertCommand.Parameters.AddWithValue("@PrecoUnitario", itemNovo.PrecoUnitario);
+                    insertCommand.Parameters.AddWithValue("@Subtotal", itemNovo.Subtotal);
+                    insertCommand.Parameters.AddWithValue("@Produtos", itemNovo.Produtos ?? (object)DBNull.Value);
                     
                     insertCommand.ExecuteNonQuery();
+                    itensInseridos++;
+                    
+                    // Registrar log de inserção
+                    LogService.RegistrarInsercao(usuarioLog, "ReservaItens", "DatabaseService.AtualizarItensReserva", 
+                        $"ReservaId: {reservaId}, ProdutoId: {itemNovo.ProdutoId}, Tamanho: {itemNovo.Tamanho}, Quantidade: {itemNovo.Quantidade}");
+                }
+                
+                // Registrar log resumido se houver alterações
+                if (itensAtualizados > 0 || itensInseridos > 0 || itensDeletados > 0)
+                {
+                    string resumo = $"ReservaId: {reservaId} - Atualizados: {itensAtualizados}, Inseridos: {itensInseridos}, Deletados: {itensDeletados}";
+                    // Log já foi registrado individualmente acima, então não precisa registrar novamente
                 }
             }
         }
@@ -1782,65 +2019,160 @@ namespace KingdomConfeitaria.Services
                 
                 if (clienteExistente != null)
                 {
+                    // Verificar se está tentando atualizar com email/telefone que já pertence a outro cliente
+                    string emailFormatado = FormatarEmail(cliente.Email);
+                    string telefoneFormatado = FormatarTelefone(cliente.Telefone);
+                    
+                    // Verificar se o email está sendo usado por outro cliente
+                    if (!string.IsNullOrEmpty(emailFormatado))
+                    {
+                        var clienteComEmail = ObterClientePorEmail(emailFormatado);
+                        if (clienteComEmail != null && clienteComEmail.Id != clienteExistente.Id)
+                        {
+                            throw new Exception($"O email {emailFormatado} já está cadastrado para outro usuário.");
+                        }
+                    }
+                    
+                    // Verificar se o telefone está sendo usado por outro cliente
+                    if (!string.IsNullOrEmpty(telefoneFormatado))
+                    {
+                        var clienteComTelefone = ObterClientePorTelefone(telefoneFormatado);
+                        if (clienteComTelefone != null && clienteComTelefone.Id != clienteExistente.Id)
+                        {
+                            throw new Exception($"O telefone {telefoneFormatado} já está cadastrado para outro usuário.");
+                        }
+                    }
+                    
                     // Se o cliente existente tem um dos emails de administrador, garantir que IsAdmin seja true
                     bool clienteExistenteEhAdmin = VerificarSeEhAdministrador(clienteExistente.Email);
                     bool isAdminFinal = ehAdministrador || clienteExistenteEhAdmin;
                     
-                    // Atualizar cliente existente
-                    var command = new SqlCommand(@"
-                        UPDATE Clientes 
-                        SET Nome = @Nome, Email = @Email, Senha = @Senha, Telefone = @Telefone, TemWhatsApp = @TemWhatsApp, 
-                            IsAdmin = @IsAdmin, UltimoAcesso = GETDATE()
-                        WHERE Id = @Id", connection);
-                    
-                    command.Parameters.AddWithValue("@Id", clienteExistente.Id);
-                    command.Parameters.AddWithValue("@Nome", cliente.Nome);
-                    command.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(cliente.Email) ? (object)DBNull.Value : cliente.Email);
-                    command.Parameters.AddWithValue("@Senha", string.IsNullOrEmpty(cliente.Senha) ? (object)DBNull.Value : cliente.Senha);
-                    command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(cliente.Telefone) ? (object)DBNull.Value : cliente.Telefone);
-                    command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
-                    command.Parameters.AddWithValue("@IsAdmin", isAdminFinal);
-                    
-                    command.ExecuteNonQuery();
-                    return clienteExistente.Id;
+                    try
+                    {
+                        // Atualizar cliente existente
+                        var command = new SqlCommand(@"
+                            UPDATE Clientes 
+                            SET Nome = @Nome, Email = @Email, Senha = @Senha, Telefone = @Telefone, TemWhatsApp = @TemWhatsApp, 
+                                IsAdmin = @IsAdmin, UltimoAcesso = GETDATE()
+                            WHERE Id = @Id", connection);
+                        
+                        command.Parameters.AddWithValue("@Id", clienteExistente.Id);
+                        command.Parameters.AddWithValue("@Nome", cliente.Nome);
+                        command.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(emailFormatado) ? (object)DBNull.Value : emailFormatado);
+                        command.Parameters.AddWithValue("@Senha", string.IsNullOrEmpty(cliente.Senha) ? (object)DBNull.Value : cliente.Senha);
+                        command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(telefoneFormatado) ? (object)DBNull.Value : telefoneFormatado);
+                        command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
+                        command.Parameters.AddWithValue("@IsAdmin", isAdminFinal);
+                        
+                        command.ExecuteNonQuery();
+                        return clienteExistente.Id;
+                    }
+                    catch (System.Data.SqlClient.SqlException sqlEx)
+                    {
+                        // Capturar violação de constraint única
+                        if (sqlEx.Number == 2601 || sqlEx.Number == 2627) // Violação de constraint única
+                        {
+                            string mensagemErro = "Erro ao atualizar: ";
+                            if (sqlEx.Message.Contains("IX_Clientes_Email") || sqlEx.Message.Contains("Email"))
+                            {
+                                mensagemErro += $"O email {emailFormatado} já está cadastrado para outro usuário.";
+                            }
+                            else if (sqlEx.Message.Contains("IX_Clientes_Telefone") || sqlEx.Message.Contains("Telefone"))
+                            {
+                                mensagemErro += $"O telefone {telefoneFormatado} já está cadastrado para outro usuário.";
+                            }
+                            else
+                            {
+                                mensagemErro += "Dados duplicados. Verifique email e telefone.";
+                            }
+                            throw new Exception(mensagemErro, sqlEx);
+                        }
+                        throw; // Re-lançar outras exceções SQL
+                    }
                 }
                 else
                 {
+                    // ANTES de criar, verificar novamente se não há duplicatas (race condition)
+                    // Verificar email duplicado
+                    if (!string.IsNullOrEmpty(cliente.Email))
+                    {
+                        var clienteComEmail = ObterClientePorEmail(cliente.Email);
+                        if (clienteComEmail != null)
+                        {
+                            throw new Exception($"Já existe um usuário cadastrado com o email {cliente.Email}. Por favor, faça login.");
+                        }
+                    }
+                    
+                    // Verificar telefone duplicado
+                    if (!string.IsNullOrEmpty(cliente.Telefone))
+                    {
+                        var clienteComTelefone = ObterClientePorTelefone(cliente.Telefone);
+                        if (clienteComTelefone != null)
+                        {
+                            throw new Exception($"Já existe um usuário cadastrado com o telefone {cliente.Telefone}. Por favor, faça login.");
+                        }
+                    }
+                    
                     // Criar novo cliente
                     if (string.IsNullOrEmpty(cliente.TokenConfirmacao))
                     {
                         cliente.TokenConfirmacao = Guid.NewGuid().ToString("N");
                     }
                     
-                    var command = new SqlCommand(@"
-                        INSERT INTO Clientes (Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro)
-                        VALUES (@Nome, @Email, @Senha, @Telefone, @TemWhatsApp, @Provider, @ProviderId, @TokenConfirmacao, @EmailConfirmado, @WhatsAppConfirmado, @IsAdmin, GETDATE());
-                        SELECT CAST(SCOPE_IDENTITY() as int);", connection);
-                    
                     // Garantir que email e telefone estejam formatados
                     string emailFormatado = FormatarEmail(cliente.Email);
                     string telefoneFormatado = FormatarTelefone(cliente.Telefone);
                     
-                    command.Parameters.AddWithValue("@Nome", cliente.Nome);
-                    command.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(emailFormatado) ? (object)DBNull.Value : emailFormatado);
-                    command.Parameters.AddWithValue("@Senha", string.IsNullOrEmpty(cliente.Senha) ? (object)DBNull.Value : cliente.Senha);
-                    command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(telefoneFormatado) ? (object)DBNull.Value : telefoneFormatado);
-                    command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
-                    command.Parameters.AddWithValue("@Provider", string.IsNullOrEmpty(cliente.Provider) ? (object)DBNull.Value : cliente.Provider);
-                    command.Parameters.AddWithValue("@ProviderId", string.IsNullOrEmpty(cliente.ProviderId) ? (object)DBNull.Value : cliente.ProviderId);
-                    command.Parameters.AddWithValue("@TokenConfirmacao", cliente.TokenConfirmacao);
-                    command.Parameters.AddWithValue("@EmailConfirmado", cliente.EmailConfirmado);
-                    command.Parameters.AddWithValue("@WhatsAppConfirmado", cliente.WhatsAppConfirmado);
-                    command.Parameters.AddWithValue("@IsAdmin", cliente.IsAdmin);
-                    
-                    int novoClienteId = (int)command.ExecuteScalar();
-                    
-                    // Registrar log
-                    string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
-                    string detalhes = $"ID: {novoClienteId}, Nome: {cliente.Nome}, Email: {cliente.Email}, IsAdmin: {cliente.IsAdmin}";
-                    LogService.RegistrarInsercao(usuarioLog, "Cliente", "DatabaseService.CriarOuAtualizarCliente", detalhes);
-                    
-                    return novoClienteId;
+                    try
+                    {
+                        var command = new SqlCommand(@"
+                            INSERT INTO Clientes (Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro)
+                            VALUES (@Nome, @Email, @Senha, @Telefone, @TemWhatsApp, @Provider, @ProviderId, @TokenConfirmacao, @EmailConfirmado, @WhatsAppConfirmado, @IsAdmin, GETDATE());
+                            SELECT CAST(SCOPE_IDENTITY() as int);", connection);
+                        
+                        command.Parameters.AddWithValue("@Nome", cliente.Nome);
+                        command.Parameters.AddWithValue("@Email", string.IsNullOrEmpty(emailFormatado) ? (object)DBNull.Value : emailFormatado);
+                        command.Parameters.AddWithValue("@Senha", string.IsNullOrEmpty(cliente.Senha) ? (object)DBNull.Value : cliente.Senha);
+                        command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(telefoneFormatado) ? (object)DBNull.Value : telefoneFormatado);
+                        command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
+                        command.Parameters.AddWithValue("@Provider", string.IsNullOrEmpty(cliente.Provider) ? (object)DBNull.Value : cliente.Provider);
+                        command.Parameters.AddWithValue("@ProviderId", string.IsNullOrEmpty(cliente.ProviderId) ? (object)DBNull.Value : cliente.ProviderId);
+                        command.Parameters.AddWithValue("@TokenConfirmacao", cliente.TokenConfirmacao);
+                        command.Parameters.AddWithValue("@EmailConfirmado", cliente.EmailConfirmado);
+                        command.Parameters.AddWithValue("@WhatsAppConfirmado", cliente.WhatsAppConfirmado);
+                        command.Parameters.AddWithValue("@IsAdmin", cliente.IsAdmin);
+                        
+                        int novoClienteId = (int)command.ExecuteScalar();
+                        
+                        // Registrar log
+                        string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                        string detalhes = $"ID: {novoClienteId}, Nome: {cliente.Nome}, Email: {cliente.Email}, Telefone: {cliente.Telefone ?? "N/A"}, IsAdmin: {cliente.IsAdmin}";
+                        LogService.RegistrarInsercao(usuarioLog, "Cliente", "DatabaseService.CriarOuAtualizarCliente", detalhes);
+                        
+                        return novoClienteId;
+                    }
+                    catch (System.Data.SqlClient.SqlException sqlEx)
+                    {
+                        // Capturar violação de constraint única
+                        if (sqlEx.Number == 2601 || sqlEx.Number == 2627) // Violação de constraint única
+                        {
+                            string mensagemErro = "Erro ao cadastrar: ";
+                            if (sqlEx.Message.Contains("IX_Clientes_Email") || sqlEx.Message.Contains("Email"))
+                            {
+                                mensagemErro += $"Já existe um usuário cadastrado com o email {cliente.Email}. Por favor, faça login.";
+                            }
+                            else if (sqlEx.Message.Contains("IX_Clientes_Telefone") || sqlEx.Message.Contains("Telefone"))
+                            {
+                                mensagemErro += $"Já existe um usuário cadastrado com o telefone {cliente.Telefone}. Por favor, faça login.";
+                            }
+                            else
+                            {
+                                mensagemErro += "Dados duplicados. Verifique email e telefone.";
+                            }
+                            throw new Exception(mensagemErro, sqlEx);
+                        }
+                        throw; // Re-lançar outras exceções SQL
+                    }
                 }
             }
         }
@@ -2080,6 +2412,18 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 
+                // Buscar dados da reserva antes de cancelar para log
+                var reserva = ObterReservaPorId(reservaId);
+                string detalhesReserva = "";
+                if (reserva != null)
+                {
+                    detalhesReserva = $"ID: {reservaId}, ClienteId: {reserva.ClienteId}, ValorTotal: R$ {reserva.ValorTotal:F2}, Status anterior: {reserva.Status ?? "N/A"}";
+                }
+                else
+                {
+                    detalhesReserva = $"ID: {reservaId}";
+                }
+                
                 // Buscar o StatusId do status "Cancelado"
                 var statusCancelado = ObterStatusReservaPorNome("Cancelado");
                 if (statusCancelado == null)
@@ -2099,7 +2443,7 @@ namespace KingdomConfeitaria.Services
                 
                 // Registrar log
                 string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
-                LogService.RegistrarCancelamento(usuarioLog, "Reserva", "DatabaseService.CancelarReserva", $"ID: {reservaId}");
+                LogService.RegistrarCancelamento(usuarioLog, "Reserva", "DatabaseService.CancelarReserva", detalhesReserva);
             }
         }
 
@@ -2108,13 +2452,111 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
+                
+                // Buscar dados da reserva antes de excluir para log
+                var reserva = ObterReservaPorId(reservaId);
+                string detalhesReserva = "";
+                if (reserva != null)
+                {
+                    detalhesReserva = $"ID: {reservaId}, ClienteId: {reserva.ClienteId}, ValorTotal: R$ {reserva.ValorTotal:F2}, Status: {reserva.Status ?? "N/A"}, DataRetirada: {reserva.DataRetirada:dd/MM/yyyy}";
+                }
+                else
+                {
+                    detalhesReserva = $"ID: {reservaId}";
+                }
+                
                 var command = new SqlCommand("DELETE FROM Reservas WHERE Id = @Id", connection);
                 command.Parameters.AddWithValue("@Id", reservaId);
                 command.ExecuteNonQuery();
                 
                 // Registrar log
                 string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
-                LogService.RegistrarExclusao(usuarioLog, "Reserva", "DatabaseService.ExcluirReserva", $"ID: {reservaId}");
+                LogService.RegistrarExclusao(usuarioLog, "Reserva", "DatabaseService.ExcluirReserva", detalhesReserva);
+            }
+        }
+
+        public int CriarStatusReserva(StatusReserva status)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                
+                var valoresNovos = new Dictionary<string, string>
+                {
+                    ["Nome"] = status.Nome ?? "",
+                    ["Descricao"] = status.Descricao ?? "",
+                    ["PermiteAlteracao"] = status.PermiteAlteracao.ToString(),
+                    ["PermiteExclusao"] = status.PermiteExclusao.ToString(),
+                    ["Ordem"] = status.Ordem.ToString()
+                };
+                
+                var command = new SqlCommand(@"
+                    INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem)
+                    VALUES (@Nome, @Descricao, @PermiteAlteracao, @PermiteExclusao, @Ordem);
+                    SELECT CAST(SCOPE_IDENTITY() as int);", connection);
+                
+                command.Parameters.AddWithValue("@Nome", status.Nome);
+                command.Parameters.AddWithValue("@Descricao", status.Descricao ?? "");
+                command.Parameters.AddWithValue("@PermiteAlteracao", status.PermiteAlteracao);
+                command.Parameters.AddWithValue("@PermiteExclusao", status.PermiteExclusao);
+                command.Parameters.AddWithValue("@Ordem", status.Ordem);
+                
+                int novoId = (int)command.ExecuteScalar();
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                LogService.RegistrarInsercao(usuarioLog, "StatusReserva", "DatabaseService.CriarStatusReserva", 
+                    $"ID: {novoId}, Nome: {status.Nome}, Descricao: {status.Descricao}, PermiteAlteracao: {status.PermiteAlteracao}, PermiteExclusao: {status.PermiteExclusao}, Ordem: {status.Ordem}");
+                
+                return novoId;
+            }
+        }
+
+        public void AtualizarStatusReserva(StatusReserva status)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                
+                // Buscar dados antigos para comparação
+                StatusReserva statusAntigo = ObterStatusReservaPorId(status.Id);
+                var valoresAntigos = new Dictionary<string, string>();
+                var valoresNovos = new Dictionary<string, string>();
+                
+                if (statusAntigo != null)
+                {
+                    valoresAntigos["Nome"] = statusAntigo.Nome ?? "";
+                    valoresAntigos["Descricao"] = statusAntigo.Descricao ?? "";
+                    valoresAntigos["PermiteAlteracao"] = statusAntigo.PermiteAlteracao.ToString();
+                    valoresAntigos["PermiteExclusao"] = statusAntigo.PermiteExclusao.ToString();
+                    valoresAntigos["Ordem"] = statusAntigo.Ordem.ToString();
+                }
+                
+                valoresNovos["Nome"] = status.Nome ?? "";
+                valoresNovos["Descricao"] = status.Descricao ?? "";
+                valoresNovos["PermiteAlteracao"] = status.PermiteAlteracao.ToString();
+                valoresNovos["PermiteExclusao"] = status.PermiteExclusao.ToString();
+                valoresNovos["Ordem"] = status.Ordem.ToString();
+                
+                var command = new SqlCommand(@"
+                    UPDATE StatusReserva 
+                    SET Nome = @Nome, Descricao = @Descricao, PermiteAlteracao = @PermiteAlteracao, 
+                        PermiteExclusao = @PermiteExclusao, Ordem = @Ordem
+                    WHERE Id = @Id", connection);
+                
+                command.Parameters.AddWithValue("@Id", status.Id);
+                command.Parameters.AddWithValue("@Nome", status.Nome);
+                command.Parameters.AddWithValue("@Descricao", status.Descricao ?? "");
+                command.Parameters.AddWithValue("@PermiteAlteracao", status.PermiteAlteracao);
+                command.Parameters.AddWithValue("@PermiteExclusao", status.PermiteExclusao);
+                command.Parameters.AddWithValue("@Ordem", status.Ordem);
+                
+                command.ExecuteNonQuery();
+                
+                // Registrar log com comparação
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                LogService.RegistrarAtualizacaoComComparacao(usuarioLog, "StatusReserva", "DatabaseService.AtualizarStatusReserva", 
+                    status.Id.ToString(), valoresAntigos, valoresNovos);
             }
         }
 

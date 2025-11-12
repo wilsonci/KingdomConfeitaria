@@ -12,9 +12,28 @@ AdminPage.Modal = {
      * Fechar modal de editar produto
      */
     fecharEditarProduto: function() {
-        var modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarProduto'));
-        if (modal) {
-            modal.hide();
+        var modalElement = document.getElementById('modalEditarProduto');
+        if (modalElement) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                } else {
+                    modalElement.classList.remove('show');
+                    modalElement.style.display = 'none';
+                    modalElement.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('modal-open');
+                    var backdrop = document.querySelector('.modal-backdrop');
+                    if (backdrop) backdrop.remove();
+                }
+            } else {
+                modalElement.classList.remove('show');
+                modalElement.style.display = 'none';
+                modalElement.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('modal-open');
+                var backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) backdrop.remove();
+            }
         }
     },
 
@@ -22,9 +41,28 @@ AdminPage.Modal = {
      * Fechar modal de novo produto
      */
     fecharNovoProduto: function() {
-        var modal = bootstrap.Modal.getInstance(document.getElementById('modalNovoProduto'));
-        if (modal) {
-            modal.hide();
+        var modalElement = document.getElementById('modalNovoProduto');
+        if (modalElement) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                } else {
+                    modalElement.classList.remove('show');
+                    modalElement.style.display = 'none';
+                    modalElement.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('modal-open');
+                    var backdrop = document.querySelector('.modal-backdrop');
+                    if (backdrop) backdrop.remove();
+                }
+            } else {
+                modalElement.classList.remove('show');
+                modalElement.style.display = 'none';
+                modalElement.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('modal-open');
+                var backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) backdrop.remove();
+            }
         }
     },
 
@@ -32,9 +70,28 @@ AdminPage.Modal = {
      * Fechar modal de editar reserva
      */
     fecharEditarReserva: function() {
-        var modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarReserva'));
-        if (modal) {
-            modal.hide();
+        var modalElement = document.getElementById('modalEditarReserva');
+        if (modalElement) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                } else {
+                    modalElement.classList.remove('show');
+                    modalElement.style.display = 'none';
+                    modalElement.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('modal-open');
+                    var backdrop = document.querySelector('.modal-backdrop');
+                    if (backdrop) backdrop.remove();
+                }
+            } else {
+                modalElement.classList.remove('show');
+                modalElement.style.display = 'none';
+                modalElement.setAttribute('aria-hidden', 'true');
+                document.body.classList.remove('modal-open');
+                var backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) backdrop.remove();
+            }
         }
     }
 };
@@ -95,8 +152,18 @@ AdminPage.Produtos = {
         // Abrir modal
         var modalElement = document.getElementById('modalEditarProduto');
         if (modalElement) {
-            var modal = new bootstrap.Modal(modalElement);
-            modal.show();
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            } else {
+                modalElement.classList.add('show');
+                modalElement.style.display = 'block';
+                modalElement.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('modal-open');
+                var backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade show';
+                document.body.appendChild(backdrop);
+            }
         }
     },
 
@@ -122,7 +189,7 @@ AdminPage.Reservas = {
     /**
      * Editar reserva
      */
-    editar: function(id, status, valorTotal, convertidoEmPedido, cancelado, previsaoEntrega, observacoes) {
+    editar: function(id, statusId, valorTotal, convertidoEmPedido, cancelado, previsaoEntrega, observacoes) {
         var hdnReservaId = document.querySelector('input[id*="hdnReservaId"]');
         var ddlStatus = document.querySelector('select[id*="ddlStatus"]');
         var txtValorTotal = document.querySelector('input[id*="txtValorTotal"]');
@@ -132,7 +199,9 @@ AdminPage.Reservas = {
         var txtObservacoes = document.querySelector('textarea[id*="txtObservacoesReserva"]');
         
         if (hdnReservaId) hdnReservaId.value = id;
-        if (ddlStatus) ddlStatus.value = status || 'Aberta';
+        if (ddlStatus && statusId) {
+            ddlStatus.value = statusId.toString();
+        }
         if (txtValorTotal) txtValorTotal.value = valorTotal || '0.00';
         if (chkConvertido) chkConvertido.checked = convertidoEmPedido === true || convertidoEmPedido === 'true' || convertidoEmPedido === 'True';
         if (chkCancelado) chkCancelado.checked = cancelado === true || cancelado === 'true' || cancelado === 'True';
@@ -152,14 +221,24 @@ AdminPage.Reservas = {
         // Abrir modal
         var modalElement = document.getElementById('modalEditarReserva');
         if (modalElement) {
-            var modal = new bootstrap.Modal(modalElement);
-            modal.show();
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            } else {
+                modalElement.classList.add('show');
+                modalElement.style.display = 'block';
+                modalElement.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('modal-open');
+                var backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade show';
+                document.body.appendChild(backdrop);
+            }
         }
     }
 };
 
 // Função global para compatibilidade com onclick inline
-function editarReserva(id, status, valorTotal, convertidoEmPedido, cancelado, previsaoEntrega, observacoes) {
-    AdminPage.Reservas.editar(id, status, valorTotal, convertidoEmPedido, cancelado, previsaoEntrega, observacoes);
+function editarReserva(id, statusId, valorTotal, convertidoEmPedido, cancelado, previsaoEntrega, observacoes) {
+    AdminPage.Reservas.editar(id, statusId, valorTotal, convertidoEmPedido, cancelado, previsaoEntrega, observacoes);
 }
 

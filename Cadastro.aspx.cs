@@ -138,6 +138,14 @@ namespace KingdomConfeitaria
 
                 cliente.Id = _databaseService.CriarOuAtualizarCliente(cliente);
 
+                // Registrar log de cadastro
+                LogService.RegistrarInsercao(
+                    $"Cliente ID: {cliente.Id}",
+                    "Cliente",
+                    "Cadastro.aspx",
+                    $"Nome: {cliente.Nome}, Email: {cliente.Email}, Telefone: {cliente.Telefone ?? "N/A"}, IsAdmin: {cliente.IsAdmin}"
+                );
+
                 // Enviar email de confirmação (não bloquear se falhar)
                 try
                 {
@@ -160,6 +168,10 @@ namespace KingdomConfeitaria
                 {
                     Session["ClienteTelefone"] = cliente.Telefone;
                 }
+
+                // Registrar log de login após cadastro
+                string usuarioLog = LogService.ObterUsuarioAtual(Session);
+                LogService.RegistrarLogin(usuarioLog, "Cadastro.aspx", $"Login automático após cadastro - Email: {cliente.Email}");
 
                 Response.Redirect("Default.aspx");
             }
