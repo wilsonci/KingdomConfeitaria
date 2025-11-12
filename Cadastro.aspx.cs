@@ -2,6 +2,7 @@
 using System.Web.UI;
 using KingdomConfeitaria.Models;
 using KingdomConfeitaria.Services;
+using KingdomConfeitaria.Security;
 
 namespace KingdomConfeitaria
 {
@@ -29,7 +30,12 @@ namespace KingdomConfeitaria
             // Preencher email ou telefone se vier via query string
             if (!IsPostBack)
             {
-                string email = Request.QueryString["email"];
+                // Validar e sanitizar email para prevenir XSS
+                string email = Security.InputValidator.SanitizeString(Request.QueryString["email"] ?? "", 254);
+                if (!string.IsNullOrEmpty(email) && !Security.InputValidator.IsValidEmail(email))
+                {
+                    email = string.Empty; // Invalidar se não for um email válido
+                }
                 string telefone = Request.QueryString["telefone"];
                 
                 if (!string.IsNullOrEmpty(email) && txtEmail != null)
@@ -111,6 +117,12 @@ namespace KingdomConfeitaria
                 // Hash da senha
                 string senhaHash = HashSenha(senha);
 
+                // Verificar se o email é de administrador
+                string[] emailsAdmin = { "wilson2071@gmail.com", "isanfm@gmail.com", "camilafermagalhaes@gmail.com" };
+                bool isAdmin = false;
+                string emailLower = email.ToLowerInvariant().Trim();
+                isAdmin = Array.Exists(emailsAdmin, emailAdmin => emailAdmin.ToLowerInvariant().Trim() == emailLower);
+                
                 // Criar novo cliente
                 Cliente cliente = new Cliente
                 {
@@ -120,6 +132,7 @@ namespace KingdomConfeitaria
                     Telefone = telefone,
                     TemWhatsApp = !string.IsNullOrEmpty(telefone),
                     Provider = "Email",
+                    IsAdmin = isAdmin, // Definir IsAdmin baseado na lista de emails de administradores
                     DataCadastro = DateTime.Now
                 };
 
@@ -135,10 +148,14 @@ namespace KingdomConfeitaria
                     // Erro ao enviar email - não bloquear o processo
                 }
 
+                // Buscar cliente atualizado para obter IsAdmin correto
+                cliente = _databaseService.ObterClientePorId(cliente.Id);
+                
                 // Fazer login após cadastro
                 Session["ClienteId"] = cliente.Id;
                 Session["ClienteNome"] = cliente.Nome;
                 Session["ClienteEmail"] = cliente.Email;
+                Session["IsAdmin"] = cliente != null ? cliente.IsAdmin : false;
                 if (!string.IsNullOrEmpty(cliente.Telefone))
                 {
                     Session["ClienteTelefone"] = cliente.Telefone;

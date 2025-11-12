@@ -75,8 +75,6 @@ KingdomConfeitaria.Utils = {
                 }
                 
                 form.submit();
-            } else {
-                console.error('__doPostBack não está disponível e formulário form1 não encontrado');
             }
         }
     }
@@ -90,7 +88,6 @@ KingdomConfeitaria.Modal = {
     show: function(modalId) {
         var modalElement = document.getElementById(modalId);
         if (!modalElement) {
-            console.error('Modal não encontrado: ' + modalId);
             return;
         }
 

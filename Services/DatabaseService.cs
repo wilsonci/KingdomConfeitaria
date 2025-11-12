@@ -4,8 +4,10 @@ using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Web;
 using System.Web.Script.Serialization;
 using KingdomConfeitaria.Models;
+using KingdomConfeitaria.Services;
 
 namespace KingdomConfeitaria.Services
 {
@@ -16,6 +18,14 @@ namespace KingdomConfeitaria.Services
         public DatabaseService()
         {
             _connectionString = ConfigurationManager.ConnectionStrings["KingdomConfeitariaDB"].ConnectionString;
+            
+            // Verificar se está em ambiente de desenvolvimento
+            string environment = ConfigurationManager.AppSettings["Environment"] ?? "Development";
+            bool isDevelopment = environment.Equals("Development", StringComparison.OrdinalIgnoreCase);
+            
+            // Criar banco e tabelas automaticamente
+            // Em desenvolvimento: cria banco no LocalDB padrão
+            // Em produção: cria banco na pasta App_Data usando AttachDbFilename
             CriarBancoETabelasSeNaoExistirem();
         }
 
@@ -23,17 +33,186 @@ namespace KingdomConfeitaria.Services
         {
             try
             {
-                // Primeiro, criar o banco de dados se não existir
-                var masterConnectionString = _connectionString.Replace("Initial Catalog=KingdomConfeitaria", "Initial Catalog=master");
-                using (var masterConnection = new SqlConnection(masterConnectionString))
+                // Verificar se a connection string usa AttachDbFilename (banco na pasta App_Data)
+                bool usaAttachDbFilename = _connectionString.Contains("AttachDbFilename=");
+                
+                if (usaAttachDbFilename)
                 {
-                    masterConnection.Open();
-                    var createDbCommand = new SqlCommand(@"
-                        IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'KingdomConfeitaria')
-                        BEGIN
-                            CREATE DATABASE KingdomConfeitaria
-                        END", masterConnection);
-                    createDbCommand.ExecuteNonQuery();
+                    // Banco na pasta App_Data (desenvolvimento e produção)
+                    // Extrair caminho do arquivo .mdf
+                    string attachDbPath = "";
+                    if (_connectionString.Contains("AttachDbFilename="))
+                    {
+                        int startIndex = _connectionString.IndexOf("AttachDbFilename=") + "AttachDbFilename=".Length;
+                        int endIndex = _connectionString.IndexOf(";", startIndex);
+                        if (endIndex == -1) endIndex = _connectionString.Length;
+                        attachDbPath = _connectionString.Substring(startIndex, endIndex - startIndex).Trim();
+                        
+                        // Substituir |DataDirectory| pelo caminho real
+                        if (attachDbPath.Contains("|DataDirectory|"))
+                        {
+                            string dataDirectory = System.Web.Hosting.HostingEnvironment.MapPath("~/App_Data");
+                            if (string.IsNullOrEmpty(dataDirectory))
+                            {
+                                dataDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data");
+                            }
+                            
+                            // Garantir que a pasta App_Data existe
+                            if (!System.IO.Directory.Exists(dataDirectory))
+                            {
+                                System.IO.Directory.CreateDirectory(dataDirectory);
+                            }
+                            
+                            attachDbPath = attachDbPath.Replace("|DataDirectory|", dataDirectory);
+                        }
+                        
+                        // Criar connection string para master
+                        string masterConnectionString = _connectionString;
+                        if (masterConnectionString.Contains("AttachDbFilename="))
+                        {
+                            // Remover AttachDbFilename e Initial Catalog, adicionar master
+                            int attachStart = masterConnectionString.IndexOf("AttachDbFilename=");
+                            int attachEnd = masterConnectionString.IndexOf(";", attachStart);
+                            if (attachEnd == -1) attachEnd = masterConnectionString.Length;
+                            masterConnectionString = masterConnectionString.Remove(attachStart, attachEnd - attachStart);
+                            
+                            if (masterConnectionString.Contains("Initial Catalog="))
+                            {
+                                int catalogStart = masterConnectionString.IndexOf("Initial Catalog=");
+                                int catalogEnd = masterConnectionString.IndexOf(";", catalogStart);
+                                if (catalogEnd == -1) catalogEnd = masterConnectionString.Length;
+                                masterConnectionString = masterConnectionString.Remove(catalogStart, catalogEnd - catalogStart);
+                            }
+                            
+                            masterConnectionString = masterConnectionString.TrimEnd(';') + ";Initial Catalog=master";
+                        }
+                        
+                        // Extrair nome do banco
+                        string databaseName = "KingdomConfeitaria_Prod";
+                        if (_connectionString.Contains("Initial Catalog="))
+                        {
+                            int startIdx = _connectionString.IndexOf("Initial Catalog=") + "Initial Catalog=".Length;
+                            int endIdx = _connectionString.IndexOf(";", startIdx);
+                            if (endIdx == -1) endIdx = _connectionString.Length;
+                            databaseName = _connectionString.Substring(startIdx, endIdx - startIdx).Trim();
+                        }
+                        
+                        // Verificar se o arquivo .mdf já existe
+                        if (!System.IO.File.Exists(attachDbPath))
+                        {
+                            // Verificar se o banco já existe no LocalDB (pode ter sido criado antes sem AttachDbFilename)
+                            using (var masterConnection = new SqlConnection(masterConnectionString))
+                            {
+                                masterConnection.Open();
+                                
+                                // Verificar se o banco existe
+                                var checkDbCommand = new SqlCommand($"SELECT COUNT(*) FROM sys.databases WHERE name = '{databaseName}'", masterConnection);
+                                int dbExists = (int)checkDbCommand.ExecuteScalar();
+                                
+                                if (dbExists > 0)
+                                {
+                                    // Banco existe no LocalDB, fazer DETACH para poder criar o arquivo .mdf
+                                    try
+                                    {
+                                        var detachCommand = new SqlCommand($@"
+                                            ALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                                            EXEC sp_detach_db '{databaseName}', 'true'", masterConnection);
+                                        detachCommand.ExecuteNonQuery();
+                                    }
+                                    catch
+                                    {
+                                        // Se não conseguir fazer detach, tentar continuar mesmo assim
+                                    }
+                                }
+                                
+                                // Criar banco no arquivo .mdf
+                                string logPath = attachDbPath.Replace(".mdf", "_log.ldf");
+                                var createDbCommand = new SqlCommand($@"
+                                    CREATE DATABASE [{databaseName}]
+                                    ON (NAME = '{databaseName}', FILENAME = '{attachDbPath.Replace("\\", "\\\\")}')
+                                    LOG ON (NAME = '{databaseName}_Log', FILENAME = '{logPath.Replace("\\", "\\\\")}')", masterConnection);
+                                createDbCommand.ExecuteNonQuery();
+                            }
+                        }
+                        else
+                        {
+                            // Arquivo .mdf existe, verificar se o banco está anexado
+                            using (var masterConnection = new SqlConnection(masterConnectionString))
+                            {
+                                masterConnection.Open();
+                                
+                                // Verificar se o banco está anexado
+                                var checkDbCommand = new SqlCommand($"SELECT COUNT(*) FROM sys.databases WHERE name = '{databaseName}'", masterConnection);
+                                int dbExists = (int)checkDbCommand.ExecuteScalar();
+                                
+                                if (dbExists == 0)
+                                {
+                                    // Arquivo existe mas banco não está anexado, fazer ATTACH
+                                    try
+                                    {
+                                        string logPath = attachDbPath.Replace(".mdf", "_log.ldf");
+                                        var attachCommand = new SqlCommand($@"
+                                            CREATE DATABASE [{databaseName}]
+                                            ON (FILENAME = '{attachDbPath.Replace("\\", "\\\\")}')
+                                            FOR ATTACH", masterConnection);
+                                        attachCommand.ExecuteNonQuery();
+                                    }
+                                    catch
+                                    {
+                                        // Se não conseguir fazer attach, tentar criar novamente
+                                        // (pode ser que o arquivo esteja corrompido)
+                                        try
+                                        {
+                                            System.IO.File.Delete(attachDbPath);
+                                            string logPath = attachDbPath.Replace(".mdf", "_log.ldf");
+                                            if (System.IO.File.Exists(logPath))
+                                            {
+                                                System.IO.File.Delete(logPath);
+                                            }
+                                            
+                                            // Recriar o banco
+                                            var createDbCommand = new SqlCommand($@"
+                                                CREATE DATABASE [{databaseName}]
+                                                ON (NAME = '{databaseName}', FILENAME = '{attachDbPath.Replace("\\", "\\\\")}')
+                                                LOG ON (NAME = '{databaseName}_Log', FILENAME = '{logPath.Replace("\\", "\\\\")}')", masterConnection);
+                                            createDbCommand.ExecuteNonQuery();
+                                        }
+                                        catch
+                                        {
+                                            // Se falhar, deixar o erro ser propagado
+                                        }
+                                    }
+                                }
+                                // Se o banco já está anexado, não fazer nada (já está pronto para uso)
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Desenvolvimento: Banco no LocalDB padrão
+                    // Extrair o nome do banco da connection string
+                    string databaseName = "KingdomConfeitaria_Dev";
+                    if (_connectionString.Contains("Initial Catalog="))
+                    {
+                        int startIndex = _connectionString.IndexOf("Initial Catalog=") + "Initial Catalog=".Length;
+                        int endIndex = _connectionString.IndexOf(";", startIndex);
+                        if (endIndex == -1) endIndex = _connectionString.Length;
+                        databaseName = _connectionString.Substring(startIndex, endIndex - startIndex).Trim();
+                    }
+                    
+                    // Primeiro, criar o banco de dados se não existir
+                    var masterConnectionString = _connectionString.Replace($"Initial Catalog={databaseName}", "Initial Catalog=master");
+                    using (var masterConnection = new SqlConnection(masterConnectionString))
+                    {
+                        masterConnection.Open();
+                        var createDbCommand = new SqlCommand($@"
+                            IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '{databaseName}')
+                            BEGIN
+                                CREATE DATABASE [{databaseName}]
+                            END", masterConnection);
+                        createDbCommand.ExecuteNonQuery();
+                    }
                 }
 
                 // Agora conectar ao banco e criar as tabelas
@@ -116,18 +295,117 @@ namespace KingdomConfeitaria.Services
                         }
                     }
 
+                    // Verificar se a tabela StatusReserva existe (DEVE SER CRIADA ANTES DE Reservas)
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[StatusReserva]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[StatusReserva](
+                                [Id] [int] IDENTITY(1,1) NOT NULL,
+                                [Nome] [nvarchar](100) NOT NULL,
+                                [Descricao] [nvarchar](500) NOT NULL,
+                                [PermiteAlteracao] [bit] NOT NULL DEFAULT(1),
+                                [PermiteExclusao] [bit] NOT NULL DEFAULT(1),
+                                [Ordem] [int] NOT NULL DEFAULT(0),
+                                CONSTRAINT [PK_StatusReserva] PRIMARY KEY CLUSTERED ([Id] ASC),
+                                CONSTRAINT [UQ_StatusReserva_Nome] UNIQUE([Nome])
+                            )
+                        END";
+                    checkTable.ExecuteNonQuery();
+
+                    // Inserir status padrão se a tabela estiver vazia
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM StatusReserva)
+                        BEGIN
+                            INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem) VALUES
+                            ('Aberta', 'Reserva dentro do período que permite alterações e cancelamento', 1, 1, 1),
+                            ('Em Produção', 'Já está sendo produzida os produtos da reserva, não permite alteração nem exclusão', 0, 0, 2),
+                            ('Produção Pronta', 'Já foi produzido', 0, 0, 3),
+                            ('Preparando Entrega', 'Já está sendo preparado para entrega', 0, 0, 4),
+                            ('Saiu para Entrega', 'Já está entregando', 0, 0, 5),
+                            ('Já Entregue', 'Produtos já entregues', 0, 0, 6),
+                            ('Cancelado', 'Reserva cancelada', 0, 0, 7)
+                        END";
+                    checkTable.ExecuteNonQuery();
+                    
+                    // Garantir que o status "Cancelado" existe (caso a tabela já tenha sido criada sem ele)
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM StatusReserva WHERE Nome = 'Cancelado')
+                        BEGIN
+                            INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem)
+                            VALUES ('Cancelado', 'Reserva cancelada', 0, 0, 7)
+                        END";
+                    checkTable.ExecuteNonQuery();
+
+                    // Verificar se a tabela Clientes existe (DEVE SER CRIADA ANTES DE Reservas)
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Clientes]') AND type in (N'U'))
+                        BEGIN
+                            CREATE TABLE [dbo].[Clientes](
+                                [Id] [int] IDENTITY(1,1) NOT NULL,
+                                [Nome] [nvarchar](200) NOT NULL,
+                                [Email] [nvarchar](200) NULL,
+                                [Senha] [nvarchar](500) NULL,
+                                [Telefone] [nvarchar](50) NULL,
+                                [TemWhatsApp] [bit] NOT NULL DEFAULT(0),
+                                [Provider] [nvarchar](50) NULL,
+                                [ProviderId] [nvarchar](200) NULL,
+                                [TokenConfirmacao] [nvarchar](100) NULL,
+                                [TokenRecuperacaoSenha] [nvarchar](100) NULL,
+                                [DataExpiracaoRecuperacaoSenha] [datetime] NULL,
+                                [EmailConfirmado] [bit] NOT NULL DEFAULT(0),
+                                [WhatsAppConfirmado] [bit] NOT NULL DEFAULT(0),
+                                [IsAdmin] [bit] NOT NULL DEFAULT(0),
+                                [DataCadastro] [datetime] NOT NULL DEFAULT(GETDATE()),
+                                [UltimoAcesso] [datetime] NULL,
+                                CONSTRAINT [PK_Clientes] PRIMARY KEY CLUSTERED ([Id] ASC)
+                            )
+                            CREATE UNIQUE INDEX [IX_Clientes_Email] ON [dbo].[Clientes]([Email]) WHERE [Email] IS NOT NULL
+                            CREATE INDEX [IX_Clientes_Provider] ON [dbo].[Clientes]([Provider], [ProviderId])
+                        END";
+                    checkTable.ExecuteNonQuery();
+
+                    // Atualizar administradores: definir IsAdmin = true para emails específicos
+                    checkTable.CommandText = @"
+                        UPDATE Clientes 
+                        SET IsAdmin = 1 
+                        WHERE LOWER(LTRIM(RTRIM(Email))) IN (
+                            LOWER(LTRIM(RTRIM('wilson2071@gmail.com'))),
+                            LOWER(LTRIM(RTRIM('isanfm@gmail.com'))),
+                            LOWER(LTRIM(RTRIM('camilafermagalhaes@gmail.com')))
+                        )";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se houver erro */ }
+
+                    // Garantir que apenas os emails específicos sejam administradores
+                    checkTable.CommandText = @"
+                        UPDATE Clientes 
+                        SET IsAdmin = 0 
+                        WHERE LOWER(LTRIM(RTRIM(Email))) NOT IN (
+                            LOWER(LTRIM(RTRIM('wilson2071@gmail.com'))),
+                            LOWER(LTRIM(RTRIM('isanfm@gmail.com'))),
+                            LOWER(LTRIM(RTRIM('camilafermagalhaes@gmail.com')))
+                        ) AND (Email IS NOT NULL AND Email != '')";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se houver erro */ }
+
                     // Verificar se a tabela Reservas existe
+                    // Primeiro, obter o ID do status 'Aberta' para usar como DEFAULT
+                    checkTable.CommandText = "SELECT Id FROM StatusReserva WHERE Nome = 'Aberta'";
+                    object statusAbertaIdObj = null;
+                    try
+                    {
+                        statusAbertaIdObj = checkTable.ExecuteScalar();
+                    }
+                    catch { /* Ignorar se não encontrar */ }
+                    
+                    int statusAbertaId = 1; // Valor padrão
+                    if (statusAbertaIdObj != null && statusAbertaIdObj != DBNull.Value)
+                    {
+                        statusAbertaId = Convert.ToInt32(statusAbertaIdObj);
+                    }
+                    
                     checkTable.CommandText = @"
                         IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Reservas]') AND type in (N'U'))
                         BEGIN
-                            -- Garantir que o status 'Aberta' existe antes de criar a tabela
-                            IF NOT EXISTS (SELECT * FROM StatusReserva WHERE Nome = 'Aberta')
-                            BEGIN
-                                INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem)
-                                VALUES ('Aberta', 'Reserva dentro do período que permite alterações e cancelamento', 1, 1, 1)
-                            END
-                            
-                            -- Criar tabela sem DEFAULT (vamos definir depois)
+                            -- Criar tabela
                             CREATE TABLE [dbo].[Reservas](
                                 [Id] [int] IDENTITY(1,1) NOT NULL,
                                 [ClienteId] [int] NOT NULL,
@@ -150,31 +428,17 @@ namespace KingdomConfeitaria.Services
                     checkTable.ExecuteNonQuery();
                     
                     // Adicionar DEFAULT para StatusId após criar a tabela (em comando separado)
-                    // Primeiro, obter o ID do status 'Aberta'
-                    checkTable.CommandText = "SELECT Id FROM StatusReserva WHERE Nome = 'Aberta'";
-                    object statusAbertaIdObjNew = null;
+                    // Usar o valor já obtido anteriormente (statusAbertaId)
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.default_constraints WHERE name = 'DF_Reservas_StatusId')
+                        BEGIN
+                            ALTER TABLE [dbo].[Reservas] ADD CONSTRAINT [DF_Reservas_StatusId] DEFAULT (" + statusAbertaId + @") FOR [StatusId]
+                        END";
                     try
                     {
-                        statusAbertaIdObjNew = checkTable.ExecuteScalar();
+                        checkTable.ExecuteNonQuery();
                     }
-                    catch { /* Ignorar se não encontrar */ }
-                    
-                    if (statusAbertaIdObjNew != null && statusAbertaIdObjNew != DBNull.Value)
-                    {
-                        int statusAbertaIdNew = Convert.ToInt32(statusAbertaIdObjNew);
-                        
-                        // Verificar se a constraint já existe antes de adicionar
-                        checkTable.CommandText = @"
-                            IF NOT EXISTS (SELECT * FROM sys.default_constraints WHERE name = 'DF_Reservas_StatusId')
-                            BEGIN
-                                ALTER TABLE [dbo].[Reservas] ADD CONSTRAINT [DF_Reservas_StatusId] DEFAULT (" + statusAbertaIdNew + @") FOR [StatusId]
-                            END";
-                        try
-                        {
-                            checkTable.ExecuteNonQuery();
-                        }
-                        catch { /* Ignorar se já existir */ }
-                    }
+                    catch { /* Ignorar se já existir */ }
 
                     // Adicionar novas colunas se a tabela já existir
                     checkTable.CommandText = @"
@@ -270,97 +534,6 @@ namespace KingdomConfeitaria.Services
                             ALTER TABLE [dbo].[ReservaItens] ADD [Produtos] [nvarchar](500) NULL
                         END";
                     try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se já existe */ }
-
-                    // Verificar se a tabela StatusReserva existe
-                    checkTable.CommandText = @"
-                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[StatusReserva]') AND type in (N'U'))
-                        BEGIN
-                            CREATE TABLE [dbo].[StatusReserva](
-                                [Id] [int] IDENTITY(1,1) NOT NULL,
-                                [Nome] [nvarchar](100) NOT NULL,
-                                [Descricao] [nvarchar](500) NOT NULL,
-                                [PermiteAlteracao] [bit] NOT NULL DEFAULT(1),
-                                [PermiteExclusao] [bit] NOT NULL DEFAULT(1),
-                                [Ordem] [int] NOT NULL DEFAULT(0),
-                                CONSTRAINT [PK_StatusReserva] PRIMARY KEY CLUSTERED ([Id] ASC),
-                                CONSTRAINT [UQ_StatusReserva_Nome] UNIQUE([Nome])
-                            )
-                        END";
-                    checkTable.ExecuteNonQuery();
-
-                    // Inserir status padrão se a tabela estiver vazia
-                    checkTable.CommandText = @"
-                        IF NOT EXISTS (SELECT * FROM StatusReserva)
-                        BEGIN
-                            INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem) VALUES
-                            ('Aberta', 'Reserva dentro do período que permite alterações e cancelamento', 1, 1, 1),
-                            ('Em Produção', 'Já está sendo produzida os produtos da reserva, não permite alteração nem exclusão', 0, 0, 2),
-                            ('Produção Pronta', 'Já foi produzido', 0, 0, 3),
-                            ('Preparando Entrega', 'Já está sendo preparado para entrega', 0, 0, 4),
-                            ('Saiu para Entrega', 'Já está entregando', 0, 0, 5),
-                            ('Já Entregue', 'Produtos já entregues', 0, 0, 6),
-                            ('Cancelado', 'Reserva cancelada', 0, 0, 7)
-                        END";
-                    checkTable.ExecuteNonQuery();
-                    
-                    // Garantir que o status "Cancelado" existe (caso a tabela já tenha sido criada sem ele)
-                    checkTable.CommandText = @"
-                        IF NOT EXISTS (SELECT * FROM StatusReserva WHERE Nome = 'Cancelado')
-                        BEGIN
-                            INSERT INTO StatusReserva (Nome, Descricao, PermiteAlteracao, PermiteExclusao, Ordem)
-                            VALUES ('Cancelado', 'Reserva cancelada', 0, 0, 7)
-                        END";
-                    checkTable.ExecuteNonQuery();
-
-                    // Verificar se a tabela Clientes existe
-                    checkTable.CommandText = @"
-                        IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Clientes]') AND type in (N'U'))
-                        BEGIN
-                            CREATE TABLE [dbo].[Clientes](
-                                [Id] [int] IDENTITY(1,1) NOT NULL,
-                                [Nome] [nvarchar](200) NOT NULL,
-                                [Email] [nvarchar](200) NULL,
-                                [Senha] [nvarchar](500) NULL,
-                                [Telefone] [nvarchar](50) NULL,
-                                [TemWhatsApp] [bit] NOT NULL DEFAULT(0),
-                                [Provider] [nvarchar](50) NULL,
-                                [ProviderId] [nvarchar](200) NULL,
-                                [TokenConfirmacao] [nvarchar](100) NULL,
-                                [TokenRecuperacaoSenha] [nvarchar](100) NULL,
-                                [DataExpiracaoRecuperacaoSenha] [datetime] NULL,
-                                [EmailConfirmado] [bit] NOT NULL DEFAULT(0),
-                                [WhatsAppConfirmado] [bit] NOT NULL DEFAULT(0),
-                                [IsAdmin] [bit] NOT NULL DEFAULT(0),
-                                [DataCadastro] [datetime] NOT NULL DEFAULT(GETDATE()),
-                                [UltimoAcesso] [datetime] NULL,
-                                CONSTRAINT [PK_Clientes] PRIMARY KEY CLUSTERED ([Id] ASC)
-                            )
-                            CREATE UNIQUE INDEX [IX_Clientes_Email] ON [dbo].[Clientes]([Email]) WHERE [Email] IS NOT NULL
-                            CREATE INDEX [IX_Clientes_Provider] ON [dbo].[Clientes]([Provider], [ProviderId])
-                        END";
-                    checkTable.ExecuteNonQuery();
-
-                    // Atualizar administradores: definir IsAdmin = true para emails específicos
-                    checkTable.CommandText = @"
-                        UPDATE Clientes 
-                        SET IsAdmin = 1 
-                        WHERE LOWER(LTRIM(RTRIM(Email))) IN (
-                            LOWER(LTRIM(RTRIM('wilson2071@gmail.com'))),
-                            LOWER(LTRIM(RTRIM('isanfm@gmail.com'))),
-                            LOWER(LTRIM(RTRIM('camilafermagalhaes@gmail.com')))
-                        )";
-                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se houver erro */ }
-
-                    // Garantir que apenas os emails específicos sejam administradores
-                    checkTable.CommandText = @"
-                        UPDATE Clientes 
-                        SET IsAdmin = 0 
-                        WHERE LOWER(LTRIM(RTRIM(Email))) NOT IN (
-                            LOWER(LTRIM(RTRIM('wilson2071@gmail.com'))),
-                            LOWER(LTRIM(RTRIM('isanfm@gmail.com'))),
-                            LOWER(LTRIM(RTRIM('camilafermagalhaes@gmail.com')))
-                        ) AND (Email IS NOT NULL AND Email != '')";
-                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se houver erro */ }
 
                     // Migração: Alterar coluna Email para permitir NULL se ainda não permitir
                     checkTable.CommandText = @"
@@ -458,8 +631,8 @@ namespace KingdomConfeitaria.Services
                                 
                                 // Obter ID do status 'Aberta'
                                 checkTable.CommandText = "SELECT Id FROM StatusReserva WHERE Nome = 'Aberta'";
-                                object statusAbertaIdObj = checkTable.ExecuteScalar();
-                                int statusAbertaId = statusAbertaIdObj != null && statusAbertaIdObj != DBNull.Value ? Convert.ToInt32(statusAbertaIdObj) : 1;
+                                object statusAbertaIdObjMig = checkTable.ExecuteScalar();
+                                int statusAbertaIdMig = statusAbertaIdObjMig != null && statusAbertaIdObjMig != DBNull.Value ? Convert.ToInt32(statusAbertaIdObjMig) : 1;
                                 
                                 // Adicionar coluna StatusId
                                 checkTable.CommandText = "ALTER TABLE [dbo].[Reservas] ADD [StatusId] [int] NULL";
@@ -480,13 +653,13 @@ namespace KingdomConfeitaria.Services
                                     checkTable.ExecuteNonQuery();
                                     
                                     // Se algum Status não foi encontrado, usar 'Aberta' como padrão
-                                    checkTable.CommandText = "UPDATE Reservas SET StatusId = " + statusAbertaId + " WHERE StatusId IS NULL";
+                                    checkTable.CommandText = "UPDATE Reservas SET StatusId = " + statusAbertaIdMig + " WHERE StatusId IS NULL";
                                     checkTable.ExecuteNonQuery();
                                 }
                                 else
                                 {
                                     // Se não tem Status, definir todos como 'Aberta'
-                                    checkTable.CommandText = "UPDATE Reservas SET StatusId = " + statusAbertaId + " WHERE StatusId IS NULL";
+                                    checkTable.CommandText = "UPDATE Reservas SET StatusId = " + statusAbertaIdMig + " WHERE StatusId IS NULL";
                                     checkTable.ExecuteNonQuery();
                                 }
                                 
@@ -648,12 +821,31 @@ namespace KingdomConfeitaria.Services
                 return produtos;
             }
             
+            // Validar e sanitizar IDs para prevenir SQL Injection
+            var idsValidos = ids.Where(id => id > 0 && id <= int.MaxValue).Distinct().Take(1000).ToList();
+            if (idsValidos.Count == 0)
+            {
+                return produtos;
+            }
+            
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                // Filtrar produtos pelos IDs fornecidos
-                string idsString = string.Join(",", ids);
-                var command = new SqlCommand($"SELECT Id, Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), ISNULL(Produtos, ''), ReservavelAte, VendivelAte FROM Produtos WHERE Ativo = 1 AND EhSacoPromocional = 0 AND Id IN ({idsString}) ORDER BY Ordem", connection);
+                
+                // Construir query com parâmetros para prevenir SQL Injection
+                var parameters = new List<string>();
+                var command = new SqlCommand();
+                command.Connection = connection;
+                
+                for (int i = 0; i < idsValidos.Count; i++)
+                {
+                    string paramName = $"@Id{i}";
+                    parameters.Add(paramName);
+                    command.Parameters.AddWithValue(paramName, idsValidos[i]);
+                }
+                
+                string query = $"SELECT Id, Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), ISNULL(Produtos, ''), ReservavelAte, VendivelAte FROM Produtos WHERE Ativo = 1 AND EhSacoPromocional = 0 AND Id IN ({string.Join(",", parameters)}) ORDER BY Ordem";
+                command.CommandText = query;
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -748,6 +940,11 @@ namespace KingdomConfeitaria.Services
                 
                 // Atualizar o ID da reserva no objeto
                 reserva.Id = reservaId;
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                string detalhes = $"ID: {reservaId}, ClienteId: {reserva.ClienteId}, ValorTotal: R$ {reserva.ValorTotal:F2}, Itens: {reserva.Itens?.Count ?? 0}";
+                LogService.RegistrarInsercao(usuarioLog, "Reserva", "DatabaseService.SalvarReserva", detalhes);
                 
                 // Validar que há itens para gravar
                 if (reserva.Itens == null || reserva.Itens.Count == 0)
@@ -866,6 +1063,11 @@ namespace KingdomConfeitaria.Services
                 command.Parameters.AddWithValue("@VendivelAte", produto.VendivelAte.HasValue ? (object)produto.VendivelAte.Value : DBNull.Value);
                 
                 command.ExecuteNonQuery();
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                string detalhes = $"ID: {produto.Id}, Nome: {produto.Nome}, Preco: R$ {produto.Preco:F2}, Ativo: {produto.Ativo}";
+                LogService.RegistrarAtualizacao(usuarioLog, "Produto", "DatabaseService.AtualizarProduto", detalhes);
             }
         }
 
@@ -891,6 +1093,11 @@ namespace KingdomConfeitaria.Services
                 command.Parameters.AddWithValue("@VendivelAte", produto.VendivelAte.HasValue ? (object)produto.VendivelAte.Value : DBNull.Value);
                 
                 command.ExecuteNonQuery();
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                string detalhes = $"Nome: {produto.Nome}, Preco: R$ {produto.Preco:F2}, Ativo: {produto.Ativo}";
+                LogService.RegistrarInsercao(usuarioLog, "Produto", "DatabaseService.AdicionarProduto", detalhes);
             }
         }
 
@@ -1086,6 +1293,11 @@ namespace KingdomConfeitaria.Services
                 command.Parameters.AddWithValue("@DataRetirada", reserva.DataRetirada);
                 
                 command.ExecuteNonQuery();
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                string detalhes = $"ID: {reserva.Id}, StatusId: {reserva.StatusId}, Status: {reserva.Status}, ValorTotal: R$ {reserva.ValorTotal:F2}";
+                LogService.RegistrarAtualizacao(usuarioLog, "Reserva", "DatabaseService.AtualizarReserva", detalhes);
             }
         }
 
@@ -1621,7 +1833,14 @@ namespace KingdomConfeitaria.Services
                     command.Parameters.AddWithValue("@WhatsAppConfirmado", cliente.WhatsAppConfirmado);
                     command.Parameters.AddWithValue("@IsAdmin", cliente.IsAdmin);
                     
-                    return (int)command.ExecuteScalar();
+                    int novoClienteId = (int)command.ExecuteScalar();
+                    
+                    // Registrar log
+                    string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                    string detalhes = $"ID: {novoClienteId}, Nome: {cliente.Nome}, Email: {cliente.Email}, IsAdmin: {cliente.IsAdmin}";
+                    LogService.RegistrarInsercao(usuarioLog, "Cliente", "DatabaseService.CriarOuAtualizarCliente", detalhes);
+                    
+                    return novoClienteId;
                 }
             }
         }
@@ -1877,6 +2096,10 @@ namespace KingdomConfeitaria.Services
                 command.Parameters.AddWithValue("@Id", reservaId);
                 command.Parameters.AddWithValue("@StatusId", statusCancelado.Id);
                 command.ExecuteNonQuery();
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                LogService.RegistrarCancelamento(usuarioLog, "Reserva", "DatabaseService.CancelarReserva", $"ID: {reservaId}");
             }
         }
 
@@ -1888,6 +2111,10 @@ namespace KingdomConfeitaria.Services
                 var command = new SqlCommand("DELETE FROM Reservas WHERE Id = @Id", connection);
                 command.Parameters.AddWithValue("@Id", reservaId);
                 command.ExecuteNonQuery();
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                LogService.RegistrarExclusao(usuarioLog, "Reserva", "DatabaseService.ExcluirReserva", $"ID: {reservaId}");
             }
         }
 
@@ -1941,11 +2168,31 @@ namespace KingdomConfeitaria.Services
                 var command = new SqlCommand("DELETE FROM StatusReserva WHERE Id = @Id", connection);
                 command.Parameters.AddWithValue("@Id", statusId);
                 command.ExecuteNonQuery();
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                LogService.RegistrarExclusao(usuarioLog, "StatusReserva", "DatabaseService.ExcluirStatusReserva", $"ID: {statusId}");
             }
         }
 
         public void ExcluirProduto(int produtoId)
         {
+            // Buscar nome do produto antes de excluir para o log
+            string nomeProduto = "";
+            try
+            {
+                var todosProdutos = ObterTodosProdutos();
+                var produto = todosProdutos.FirstOrDefault(p => p.Id == produtoId);
+                if (produto != null)
+                {
+                    nomeProduto = produto.Nome;
+                }
+            }
+            catch
+            {
+                // Ignorar erro
+            }
+            
             if (!PodeExcluirProduto(produtoId))
             {
                 throw new Exception("Não é possível excluir este produto pois existem reservas associadas a ele.");
@@ -1957,11 +2204,35 @@ namespace KingdomConfeitaria.Services
                 var command = new SqlCommand("DELETE FROM Produtos WHERE Id = @Id", connection);
                 command.Parameters.AddWithValue("@Id", produtoId);
                 command.ExecuteNonQuery();
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                string detalhes = $"ID: {produtoId}";
+                if (!string.IsNullOrEmpty(nomeProduto))
+                {
+                    detalhes += $", Nome: {nomeProduto}";
+                }
+                LogService.RegistrarExclusao(usuarioLog, "Produto", "DatabaseService.ExcluirProduto", detalhes);
             }
         }
 
         public void ExcluirCliente(int clienteId)
         {
+            // Buscar nome do cliente antes de excluir para o log
+            string nomeCliente = "";
+            try
+            {
+                var cliente = ObterClientePorId(clienteId);
+                if (cliente != null)
+                {
+                    nomeCliente = cliente.Nome;
+                }
+            }
+            catch
+            {
+                // Ignorar erro
+            }
+            
             if (!PodeExcluirCliente(clienteId))
             {
                 throw new Exception("Não é possível excluir este cliente pois existem reservas associadas a ele.");
@@ -1973,6 +2244,15 @@ namespace KingdomConfeitaria.Services
                 var command = new SqlCommand("DELETE FROM Clientes WHERE Id = @Id", connection);
                 command.Parameters.AddWithValue("@Id", clienteId);
                 command.ExecuteNonQuery();
+                
+                // Registrar log
+                string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
+                string detalhes = $"ID: {clienteId}";
+                if (!string.IsNullOrEmpty(nomeCliente))
+                {
+                    detalhes += $", Nome: {nomeCliente}";
+                }
+                LogService.RegistrarExclusao(usuarioLog, "Cliente", "DatabaseService.ExcluirCliente", detalhes);
             }
         }
 

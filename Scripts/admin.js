@@ -81,7 +81,7 @@ AdminPage.Produtos = {
                     option.selected = produtosIds.indexOf(parseInt(option.value)) !== -1;
                 }
             } catch (e) {
-                console.error('Erro ao parsear produtos permitidos:', e);
+                // Erro ao parsear produtos permitidos
             }
         }
         

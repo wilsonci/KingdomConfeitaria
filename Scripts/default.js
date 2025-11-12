@@ -284,7 +284,6 @@ DefaultPage.ModalReserva = {
         var dataRetirada = document.getElementById('ddlDataRetirada') || document.querySelector('[id*="ddlDataRetirada"]');
 
         if (!nome || !email || !telefone || !dataRetirada) {
-            console.warn('Campos do formulário não encontrados. Usando validação básica.');
             return true; // Deixar validação do servidor lidar com isso
         }
 
@@ -304,7 +303,7 @@ DefaultPage.ModalReserva = {
                     primeiroInvalido.focus();
                     primeiroInvalido.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } catch (e) {
-                    console.error('Erro ao focar campo inválido:', e);
+                    // Erro ao focar campo inválido
                 }
             }
             alert('Por favor, preencha todos os campos obrigatórios corretamente.');
@@ -517,12 +516,7 @@ function adicionarSacoAoCarrinho(sacoId, nomeSaco, quantidadeMaxima) {
         return;
     }
     
-    // Verificar se há produtos duplicados
-    var produtosUnicos = [...new Set(produtosSelecionados)];
-    if (produtosUnicos.length !== produtosSelecionados.length) {
-        alert('Por favor, selecione produtos diferentes para cada posição do saco/cesta/caixa.');
-        return;
-    }
+    // Permitir produtos duplicados no saco promocional
     
     // Obter o preço do saco
     var preco = obterPrecoDoProduto(sacoId);

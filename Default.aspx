@@ -291,14 +291,14 @@
                         <!-- Área de Login Dinâmico -->
                         <div id="divLoginDinamicoStandalone">
                             <div class="mb-3">
-                                <label class="form-label">Email ou Telefone *</label>
-                                <input type="text" class="form-control" id="txtLoginDinamicoStandalone" placeholder="exemplo@email.com ou (11) 99999-9999" />
+                                <label for="txtLoginDinamicoStandalone" class="form-label">Email ou Telefone *</label>
+                                <input type="text" class="form-control" id="txtLoginDinamicoStandalone" name="txtLoginDinamicoStandalone" placeholder="exemplo@email.com ou (11) 99999-9999" aria-label="Email ou Telefone" />
                                 <small class="text-muted">Digite seu email ou telefone (apenas números). O sistema identificará automaticamente.</small>
                                 <div id="divMensagemLoginStandalone" class="mt-2" style="display: none;"></div>
                             </div>
                             <div class="mb-3" id="divSenhaStandalone" style="display: none;">
-                                <label class="form-label">Senha *</label>
-                                <input type="password" class="form-control" id="txtSenhaStandalone" />
+                                <label for="txtSenhaStandalone" class="form-label">Senha *</label>
+                                <input type="password" class="form-control" id="txtSenhaStandalone" name="txtSenhaStandalone" aria-label="Senha" />
                                 <small class="text-muted">Digite sua senha para continuar</small>
                                 <div class="mt-2">
                                     <a href="RecuperarSenha.aspx" class="text-decoration-none small" target="_blank">Esqueci minha senha</a>
@@ -348,14 +348,14 @@
                         <!-- ETAPA 1: Área de Login (só aparece se não estiver logado) -->
                         <div id="divLoginDinamico" runat="server">
                             <div class="mb-3">
-                                <label class="form-label">Email ou Telefone *</label>
-                                <asp:TextBox ID="txtLoginDinamico" runat="server" CssClass="form-control" placeholder="exemplo@email.com ou (11) 99999-9999"></asp:TextBox>
+                                <asp:Label ID="lblLoginDinamico" runat="server" AssociatedControlID="txtLoginDinamico" CssClass="form-label">Email ou Telefone *</asp:Label>
+                                <asp:TextBox ID="txtLoginDinamico" runat="server" CssClass="form-control" placeholder="exemplo@email.com ou (11) 99999-9999" aria-label="Email ou Telefone"></asp:TextBox>
                                 <small class="text-muted">Digite seu email ou telefone (apenas números). O sistema identificará automaticamente.</small>
                                 <div id="divMensagemLogin" class="mt-2" style="display: none;"></div>
                             </div>
                             <div class="mb-3" id="divSenhaReserva" runat="server" style="display: none;">
-                                <label class="form-label">Senha *</label>
-                                <asp:TextBox ID="txtSenhaReserva" runat="server" CssClass="form-control" TextMode="Password"></asp:TextBox>
+                                <asp:Label ID="lblSenhaReserva" runat="server" AssociatedControlID="txtSenhaReserva" CssClass="form-label">Senha *</asp:Label>
+                                <asp:TextBox ID="txtSenhaReserva" runat="server" CssClass="form-control" TextMode="Password" aria-label="Senha"></asp:TextBox>
                                 <small class="text-muted">Digite sua senha para continuar</small>
                                 <div class="mt-2">
                                     <a id="linkRecuperarSenha" href="RecuperarSenha.aspx" class="text-decoration-none small" target="_blank">Esqueci minha senha</a>
@@ -395,28 +395,28 @@
                                 <p class="small mb-0"><i class="fas fa-check-circle"></i> Você está logado. Complete os dados da reserva.</p>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Nome *</label>
-                                <asp:TextBox ID="txtNome" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa"></asp:TextBox>
+                                <asp:Label ID="lblNome" runat="server" AssociatedControlID="txtNome" CssClass="form-label">Nome *</asp:Label>
+                                <asp:TextBox ID="txtNome" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" aria-label="Nome"></asp:TextBox>
                                 <asp:HiddenField ID="hdnNome" runat="server" />
                                 <small class="text-muted">Para alterar seus dados, acesse "Meus Dados" no menu</small>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Email *</label>
-                                <asp:TextBox ID="txtEmail" runat="server" CssClass="form-control" TextMode="Email" ReadOnly="true" BackColor="#f8f9fa"></asp:TextBox>
+                                <asp:Label ID="lblEmail" runat="server" AssociatedControlID="txtEmail" CssClass="form-label">Email *</asp:Label>
+                                <asp:TextBox ID="txtEmail" runat="server" CssClass="form-control" TextMode="Email" ReadOnly="true" BackColor="#f8f9fa" aria-label="Email"></asp:TextBox>
                                 <asp:HiddenField ID="hdnEmail" runat="server" />
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Telefone/WhatsApp *</label>
-                                <asp:TextBox ID="txtTelefone" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa"></asp:TextBox>
+                                <asp:Label ID="lblTelefone" runat="server" AssociatedControlID="txtTelefone" CssClass="form-label">Telefone/WhatsApp *</asp:Label>
+                                <asp:TextBox ID="txtTelefone" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" aria-label="Telefone/WhatsApp"></asp:TextBox>
                                 <asp:HiddenField ID="hdnTelefone" runat="server" />
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Data de Retirada *</label>
-                                <asp:DropDownList ID="ddlDataRetirada" runat="server" CssClass="form-select"></asp:DropDownList>
+                                <asp:Label ID="lblDataRetirada" runat="server" AssociatedControlID="ddlDataRetirada" CssClass="form-label">Data de Retirada *</asp:Label>
+                                <asp:DropDownList ID="ddlDataRetirada" runat="server" CssClass="form-select" aria-label="Data de Retirada"></asp:DropDownList>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Observações</label>
-                                <asp:TextBox ID="txtObservacoes" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="3"></asp:TextBox>
+                                <asp:Label ID="lblObservacoes" runat="server" AssociatedControlID="txtObservacoes" CssClass="form-label">Observações</asp:Label>
+                                <asp:TextBox ID="txtObservacoes" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="3" aria-label="Observações"></asp:TextBox>
                             </div>
                         </div>
                     </div>
@@ -465,7 +465,6 @@
                 if (!eventTarget) return false;
                 var form = document.getElementById('form1');
                 if (!form) {
-                    console.error('Formulário form1 não encontrado');
                     return false;
                 }
                 
@@ -492,9 +491,6 @@
                 form.submit();
                 return false;
             }
-            console.log('__doPostBack criado manualmente');
-        } else {
-            console.log('__doPostBack já está disponível (gerado pelo ASP.NET)');
         }
     </script>
     <!-- Scripts comuns da aplicação -->
@@ -563,19 +559,13 @@
                 var isEmail = login.indexOf('@') > -1;
                 var loginLimpo = isEmail ? login.toLowerCase() : login.replace(/\D/g, '');
                 
-                console.log('Verificando login:', {
-                    login: login,
-                    isEmail: isEmail,
-                    loginLimpo: loginLimpo,
-                    length: loginLimpo.length
-                });
+                // Verificando login
                 
                 // Só verificar se tiver informação suficiente
                 if (isEmail && login.length < 5) {
                     return;
                 }
                 if (!isEmail && loginLimpo.length < 10) {
-                    console.log('Telefone muito curto, aguardando mais dígitos...');
                     return;
                 }
                 
@@ -583,11 +573,8 @@
                 if (typeof PageMethods !== 'undefined') {
                     mostrarMensagem('<i class="fas fa-spinner fa-spin"></i> Verificando...', 'info');
                     
-                    console.log('Chamando PageMethods.VerificarClienteCadastrado com:', login);
                     PageMethods.VerificarClienteCadastrado(login, function(result) {
                         ocultarMensagem();
-                        
-                        console.log('Resultado da verificação:', result);
                         
                         if (result && result.existe) {
                             clienteEncontrado = result.cliente;
@@ -604,47 +591,34 @@
                             
                             if (result.temSenha) {
                                 // Cliente encontrado e tem senha - MOSTRAR CAMPO DE SENHA IMEDIATAMENTE
-                                console.log('Cliente encontrado com senha! Mostrando campo de senha...');
                                 
                                 // Função para mostrar campo de senha
                                 function mostrarCampoSenha() {
-                                    console.log('=== INICIANDO mostrarCampoSenha ===');
-                                    
                                     // Garantir que o divLoginDinamico esteja visível
                                     var divLoginDinamicoElement = document.getElementById('<%= divLoginDinamico.ClientID %>');
                                     if (!divLoginDinamicoElement) {
                                         divLoginDinamicoElement = document.querySelector('[id*="divLoginDinamico"]');
                                     }
-                                    console.log('divLoginDinamico encontrado:', divLoginDinamicoElement !== null);
                                     if (divLoginDinamicoElement) {
                                         divLoginDinamicoElement.style.display = 'block';
-                                        console.log('divLoginDinamico display definido como block');
                                     }
                                     
                                     // Encontrar o campo de senha - tentar múltiplas formas
                                     var divSenhaReservaElement = document.getElementById('<%= divSenhaReserva.ClientID %>');
-                                    console.log('Tentativa 1 - getElementById:', divSenhaReservaElement !== null, 'ID procurado:', '<%= divSenhaReserva.ClientID %>');
                                     
                                     if (!divSenhaReservaElement) {
                                         divSenhaReservaElement = document.querySelector('[id*="divSenhaReserva"]');
-                                        console.log('Tentativa 2 - querySelector:', divSenhaReservaElement !== null);
                                     }
                                     
                                     if (!divSenhaReservaElement) {
                                         // Tentar encontrar todos os elementos com "Senha" no ID
                                         var todosElementos = document.querySelectorAll('[id*="Senha"]');
-                                        console.log('Tentativa 3 - Todos elementos com "Senha":', todosElementos.length);
-                                        todosElementos.forEach(function(el, index) {
-                                            console.log('  Elemento ' + index + ':', el.id, 'Tag:', el.tagName);
-                                        });
                                         if (todosElementos.length > 0) {
                                             divSenhaReservaElement = todosElementos[0];
-                                            console.log('Usando primeiro elemento encontrado:', divSenhaReservaElement.id);
                                         }
                                     }
                                     
                                     if (divSenhaReservaElement) {
-                                        console.log('SUCESSO: divSenhaReserva encontrado! ID:', divSenhaReservaElement.id);
                                         // FORÇAR EXIBIÇÃO - método mais direto
                                         divSenhaReservaElement.removeAttribute('style');
                                         divSenhaReservaElement.style.display = 'block';
@@ -657,8 +631,6 @@
                                         divSenhaReservaElement.style.border = '1px solid #dee2e6';
                                         divSenhaReservaElement.classList.add('show');
                                         divSenhaReservaElement.removeAttribute('hidden');
-                                        
-                                        console.log('Campo de senha exibido! Display:', divSenhaReservaElement.style.display);
                                         
                                         // Criar estilo dinâmico para garantir que fique visível
                                         var styleId = 'style-for-divSenhaReserva';
@@ -688,7 +660,6 @@
                                         
                                         return true;
                                     } else {
-                                        console.error('ERRO: divSenhaReserva não encontrado!');
                                         return false;
                                     }
                                 }
@@ -700,7 +671,6 @@
                                 var divBotoesLogin = document.getElementById('divBotoesLogin');
                                 if (divBotoesLogin) {
                                     divBotoesLogin.style.display = 'flex';
-                                    console.log('Botões de login exibidos');
                                 }
                                 
                                 // Ocultar botões de reserva
@@ -716,7 +686,6 @@
                                         divSenhaReservaElement = document.querySelector('[id*="divSenhaReserva"]');
                                     }
                                     if (divSenhaReservaElement && window.getComputedStyle(divSenhaReservaElement).display === 'none') {
-                                        console.warn('Campo ainda oculto, tentando novamente...');
                                         mostrarCampoSenha();
                                     }
                                 }, 100);
@@ -773,7 +742,6 @@
                         }
                     }, function(error) {
                         ocultarMensagem();
-                        console.error('Erro ao verificar cliente:', error);
                         mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao verificar cliente. Tente novamente.', 'danger');
                     });
                 }
@@ -784,8 +752,6 @@
             function preencherDadosCliente(cliente) {
                 if (!cliente) return;
                 
-                console.log('Preenchendo dados do cliente e continuando para reserva...');
-                
                 // Fazer login na sessão via PageMethod
                 var login = txtLoginDinamico ? txtLoginDinamico.value.trim() : '';
                 
@@ -793,7 +759,6 @@
                 if (typeof PageMethods !== 'undefined') {
                     PageMethods.FazerLoginSessao(cliente.id, function(result) {
                         if (result && result.sucesso) {
-                            console.log('Login na sessão realizado com sucesso. Preenchendo dados...');
                             
                             // Preencher campos do formulário IMEDIATAMENTE (visuais e hidden)
                             if (txtNome && cliente.nome) {
@@ -803,7 +768,6 @@
                                 if (hdnNome) {
                                     hdnNome.value = cliente.nome;
                                 }
-                                console.log('Nome preenchido:', cliente.nome);
                             }
                             if (txtEmail && cliente.email) {
                                 txtEmail.value = cliente.email;
@@ -812,7 +776,6 @@
                                 if (hdnEmail) {
                                     hdnEmail.value = cliente.email;
                                 }
-                                console.log('Email preenchido:', cliente.email);
                             }
                             if (txtTelefone && cliente.telefone) {
                                 // Formatar telefone para exibição
@@ -828,14 +791,12 @@
                                 if (hdnTelefone) {
                                     hdnTelefone.value = cliente.telefone.replace(/\D/g, '');
                                 }
-                                console.log('Telefone preenchido:', telFormatado);
                             }
                             
                             // Ocultar área de login IMEDIATAMENTE
                             var divLoginDinamicoElement = document.getElementById('<%= divLoginDinamico.ClientID %>');
                             if (divLoginDinamicoElement) {
                                 divLoginDinamicoElement.style.display = 'none';
-                                console.log('Área de login ocultada');
                             }
                             
                             // Ocultar campo de senha
@@ -856,7 +817,6 @@
                             var modalReservaLabel = document.getElementById('modalReservaLabel');
                             if (modalReservaLabel) {
                                 modalReservaLabel.textContent = 'Finalizar Reserva';
-                                console.log('Título do modal atualizado para "Finalizar Reserva"');
                             }
                             
                             // Mostrar área de reserva IMEDIATAMENTE (sem confirmação)
@@ -872,7 +832,6 @@
                                 divDadosReserva.removeAttribute('hidden');
                                 divDadosReserva.classList.remove('d-none');
                                 divDadosReserva.classList.add('d-block');
-                                console.log('Área de reserva exibida - ID:', divDadosReserva.id);
                                 
                                 // Garantir que todos os campos dentro estejam visíveis
                                 var campos = divDadosReserva.querySelectorAll('input, select, textarea, label, .form-label, .mb-3, .form-control, .form-select');
@@ -890,7 +849,6 @@
                                     label.style.visibility = 'visible';
                                 });
                             } else {
-                                console.error('ERRO: divDadosReserva não encontrado! Tentando novamente...');
                                 // Tentar novamente após um pequeno delay
                                 setTimeout(function() {
                                     divDadosReserva = document.getElementById('<%= divDadosReserva.ClientID %>');
@@ -900,7 +858,6 @@
                                     if (divDadosReserva) {
                                         divDadosReserva.style.display = 'block';
                                         divDadosReserva.style.visibility = 'visible';
-                                        console.log('Área de reserva exibida na segunda tentativa');
                                     }
                                 }, 200);
                             }
@@ -910,9 +867,6 @@
                             if (divBotoesReserva) {
                                 divBotoesReserva.style.display = 'flex';
                                 divBotoesReserva.style.visibility = 'visible';
-                                console.log('Botões de reserva exibidos');
-                            } else {
-                                console.warn('divBotoesReserva não encontrado');
                             }
                             
                             // Mostrar botão Confirmar Reserva
@@ -924,9 +878,6 @@
                                 btnConfirmarReserva.style.display = 'inline-block';
                                 btnConfirmarReserva.style.visibility = 'visible';
                                 btnConfirmarReserva.removeAttribute('hidden');
-                                console.log('Botão Confirmar Reserva exibido - ID:', btnConfirmarReserva.id);
-                            } else {
-                                console.error('ERRO: btnConfirmarReserva não encontrado!');
                             }
                             
                             // Atualizar variável global
@@ -970,12 +921,11 @@
                                 }
                             }, 100);
                             
-                            console.log('Login realizado com sucesso. Área de reserva exibida automaticamente.');
                         } else {
                             mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login: ' + (result.mensagem || 'Erro desconhecido'), 'danger');
                         }
                     }, function(error) {
-                        console.error('Erro ao fazer login:', error);
+                        // Erro ao fazer login
                         mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login. Tente novamente.', 'danger');
                     });
                 }
@@ -1022,7 +972,7 @@
                         }
                     }, function(error) {
                         ocultarMensagem();
-                        console.error('Erro ao validar senha:', error);
+                        // Erro ao validar senha
                         mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao validar senha. Tente novamente.', 'danger');
                     });
                 } else {
@@ -1434,7 +1384,7 @@
                 }
                 
                 if (typeof PageMethods === 'undefined') {
-                    console.error('PageMethods não disponível');
+                    // PageMethods não disponível
                     return;
                 }
                 
@@ -1482,7 +1432,7 @@
                         mostrarMensagemStandalone('<i class="fas fa-info-circle"></i> Cliente não encontrado. Clique no botão abaixo para se cadastrar.', 'info');
                     }
                 }, function(error) {
-                    console.error('Erro ao verificar cliente:', error);
+                    // Erro ao verificar cliente
                     mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao verificar cliente. Tente novamente.', 'danger');
                 });
             }
@@ -1492,7 +1442,7 @@
                 if (!cliente) return;
                 
                 if (typeof PageMethods === 'undefined') {
-                    console.error('PageMethods não disponível');
+                    // PageMethods não disponível
                     return;
                 }
                 
@@ -1547,7 +1497,7 @@
                         mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login: ' + (result.mensagem || 'Erro desconhecido'), 'danger');
                     }
                 }, function(error) {
-                    console.error('Erro ao fazer login:', error);
+                    // Erro ao fazer login
                     mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login. Tente novamente.', 'danger');
                 });
             }
@@ -1569,7 +1519,7 @@
                 }
                 
                 if (typeof PageMethods === 'undefined') {
-                    console.error('PageMethods não disponível');
+                    // PageMethods não disponível
                     return;
                 }
                 
@@ -1586,7 +1536,7 @@
                         }
                     }
                 }, function(error) {
-                    console.error('Erro ao validar senha:', error);
+                    // Erro ao validar senha
                     mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao validar senha. Tente novamente.', 'danger');
                 });
             }

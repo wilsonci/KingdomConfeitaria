@@ -98,6 +98,10 @@ namespace KingdomConfeitaria
                 // Atualizar último acesso
                 cliente.UltimoAcesso = DateTime.Now;
                 _databaseService.CriarOuAtualizarCliente(cliente);
+                
+                // Registrar log de login
+                string usuarioLog = LogService.ObterUsuarioAtual(Session);
+                LogService.RegistrarLogin(usuarioLog, "Login.aspx", $"Email: {email}");
 
                 // Verificar se há URL de retorno
                 string returnUrl = Request.QueryString["returnUrl"];

@@ -1,0 +1,4 @@
+# Esta pasta contém os arquivos de banco de dados LocalDB
+# Os arquivos .mdf e .ldf serão criados automaticamente
+# Não commite arquivos de banco de dados no controle de versão
+

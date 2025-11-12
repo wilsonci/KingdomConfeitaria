@@ -11,6 +11,7 @@ using System.Web.Script.Serialization;
 using KingdomConfeitaria.Models;
 using KingdomConfeitaria.Services;
 using KingdomConfeitaria.Helpers;
+using KingdomConfeitaria.Security;
 
 namespace KingdomConfeitaria
 {
@@ -80,7 +81,10 @@ namespace KingdomConfeitaria
                 AtualizarCarrinho(); // Atualizar carrinho na primeira carga
                 
                 // Se usuário acabou de fazer login, preencher dados e preparar para abrir modal
-                bool abrirReserva = Request.QueryString["abrirReserva"] == "true";
+                // Validar entrada para prevenir XSS
+                string abrirReservaParam = Request.QueryString["abrirReserva"];
+                bool abrirReserva = !string.IsNullOrEmpty(abrirReservaParam) && 
+                                    Security.InputValidator.SanitizeString(abrirReservaParam).ToLower() == "true";
                 if (abrirReserva && estaLogado)
                 {
                     // Preencher dados do cliente nos campos do modal
@@ -708,16 +712,21 @@ namespace KingdomConfeitaria
             // Limpar observações
             txtObservacoes.Text = "";
 
-            // Adicionar data attribute para abrir modal após postback
-            btnFazerReserva.Attributes["data-open-modal"] = "modalReserva";
-            
-            // Usar ClientScript em vez de ScriptManager
+            // Abrir modal sempre que o botão "Fazer Reserva" for clicado
+            // O método btnFazerReserva_Click só é chamado quando o botão é clicado, então sempre abrir o modal aqui
             string scriptAbrirModal = @"
                 setTimeout(function() {
                     if (typeof DefaultPage !== 'undefined' && DefaultPage.ModalReserva) {
                         DefaultPage.ModalReserva.abrir();
                     } else if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
                         KingdomConfeitaria.Modal.show('modalReserva');
+                    } else {
+                        // Fallback: usar Bootstrap diretamente
+                        var modalElement = document.getElementById('modalReserva');
+                        if (modalElement) {
+                            var modal = new bootstrap.Modal(modalElement);
+                            modal.show();
+                        }
                     }
                 }, 100);";
             
@@ -1048,6 +1057,49 @@ namespace KingdomConfeitaria
                     return;
                 }
 
+                // Buscar dados do cliente e status da reserva para preencher antes de enviar email
+                if (reserva.ClienteId.HasValue)
+                {
+                    try
+                    {
+                        var clienteData = _databaseService.ObterClientePorId(reserva.ClienteId.Value);
+                        if (clienteData != null)
+                        {
+                            reserva.Nome = clienteData.Nome;
+                            reserva.Email = clienteData.Email;
+                            reserva.Telefone = clienteData.Telefone;
+                        }
+                    }
+                    catch
+                    {
+                        // Se não conseguir buscar o cliente, continuar sem os dados
+                    }
+                }
+                
+                // Buscar status da reserva se não estiver preenchido
+                if (reserva.StatusId.HasValue && string.IsNullOrEmpty(reserva.Status))
+                {
+                    try
+                    {
+                        var statusReserva = _databaseService.ObterStatusReservaPorId(reserva.StatusId.Value);
+                        if (statusReserva != null)
+                        {
+                            reserva.Status = statusReserva.Nome;
+                        }
+                    }
+                    catch
+                    {
+                        // Se não conseguir buscar o status, usar "Aberta" como padrão
+                        reserva.Status = "Aberta";
+                    }
+                }
+                
+                // Se ainda não tiver status, usar "Aberta" como padrão
+                if (string.IsNullOrEmpty(reserva.Status))
+                {
+                    reserva.Status = "Aberta";
+                }
+                
                 // Enviar emails e WhatsApp de forma assíncrona (não bloquear a resposta)
                 System.Threading.Tasks.Task.Run(() =>
                 {
@@ -1056,9 +1108,11 @@ namespace KingdomConfeitaria
                         var emailService = new EmailService();
                         emailService.EnviarConfirmacaoReserva(reserva);
                     }
-                    catch
+                    catch (Exception exEmail)
                     {
-                        // Erro ao enviar email - não bloquear o processo
+                        // Log do erro (em produção, usar um sistema de log adequado)
+                        System.Diagnostics.Debug.WriteLine("Erro ao enviar email de confirmação: " + exEmail.Message);
+                        // Não bloquear o processo
                     }
 
                     try

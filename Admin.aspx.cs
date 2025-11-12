@@ -727,6 +727,42 @@ namespace KingdomConfeitaria
                     }
 
                     _databaseService.AtualizarReserva(reserva);
+                    
+                    // Buscar dados do cliente antes de enviar email
+                    if (reserva.ClienteId.HasValue)
+                    {
+                        var cliente = _databaseService.ObterClientePorId(reserva.ClienteId.Value);
+                        if (cliente != null)
+                        {
+                            reserva.Nome = cliente.Nome;
+                            reserva.Email = cliente.Email;
+                            reserva.Telefone = cliente.Telefone;
+                        }
+                    }
+                    
+                    // Buscar status atualizado
+                    if (reserva.StatusId.HasValue)
+                    {
+                        var statusReserva = _databaseService.ObterStatusReservaPorId(reserva.StatusId.Value);
+                        if (statusReserva != null)
+                        {
+                            reserva.Status = statusReserva.Nome;
+                        }
+                    }
+                    
+                    // Enviar email de forma assíncrona
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        try
+                        {
+                            var emailService = new EmailService();
+                            emailService.EnviarEmailReservaAlterada(reserva);
+                        }
+                        catch
+                        {
+                            // Erro ao enviar email - não bloquear
+                        }
+                    });
 
                     CarregarReservas();
                     Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", 

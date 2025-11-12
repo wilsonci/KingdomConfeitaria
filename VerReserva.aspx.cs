@@ -6,6 +6,7 @@ using System.Web.Script.Services;
 using System.Web.UI;
 using KingdomConfeitaria.Services;
 using KingdomConfeitaria.Models;
+using KingdomConfeitaria.Security;
 
 namespace KingdomConfeitaria
 {
@@ -28,7 +29,8 @@ namespace KingdomConfeitaria
                 return;
             }
 
-            string token = Request.QueryString["token"];
+            // Validar e sanitizar token para prevenir XSS e SQL Injection
+            string token = Security.InputValidator.SanitizeString(Request.QueryString["token"] ?? "", 100);
 
             if (string.IsNullOrEmpty(token))
             {
@@ -651,6 +653,42 @@ namespace KingdomConfeitaria
                 // Salvar no banco
                 _databaseService.AtualizarReserva(reserva);
                 _databaseService.AtualizarItensReserva(reserva.Id, novosItens);
+                
+                // Buscar dados do cliente antes de enviar email
+                if (reserva.ClienteId.HasValue)
+                {
+                    var cliente = _databaseService.ObterClientePorId(reserva.ClienteId.Value);
+                    if (cliente != null)
+                    {
+                        reserva.Nome = cliente.Nome;
+                        reserva.Email = cliente.Email;
+                        reserva.Telefone = cliente.Telefone;
+                    }
+                }
+                
+                // Buscar status atualizado
+                if (reserva.StatusId.HasValue)
+                {
+                    var statusReserva = _databaseService.ObterStatusReservaPorId(reserva.StatusId.Value);
+                    if (statusReserva != null)
+                    {
+                        reserva.Status = statusReserva.Nome;
+                    }
+                }
+                
+                // Enviar email de forma assíncrona
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        var emailService = new EmailService();
+                        emailService.EnviarEmailReservaAlterada(reserva);
+                    }
+                    catch
+                    {
+                        // Erro ao enviar email - não bloquear
+                    }
+                });
 
                 // Recarregar página com mensagem de sucesso
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 

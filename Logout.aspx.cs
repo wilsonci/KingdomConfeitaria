@@ -1,5 +1,6 @@
 using System;
 using System.Web.UI;
+using KingdomConfeitaria.Services;
 
 namespace KingdomConfeitaria
 {
@@ -10,6 +11,10 @@ namespace KingdomConfeitaria
             // Configurar encoding UTF-8
             Response.ContentEncoding = System.Text.Encoding.UTF8;
             Response.Charset = "UTF-8";
+            
+            // Registrar log de logout antes de limpar a sessão
+            string usuarioLog = LogService.ObterUsuarioAtual(Session);
+            LogService.RegistrarLogout(usuarioLog, "Logout.aspx");
             
             Session.Clear();
             Session.Abandon();

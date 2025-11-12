@@ -524,7 +524,6 @@
         var produtosPermitidosAtuais = '';
         
         function editarProdutosSaco(itemIndex, produtosJson, produtosPermitidos) {
-            console.log('editarProdutosSaco chamado:', itemIndex, produtosJson, produtosPermitidos);
             itemIndexEditando = itemIndex;
             produtosPermitidosAtuais = produtosPermitidos || '';
             
@@ -536,7 +535,6 @@
                     produtosSacoAtuais = JSON.parse(produtosJson);
                 }
             } catch (e) {
-                console.error('Erro ao parsear JSON de produtos:', e, produtosJson);
                 alert('Erro ao carregar produtos: ' + e.message);
                 produtosSacoAtuais = [];
             }
@@ -549,7 +547,6 @@
                         preencherModalProdutosSaco();
                     } else {
                         alert('Erro ao carregar produtos disponíveis.');
-                        console.error('Erro ao obter produtos:', result);
                     }
                 });
             } else {
@@ -573,7 +570,7 @@
                     return produtosIds.indexOf(pId) !== -1;
                 });
             } catch (e) {
-                console.error('Erro ao filtrar produtos por IDs:', e);
+                // Erro ao filtrar produtos por IDs
             }
         }
         
@@ -582,7 +579,6 @@
             var container = document.getElementById('produtosSacoContainer');
             if (!container) {
                 alert('Erro: Container de produtos não encontrado.');
-                console.error('Container produtosSacoContainer não encontrado');
                 return;
             }
             container.innerHTML = '';
@@ -599,7 +595,6 @@
             // Verificar se Bootstrap está disponível
             if (typeof bootstrap === 'undefined') {
                 alert('Erro: Bootstrap não está carregado. Por favor, recarregue a página.');
-                console.error('Bootstrap não está disponível');
                 return;
             }
             
@@ -607,16 +602,13 @@
             var modalElement = document.getElementById('modalEditarProdutosSaco');
             if (!modalElement) {
                 alert('Erro: Modal não encontrado.');
-                console.error('Modal modalEditarProdutosSaco não encontrado');
                 return;
             }
             
             try {
                 var modal = bootstrap.Modal.getOrCreateInstance(modalElement);
                 modal.show();
-                console.log('Modal aberto com sucesso');
             } catch (e) {
-                console.error('Erro ao abrir modal:', e);
                 alert('Erro ao abrir modal: ' + e.message);
             }
         }
@@ -634,7 +626,7 @@
                         return produtosIds.indexOf(pId) !== -1;
                     });
                 } catch (e) {
-                    console.error('Erro ao filtrar produtos por IDs:', e);
+                    // Erro ao filtrar produtos por IDs
                 }
             }
             

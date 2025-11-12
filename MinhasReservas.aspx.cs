@@ -307,7 +307,34 @@ namespace KingdomConfeitaria
                 
                 if (podeCancelar)
                 {
+                    // Buscar dados do cliente antes de cancelar
+                    if (reserva.ClienteId.HasValue)
+                    {
+                        var cliente = _databaseService.ObterClientePorId(reserva.ClienteId.Value);
+                        if (cliente != null)
+                        {
+                            reserva.Nome = cliente.Nome;
+                            reserva.Email = cliente.Email;
+                            reserva.Telefone = cliente.Telefone;
+                        }
+                    }
+                    
                     _databaseService.CancelarReserva(reservaId);
+                    
+                    // Enviar email de forma assíncrona
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        try
+                        {
+                            var emailService = new EmailService();
+                            emailService.EnviarEmailReservaCancelada(reserva);
+                        }
+                        catch
+                        {
+                            // Erro ao enviar email - não bloquear
+                        }
+                    });
+                    
                     MostrarAlerta("Reserva cancelada com sucesso!", "success");
                     CarregarReservas(clienteId);
                 }
@@ -356,6 +383,32 @@ namespace KingdomConfeitaria
                 
                 if (podeExcluir)
                 {
+                    // Buscar dados do cliente antes de excluir
+                    if (reserva.ClienteId.HasValue)
+                    {
+                        var cliente = _databaseService.ObterClientePorId(reserva.ClienteId.Value);
+                        if (cliente != null)
+                        {
+                            reserva.Nome = cliente.Nome;
+                            reserva.Email = cliente.Email;
+                            reserva.Telefone = cliente.Telefone;
+                        }
+                    }
+                    
+                    // Enviar email ANTES de excluir (pois depois não teremos mais os dados)
+                    System.Threading.Tasks.Task.Run(() =>
+                    {
+                        try
+                        {
+                            var emailService = new EmailService();
+                            emailService.EnviarEmailReservaExcluida(reserva);
+                        }
+                        catch
+                        {
+                            // Erro ao enviar email - não bloquear
+                        }
+                    });
+                    
                     _databaseService.ExcluirReserva(reservaId);
                     MostrarAlerta("Reserva excluída com sucesso!", "success");
                     CarregarReservas(clienteId);

@@ -169,7 +169,6 @@
                 if (!eventTarget) return false;
                 var form = document.getElementById('form1');
                 if (!form) {
-                    console.error('Formulário form1 não encontrado');
                     return false;
                 }
                 

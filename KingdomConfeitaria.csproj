@@ -82,6 +82,9 @@
     <Content Include="Scripts\site.js" />
     <Content Include="web.config" />
     <Content Include="Images\logo-kingdom-confeitaria.png" />
+    <Content Include="Utils\EncryptPassword.aspx">
+      <SubType>ASPXCodeBehind</SubType>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Default.aspx.cs">
@@ -158,6 +161,13 @@
     <Compile Include="RedefinirSenha.aspx.designer.cs">
       <DependentUpon>RedefinirSenha.aspx</DependentUpon>
     </Compile>
+    <Compile Include="Utils\EncryptPassword.aspx.cs" Condition="'$(Configuration)' == 'Debug'">
+      <DependentUpon>Utils\EncryptPassword.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Utils\EncryptPassword.aspx.designer.cs" Condition="'$(Configuration)' == 'Debug'">
+      <DependentUpon>Utils\EncryptPassword.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
@@ -167,13 +177,20 @@
     <Compile Include="Models\Produto.cs" />
     <Compile Include="Models\Reserva.cs" />
     <Compile Include="Models\StatusReserva.cs" />
+    <Compile Include="Security\InputValidator.cs" />
+    <Compile Include="Security\PasswordEncryption.cs" />
+    <Compile Include="Security\SecurityHeadersModule.cs" />
     <Compile Include="Services\EmailService.cs" />
     <Compile Include="Services\DatabaseService.cs" />
+    <Compile Include="Services\LogService.cs" />
     <Compile Include="Services\WhatsAppService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="Web.Release.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
