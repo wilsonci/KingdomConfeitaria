@@ -131,9 +131,13 @@
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-actions">
+                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
                     <span id="clienteNome" runat="server" style="color: white; margin-right: 15px;"></span>
-                    <a href="Default.aspx">Nova Reserva</a>
-                    <a href="Logout.aspx">Sair</a>
+                    <a href="#" id="linkLogin" runat="server" style="display: none;" onclick="abrirModalLogin(); return false;">Entrar</a>
+                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;">Minhas Reservas</a>
+                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;">Meus Dados</a>
+                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;">Painel Gestor</a>
+                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;">Sair</a>
                 </div>
                 <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
                 <h1 style="display:none; color: white; margin: 0;">Kingdom Confeitaria</h1>

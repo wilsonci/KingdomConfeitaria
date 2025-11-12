@@ -484,21 +484,43 @@ function atualizarTotalSelecionado(sacoId) {
     }
 }
 
-function adicionarSacoAoCarrinho(sacoId, nomeSaco, tamanhoSaco, quantidadeMaxima) {
+function adicionarSacoAoCarrinho(sacoId, nomeSaco, quantidadeMaxima) {
     var seletores = document.querySelectorAll('.seletor-produto-saco[data-saco-id="' + sacoId + '"]');
     var produtosSelecionados = [];
     var todosPreenchidos = true;
+    var seletoresVazios = [];
     
-    seletores.forEach(function(select) {
+    seletores.forEach(function(select, index) {
         if (select.value && select.value !== '') {
             produtosSelecionados.push(select.value);
         } else {
             todosPreenchidos = false;
+            seletoresVazios.push(index + 1);
         }
     });
     
     if (!todosPreenchidos || produtosSelecionados.length !== quantidadeMaxima) {
-        alert('Por favor, selecione todos os ' + quantidadeMaxima + ' biscoitos para o saco.');
+        var mensagem = 'Por favor, selecione todos os ' + quantidadeMaxima + ' produtos para o saco/cesta/caixa.';
+        if (seletoresVazios.length > 0) {
+            mensagem += ' Faltam selecionar: ' + seletoresVazios.join(', ');
+        }
+        alert(mensagem);
+        // Destacar os seletores vazios
+        seletores.forEach(function(select, index) {
+            if (!select.value || select.value === '') {
+                select.classList.add('border-danger');
+                select.focus();
+            } else {
+                select.classList.remove('border-danger');
+            }
+        });
+        return;
+    }
+    
+    // Verificar se há produtos duplicados
+    var produtosUnicos = [...new Set(produtosSelecionados)];
+    if (produtosUnicos.length !== produtosSelecionados.length) {
+        alert('Por favor, selecione produtos diferentes para cada posição do saco/cesta/caixa.');
         return;
     }
     
@@ -511,9 +533,9 @@ function adicionarSacoAoCarrinho(sacoId, nomeSaco, tamanhoSaco, quantidadeMaxima
     
     var precoNormalizado = String(preco).replace(',', '.').trim();
     
-    // Enviar os dados: sacoId|nomeSaco|tamanhoSaco|preco|quantidade|produtosSelecionados
+    // Enviar os dados: sacoId|nomeSaco|preco|quantidade|produtosSelecionados
     var quantidade = document.getElementById('quantidade_' + sacoId) ? document.getElementById('quantidade_' + sacoId).value : 1;
-    var dados = sacoId + '|' + nomeSaco + '|' + tamanhoSaco + '|' + precoNormalizado + '|' + quantidade + '|' + produtosSelecionados.join(',');
+    var dados = sacoId + '|' + nomeSaco + '|' + precoNormalizado + '|' + quantidade + '|' + produtosSelecionados.join(',');
     
     KingdomConfeitaria.Utils.postBack('AdicionarSacoAoCarrinho', dados);
 }

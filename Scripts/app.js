@@ -173,6 +173,11 @@ KingdomConfeitaria.Modal = {
     }
 };
 
+// Função global para abrir modal de login (redireciona para Login.aspx)
+function abrirModalLogin() {
+    window.location.href = 'Login.aspx';
+}
+
 // Inicialização quando a página carregar
 KingdomConfeitaria.Utils.ready(function() {
     // Inicializar todos os modais encontrados

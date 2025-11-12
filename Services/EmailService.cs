@@ -135,8 +135,7 @@ namespace KingdomConfeitaria.Services
                 // Verificar se as configurações estão preenchidas
                 if (string.IsNullOrEmpty(_smtpServer) || string.IsNullOrEmpty(_smtpUsername) || string.IsNullOrEmpty(_smtpPassword))
                 {
-                    System.Diagnostics.Debug.WriteLine("Configurações SMTP não estão preenchidas. Email não será enviado.");
-                    return; // Não lançar exceção, apenas logar
+                    return; // Não lançar exceção
                 }
 
                 using (var client = new SmtpClient(_smtpServer, _smtpPort))
@@ -159,12 +158,8 @@ namespace KingdomConfeitaria.Services
                     client.Send(mensagem);
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                // Log do erro (implementar logging adequado)
-                System.Diagnostics.Debug.WriteLine(string.Format("Erro ao enviar email: {0}", ex.Message));
-                System.Diagnostics.Debug.WriteLine(string.Format("Stack trace: {0}", ex.StackTrace));
-                
                 // Não lançar exceção para não interromper o fluxo
                 // Em produção, considere implementar um sistema de retry ou fila
             }

@@ -28,6 +28,26 @@ namespace KingdomConfeitaria
                 return;
             }
 
+            // Atualizar menu
+            var clienteNome = FindControl("clienteNome") as System.Web.UI.HtmlControls.HtmlGenericControl;
+            var linkMinhasReservas = FindControl("linkMinhasReservas") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkMeusDados = FindControl("linkMeusDados") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkAdmin = FindControl("linkAdmin") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkLogout = FindControl("linkLogout") as System.Web.UI.HtmlControls.HtmlAnchor;
+            
+            if (clienteNome != null)
+            {
+                clienteNome.InnerText = "Olá, " + (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "");
+                clienteNome.Style["display"] = "inline";
+            }
+            if (linkMinhasReservas != null) linkMinhasReservas.Style["display"] = "inline";
+            if (linkMeusDados != null) linkMeusDados.Style["display"] = "inline";
+            if (linkLogout != null) linkLogout.Style["display"] = "inline";
+            
+            // Verificar se é admin
+            bool isAdmin = Session["IsAdmin"] != null && (bool)Session["IsAdmin"];
+            if (linkAdmin != null) linkAdmin.Style["display"] = isAdmin ? "inline" : "none";
+
             if (!IsPostBack)
             {
                 CarregarDadosCliente();

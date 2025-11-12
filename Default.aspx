@@ -77,7 +77,8 @@
         }
         .produto-imagem {
             width: 100%;
-            height: 200px;
+            max-width: 150px;
+            height: 67px;
             object-fit: cover;
             border-radius: 10px;
             margin-bottom: 15px;
@@ -227,6 +228,7 @@
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-actions">
+                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
                     <span id="clienteNome" runat="server" style="color: white; margin-right: 15px; display: none;"></span>
                     <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;">Entrar</a>
                     <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;">Minhas Reservas</a>

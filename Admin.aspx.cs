@@ -41,13 +41,84 @@ namespace KingdomConfeitaria
             }
             
             _databaseService = new DatabaseService();
+            
+            // Atualizar menu
+            var clienteNome = FindControl("clienteNome") as System.Web.UI.HtmlControls.HtmlGenericControl;
+            var linkLogin = FindControl("linkLogin") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkMinhasReservas = FindControl("linkMinhasReservas") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkMeusDados = FindControl("linkMeusDados") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkAdmin = FindControl("linkAdmin") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkLogout = FindControl("linkLogout") as System.Web.UI.HtmlControls.HtmlAnchor;
+            
+            if (Session["ClienteId"] != null)
+            {
+                if (clienteNome != null)
+                {
+                    clienteNome.InnerText = "Olá, " + (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "");
+                    clienteNome.Style["display"] = "inline";
+                }
+                if (linkLogin != null) linkLogin.Style["display"] = "none";
+                if (linkMinhasReservas != null) linkMinhasReservas.Style["display"] = "inline";
+                if (linkMeusDados != null) linkMeusDados.Style["display"] = "inline";
+                if (linkAdmin != null) linkAdmin.Style["display"] = "inline";
+                if (linkLogout != null) linkLogout.Style["display"] = "inline";
+            }
+            else
+            {
+                if (clienteNome != null) clienteNome.Style["display"] = "none";
+                if (linkLogin != null) linkLogin.Style["display"] = "inline";
+                if (linkMinhasReservas != null) linkMinhasReservas.Style["display"] = "none";
+                if (linkMeusDados != null) linkMeusDados.Style["display"] = "none";
+                if (linkAdmin != null) linkAdmin.Style["display"] = "none";
+                if (linkLogout != null) linkLogout.Style["display"] = "none";
+            }
 
             if (!IsPostBack)
             {
                 CarregarResumo();
                 CarregarProdutos();
                 CarregarReservas();
+                CarregarListaProdutosPermitidos();
             }
+        }
+
+        private string GerarHtmlProdutosAProduzir(Dictionary<DateTime, Dictionary<int, int>> produtosAProduzirPorData, List<Produto> todosProdutos)
+        {
+            if (produtosAProduzirPorData.Count == 0)
+            {
+                return "<p class='text-muted'>Nenhum produto a produzir no momento.</p>";
+            }
+            
+            var html = "";
+            var datasOrdenadas = produtosAProduzirPorData.Keys.OrderBy(d => d).ToList();
+            
+            foreach (var data in datasOrdenadas)
+            {
+                var produtosData = produtosAProduzirPorData[data];
+                html += $@"
+                    <div class='mb-4'>
+                        <h6 class='border-bottom pb-2'><i class='fas fa-calendar'></i> {data.ToString("dd/MM/yyyy")}</h6>
+                        <ul class='list-group'>";
+                
+                foreach (var kvp in produtosData.OrderBy(p => todosProdutos.FirstOrDefault(pr => pr.Id == p.Key)?.Nome ?? ""))
+                {
+                    var produto = todosProdutos.FirstOrDefault(p => p.Id == kvp.Key);
+                    if (produto != null)
+                    {
+                        html += $@"
+                            <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                <span>{System.Web.HttpUtility.HtmlEncode(produto.Nome)}</span>
+                                <span class='badge bg-primary rounded-pill'>{kvp.Value}</span>
+                            </li>";
+                    }
+                }
+                
+                html += @"
+                        </ul>
+                    </div>";
+            }
+            
+            return html;
         }
 
         private void CarregarResumo()
@@ -80,6 +151,64 @@ namespace KingdomConfeitaria
                 decimal valorTotalReservas = reservas.Where(r => !r.Cancelado).Sum(r => r.ValorTotal);
                 decimal valorAberto = reservas.Where(r => statusAberta != null && r.StatusId == statusAberta.Id && !r.Cancelado).Sum(r => r.ValorTotal);
                 decimal valorEmProducao = reservas.Where(r => statusEmProducao != null && r.StatusId == statusEmProducao.Id && !r.Cancelado).Sum(r => r.ValorTotal);
+                
+                // Calcular produtos a produzir (agrupados por data de retirada)
+                var produtosAProduzir = _databaseService.CalcularProdutosAProduzir();
+                var produtosAProduzirPorData = new Dictionary<DateTime, Dictionary<int, int>>();
+                
+                // Agrupar por data de retirada
+                var reservasAProduzir = reservas.Where(r => 
+                    (statusAberta != null && r.StatusId == statusAberta.Id) ||
+                    (statusEmProducao != null && r.StatusId == statusEmProducao.Id) ||
+                    (statusProducaoPronta != null && r.StatusId == statusProducaoPronta.Id) ||
+                    (_databaseService.ObterStatusReservaPorNome("Preparando Entrega") != null && r.StatusId == _databaseService.ObterStatusReservaPorNome("Preparando Entrega").Id) ||
+                    (_databaseService.ObterStatusReservaPorNome("Saiu para Entrega") != null && r.StatusId == _databaseService.ObterStatusReservaPorNome("Saiu para Entrega").Id)
+                ).Where(r => !r.Cancelado).ToList();
+                
+                var todosProdutos = _databaseService.ObterTodosProdutos();
+                
+                foreach (var reserva in reservasAProduzir)
+                {
+                    var dataRetirada = reserva.DataRetirada.Date;
+                    if (!produtosAProduzirPorData.ContainsKey(dataRetirada))
+                    {
+                        produtosAProduzirPorData[dataRetirada] = new Dictionary<int, int>();
+                    }
+                    
+                    foreach (var item in reserva.Itens)
+                    {
+                        // Adicionar produto principal
+                        if (!produtosAProduzirPorData[dataRetirada].ContainsKey(item.ProdutoId))
+                        {
+                            produtosAProduzirPorData[dataRetirada][item.ProdutoId] = 0;
+                        }
+                        produtosAProduzirPorData[dataRetirada][item.ProdutoId] += item.Quantidade;
+                        
+                        // Adicionar produtos dentro de sacos/cestas/caixas
+                        if (!string.IsNullOrEmpty(item.Produtos))
+                        {
+                            try
+                            {
+                                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                                var produtosJson = serializer.Deserialize<List<Dictionary<string, object>>>(item.Produtos);
+                                
+                                foreach (var produtoJson in produtosJson)
+                                {
+                                    int qt = Convert.ToInt32(produtoJson["qt"]);
+                                    int prodId = Convert.ToInt32(produtoJson["id"]);
+                                    int quantidadeTotal = qt * item.Quantidade;
+                                    
+                                    if (!produtosAProduzirPorData[dataRetirada].ContainsKey(prodId))
+                                    {
+                                        produtosAProduzirPorData[dataRetirada][prodId] = 0;
+                                    }
+                                    produtosAProduzirPorData[dataRetirada][prodId] += quantidadeTotal;
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                }
                 
                 string html = $@"
                     <div class='row mb-4'>
@@ -194,6 +323,15 @@ namespace KingdomConfeitaria
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class='card mt-4'>
+                        <div class='card-header bg-warning text-dark'>
+                            <h5 class='mb-0'><i class='fas fa-box'></i> Produtos a Produzir por Data de Retirada</h5>
+                        </div>
+                        <div class='card-body'>
+                            {GerarHtmlProdutosAProduzir(produtosAProduzirPorData, todosProdutos)}
+                        </div>
                     </div>";
                 
                 resumoContainer.InnerHtml = html;
@@ -225,8 +363,9 @@ namespace KingdomConfeitaria
 
                     string nomeEscapado = produto.Nome.Replace("\"", "\\\"").Replace("'", "\\'");
                     string descricaoEscapada = produto.Descricao.Replace("\"", "\\\"").Replace("'", "\\'");
-                    string precoPequenoStr = produto.PrecoPequeno.ToString("F2").Replace(",", ".");
-                    string precoGrandeStr = produto.PrecoGrande.ToString("F2").Replace(",", ".");
+                    string precoStr = produto.Preco.ToString("F2").Replace(",", ".");
+                    string reservavelAteStr = produto.ReservavelAte.HasValue ? produto.ReservavelAte.Value.ToString("yyyy-MM-dd") : "";
+                    string vendivelAteStr = produto.VendivelAte.HasValue ? produto.VendivelAte.Value.ToString("yyyy-MM-dd") : "";
                     string html = string.Format(@"
                         <div class='produto-admin-card'>
                             <div class='row'>
@@ -239,14 +378,13 @@ namespace KingdomConfeitaria
                                     <h4>{1} {2}</h4>
                                     <p class='text-muted'>{3}</p>
                                     <p>
-                                        <strong>Pequeno:</strong> R$ {4} | 
-                                        <strong>Grande:</strong> R$ {5}
+                                        <strong>Preço:</strong> R$ {4}
                                     </p>
-                                    <p><small class='text-muted'>Ordem: {6}</small></p>
+                                    <p><small class='text-muted'>Ordem: {5}</small></p>
                                 </div>
                                 <div class='col-md-2 text-end'>
                                     <button type='button' class='btn btn-primary btn-sm mb-2' 
-                                        onclick='editarProduto({7}, ""{8}"", ""{9}"", {10}, {11}, ""{0}"", {6}, {12})'>
+                                        onclick='editarProduto({6}, ""{7}"", ""{8}"", {9}, ""{0}"", {5}, {10}, ""{11}"", ""{12}"", {13}, {14}, ""{15}"")'>
                                         <i class='fas fa-edit'></i> Editar
                                     </button>
                                 </div>
@@ -256,15 +394,18 @@ namespace KingdomConfeitaria
                         produto.Nome,
                         statusBadge,
                         produto.Descricao,
-                        produto.PrecoPequeno.ToString("F2"),
-                        produto.PrecoGrande.ToString("F2"),
+                        produto.Preco.ToString("F2"),
                         produto.Ordem,
                         produto.Id,
                         nomeEscapado,
                         descricaoEscapada,
-                        precoPequenoStr,
-                        precoGrandeStr,
-                        produto.Ativo.ToString().ToLower());
+                        precoStr,
+                        produto.Ativo.ToString().ToLower(),
+                        reservavelAteStr,
+                        vendivelAteStr,
+                        produto.EhSacoPromocional.ToString().ToLower(),
+                        produto.QuantidadeSaco,
+                        System.Web.HttpUtility.JavaScriptStringEncode(produto.Produtos ?? ""));
                     produtosAdminContainer.InnerHtml += html;
                 }
             }
@@ -279,21 +420,77 @@ namespace KingdomConfeitaria
             try
             {
                 int produtoId = int.Parse(hdnProdutoId.Value);
+                
+                // Validação no servidor
+                if (string.IsNullOrWhiteSpace(txtNomeProduto.Text))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Por favor, preencha o nome do produto.');", true);
+                    return;
+                }
+                
+                if (string.IsNullOrWhiteSpace(txtPreco.Text))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Por favor, preencha o preço do produto.');", true);
+                    return;
+                }
+                
+                decimal preco;
+                if (!decimal.TryParse(txtPreco.Text, out preco))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Por favor, informe um preço válido.');", true);
+                    return;
+                }
+                
+                if (string.IsNullOrWhiteSpace(txtImagemUrl.Text))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Por favor, preencha a URL da imagem do produto.');", true);
+                    return;
+                }
+                
+                // Validar e parsear quantidade do saco
+                int quantidadeSaco = 0;
+                if (chkEhSacoPromocional.Checked)
+                {
+                    if (!string.IsNullOrEmpty(txtQuantidadeSaco.Text))
+                    {
+                        if (!int.TryParse(txtQuantidadeSaco.Text, out quantidadeSaco))
+                        {
+                            quantidadeSaco = 0;
+                        }
+                    }
+                }
+                
+                // Obter produtos permitidos apenas se for saco promocional
+                string produtosPermitidos = null;
+                if (chkEhSacoPromocional.Checked)
+                {
+                    produtosPermitidos = ObterProdutosPermitidosJson(lstProdutosPermitidos);
+                }
+                
                 var produto = new Produto
                 {
                     Id = produtoId,
-                    Nome = txtNomeProduto.Text,
-                    Descricao = txtDescricao.Text,
-                    PrecoPequeno = decimal.Parse(txtPrecoPequeno.Text),
-                    PrecoGrande = decimal.Parse(txtPrecoGrande.Text),
-                    ImagemUrl = txtImagemUrl.Text,
-                    Ordem = int.Parse(txtOrdem.Text),
-                    Ativo = chkAtivo.Checked
+                    Nome = txtNomeProduto.Text.Trim(),
+                    Descricao = txtDescricao.Text.Trim(),
+                    Preco = preco,
+                    ImagemUrl = txtImagemUrl.Text.Trim(),
+                    Ordem = int.Parse(txtOrdem.Text ?? "0"),
+                    Ativo = chkAtivo.Checked,
+                    EhSacoPromocional = chkEhSacoPromocional.Checked,
+                    QuantidadeSaco = quantidadeSaco,
+                    Produtos = produtosPermitidos,
+                    ReservavelAte = !string.IsNullOrEmpty(txtReservavelAte.Text) ? DateTime.Parse(txtReservavelAte.Text) : (DateTime?)null,
+                    VendivelAte = !string.IsNullOrEmpty(txtVendivelAte.Text) ? DateTime.Parse(txtVendivelAte.Text) : (DateTime?)null
                 };
 
                 _databaseService.AtualizarProduto(produto);
 
                 CarregarProdutos();
+                CarregarListaProdutosPermitidos(); // Recarregar lista para garantir que está atualizada
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", 
                     "var modal = bootstrap.Modal.getInstance(document.getElementById('modalEditarProduto')); modal.hide();", true);
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
@@ -310,15 +507,69 @@ namespace KingdomConfeitaria
         {
             try
             {
+                // Validação no servidor
+                if (string.IsNullOrWhiteSpace(txtNovoNome.Text))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Por favor, preencha o nome do produto.');", true);
+                    return;
+                }
+                
+                if (string.IsNullOrWhiteSpace(txtNovoPreco.Text))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Por favor, preencha o preço do produto.');", true);
+                    return;
+                }
+                
+                decimal preco;
+                if (!decimal.TryParse(txtNovoPreco.Text, out preco))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Por favor, informe um preço válido.');", true);
+                    return;
+                }
+                
+                if (string.IsNullOrWhiteSpace(txtNovaImagemUrl.Text))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Por favor, preencha a URL da imagem do produto.');", true);
+                    return;
+                }
+                
+                // Validar e parsear quantidade do saco
+                int quantidadeSaco = 0;
+                if (chkNovoEhSacoPromocional.Checked)
+                {
+                    if (!string.IsNullOrEmpty(txtNovaQuantidadeSaco.Text))
+                    {
+                        if (!int.TryParse(txtNovaQuantidadeSaco.Text, out quantidadeSaco))
+                        {
+                            quantidadeSaco = 0;
+                        }
+                    }
+                }
+                
+                // Obter produtos permitidos apenas se for saco promocional
+                string produtosPermitidos = null;
+                if (chkNovoEhSacoPromocional.Checked)
+                {
+                    produtosPermitidos = ObterProdutosPermitidosJson(lstNovosProdutosPermitidos);
+                }
+                
                 var novoProduto = new Produto
                 {
-                    Nome = txtNovoNome.Text,
-                    Descricao = txtNovaDescricao.Text,
-                    PrecoPequeno = decimal.Parse(txtNovoPrecoPequeno.Text),
-                    PrecoGrande = decimal.Parse(txtNovoPrecoGrande.Text),
-                    ImagemUrl = txtNovaImagemUrl.Text,
+                    Nome = txtNovoNome.Text.Trim(),
+                    Descricao = txtNovaDescricao.Text.Trim(),
+                    Preco = preco,
+                    ImagemUrl = txtNovaImagemUrl.Text.Trim(),
                     Ativo = true,
-                    Ordem = int.Parse(txtNovaOrdem.Text ?? "0")
+                    Ordem = int.Parse(txtNovaOrdem.Text ?? "0"),
+                    EhSacoPromocional = chkNovoEhSacoPromocional.Checked,
+                    QuantidadeSaco = quantidadeSaco,
+                    Produtos = produtosPermitidos,
+                    ReservavelAte = !string.IsNullOrEmpty(txtNovoReservavelAte.Text) ? DateTime.Parse(txtNovoReservavelAte.Text) : (DateTime?)null,
+                    VendivelAte = !string.IsNullOrEmpty(txtNovoVendivelAte.Text) ? DateTime.Parse(txtNovoVendivelAte.Text) : (DateTime?)null
                 };
 
                 _databaseService.AdicionarProduto(novoProduto);
@@ -326,12 +577,17 @@ namespace KingdomConfeitaria
                 // Limpar campos
                 txtNovoNome.Text = "";
                 txtNovaDescricao.Text = "";
-                txtNovoPrecoPequeno.Text = "";
-                txtNovoPrecoGrande.Text = "";
+                txtNovoPreco.Text = "";
                 txtNovaImagemUrl.Text = "";
                 txtNovaOrdem.Text = "0";
+                txtNovoReservavelAte.Text = "";
+                txtNovoVendivelAte.Text = "";
+                chkNovoEhSacoPromocional.Checked = false;
+                txtNovaQuantidadeSaco.Text = "0";
+                lstNovosProdutosPermitidos.ClearSelection();
 
                 CarregarProdutos();
+                CarregarListaProdutosPermitidos(); // Recarregar lista para garantir que está atualizada
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", 
                     "var modal = bootstrap.Modal.getInstance(document.getElementById('modalNovoProduto')); modal.hide();", true);
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Sucesso", 
@@ -486,31 +742,50 @@ namespace KingdomConfeitaria
             }
         }
 
-        protected void btnLimparDados_Click(object sender, EventArgs e)
+        private void CarregarListaProdutosPermitidos()
         {
             try
             {
-                _databaseService.LimparTodosClientesEReservas();
+                var produtos = _databaseService.ObterTodosProdutos().Where(p => !p.EhSacoPromocional && p.Ativo).OrderBy(p => p.Nome).ToList();
                 
-                // Recarregar dados
-                CarregarResumo();
-                CarregarProdutos();
-                CarregarReservas();
+                lstProdutosPermitidos.Items.Clear();
+                lstNovosProdutosPermitidos.Items.Clear();
                 
-                // Mostrar mensagem de sucesso
-                alertContainer.InnerHtml = "<div class='alert alert-success alert-dismissible fade show' role='alert'>" +
-                    "Todos os clientes e reservas foram removidos com sucesso!" +
-                    "<button type='button' class='btn-close' data-bs-dismiss='alert'></button>" +
-                    "</div>";
+                foreach (var produto in produtos)
+                {
+                    lstProdutosPermitidos.Items.Add(new System.Web.UI.WebControls.ListItem(produto.Nome, produto.Id.ToString()));
+                    lstNovosProdutosPermitidos.Items.Add(new System.Web.UI.WebControls.ListItem(produto.Nome, produto.Id.ToString()));
+                }
             }
-            catch (Exception ex)
+            catch
             {
-                alertContainer.InnerHtml = "<div class='alert alert-danger alert-dismissible fade show' role='alert'>" +
-                    "Erro ao limpar dados: " + System.Web.HttpUtility.HtmlEncode(ex.Message) +
-                    "<button type='button' class='btn-close' data-bs-dismiss='alert'></button>" +
-                    "</div>";
+                // Log do erro se necessário
             }
         }
+        
+        private string ObterProdutosPermitidosJson(System.Web.UI.WebControls.ListBox listBox)
+        {
+            if (listBox == null) return null;
+            
+            var produtosIds = new List<int>();
+            foreach (System.Web.UI.WebControls.ListItem item in listBox.Items)
+            {
+                if (item.Selected)
+                {
+                    int produtoId;
+                    if (int.TryParse(item.Value, out produtoId))
+                    {
+                        produtosIds.Add(produtoId);
+                    }
+                }
+            }
+            
+            if (produtosIds.Count == 0) return null;
+            
+            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+            return serializer.Serialize(produtosIds);
+        }
+
     }
 }
 

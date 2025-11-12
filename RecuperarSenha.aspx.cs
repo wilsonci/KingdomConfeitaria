@@ -64,9 +64,8 @@ namespace KingdomConfeitaria
                     _emailService.EnviarRecuperacaoSenha(cliente, cliente.TokenRecuperacaoSenha);
                     MostrarAlerta("Um email com o link para redefinir sua senha foi enviado. Verifique sua caixa de entrada.", "success");
                 }
-                catch (Exception exEmail)
+                catch
                 {
-                    System.Diagnostics.Debug.WriteLine("Erro ao enviar email de recuperação: " + exEmail.Message);
                     MostrarAlerta("Erro ao enviar email. Por favor, tente novamente mais tarde.", "danger");
                 }
             }

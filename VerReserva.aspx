@@ -90,10 +90,12 @@
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-actions">
+                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
                     <span id="clienteNome" runat="server" style="color: white; margin-right: 15px;"></span>
-                    <a href="Default.aspx">Nova Reserva</a>
+                    <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;">Entrar</a>
                     <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display:none;">Minhas Reservas</a>
-                    <a href="Login.aspx" id="linkLogin" runat="server">Entrar</a>
+                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display:none;">Meus Dados</a>
+                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display:none;">Painel Gestor</a>
                     <a href="Logout.aspx" id="linkLogout" runat="server" style="display:none;">Sair</a>
                 </div>
                 <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
@@ -197,14 +199,14 @@
                 PageMethods.ObterProdutosDisponiveis(function(result) {
                     if (result && !result.erro) {
                         produtosDisponiveis = result;
+                        window.produtosDisponiveis = result; // Disponibilizar globalmente
                         var select = document.getElementById('novoItemProduto');
                         if (select) {
                             result.forEach(function(produto) {
                                 var option = document.createElement('option');
                                 option.value = produto.id;
                                 option.textContent = produto.nome;
-                                option.setAttribute('data-preco-pequeno', produto.precoPequeno);
-                                option.setAttribute('data-preco-grande', produto.precoGrande);
+                                option.setAttribute('data-preco', produto.preco);
                                 select.appendChild(option);
                             });
                         }
@@ -273,11 +275,9 @@
             var quantidade = parseInt(document.getElementById('novoItemQuantidade').value) || 1;
             var precoInfo = document.getElementById('novoItemPrecoInfo');
             
-            if (produtoSelecionado && tamanho) {
-                // Garantir que os preços são números
-                var precoPequeno = parseFloat(produtoSelecionado.precoPequeno) || 0;
-                var precoGrande = parseFloat(produtoSelecionado.precoGrande) || 0;
-                var preco = tamanho === 'Pequeno' ? precoPequeno : precoGrande;
+            if (produtoSelecionado) {
+                // Usar o preço único do produto
+                var preco = parseFloat(produtoSelecionado.preco) || 0;
                 var subtotal = preco * quantidade;
                 precoInfo.textContent = 'Preço unitário: R$ ' + preco.toFixed(2).replace('.', ',') + ' | Subtotal: R$ ' + subtotal.toFixed(2).replace('.', ',');
             } else {
@@ -306,10 +306,8 @@
             
             var tamanho = tamanhoSelect.value;
             var quantidade = parseInt(quantidadeInput.value) || 1;
-            // Garantir que os preços são números, não strings
-            var precoPequeno = parseFloat(produto.precoPequeno) || 0;
-            var precoGrande = parseFloat(produto.precoGrande) || 0;
-            var precoUnitario = tamanho === 'Pequeno' ? precoPequeno : precoGrande;
+            // Usar o preço único do produto
+            var precoUnitario = parseFloat(produto.preco) || 0;
             var subtotal = precoUnitario * quantidade;
             
             // Adicionar item ao container
@@ -403,6 +401,35 @@
             }
         }
 
+        // Inicializar event listeners para botões de editar produtos do saco
+        function inicializarBotoesEditarProdutosSaco() {
+            var botoes = document.querySelectorAll('.btn-editar-produtos-saco');
+            botoes.forEach(function(botao) {
+                // Remover listeners antigos
+                var novoBotao = botao.cloneNode(true);
+                botao.parentNode.replaceChild(novoBotao, botao);
+                
+                novoBotao.addEventListener('click', function() {
+                    var itemIndex = parseInt(this.getAttribute('data-item-index'));
+                    var produtosJson = this.getAttribute('data-produtos-json') || '';
+                    var produtosPermitidos = this.getAttribute('data-produtos-permitidos') || '';
+                    editarProdutosSaco(itemIndex, produtosJson, produtosPermitidos);
+                });
+            });
+        }
+        
+        // Inicializar quando a página carregar
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', inicializarBotoesEditarProdutosSaco);
+        } else {
+            inicializarBotoesEditarProdutosSaco();
+        }
+        
+        // Re-inicializar após postback
+        window.addEventListener('pageshow', function(event) {
+            inicializarBotoesEditarProdutosSaco();
+        });
+
         // Atualizar função salvarReserva para incluir itens
         var salvarReservaOriginal = salvarReserva;
         salvarReserva = function(reservaId) {
@@ -461,11 +488,15 @@
                     // Remover qualquer formatação e garantir ponto como separador decimal
                     var precoUnitario = precoUnitarioValue.replace(/[^\d.]/g, '').replace(',', '.');
                     
+                    var produtos = item.querySelector('.produtos-item');
+                    var produtosValue = produtos ? produtos.value : '';
+                    
                     form.appendChild(createHiddenInput('itens[' + index + '].ProdutoId', produtoId));
                     form.appendChild(createHiddenInput('itens[' + index + '].NomeProduto', nomeProduto));
                     form.appendChild(createHiddenInput('itens[' + index + '].Tamanho', tamanho));
                     form.appendChild(createHiddenInput('itens[' + index + '].Quantidade', quantidade));
                     form.appendChild(createHiddenInput('itens[' + index + '].PrecoUnitario', precoUnitario));
+                    form.appendChild(createHiddenInput('itens[' + index + '].Produtos', produtosValue));
                 });
             }
             
@@ -486,7 +517,274 @@
             input.value = value;
             return input;
         }
+
+        var itemIndexEditando = -1;
+        var produtosSacoAtuais = [];
+
+        var produtosPermitidosAtuais = '';
+        
+        function editarProdutosSaco(itemIndex, produtosJson, produtosPermitidos) {
+            console.log('editarProdutosSaco chamado:', itemIndex, produtosJson, produtosPermitidos);
+            itemIndexEditando = itemIndex;
+            produtosPermitidosAtuais = produtosPermitidos || '';
+            
+            try {
+                if (!produtosJson || produtosJson === '' || produtosJson === 'null' || produtosJson === 'undefined') {
+                    produtosSacoAtuais = [];
+                } else {
+                    // produtosJson já vem como string do data-attribute
+                    produtosSacoAtuais = JSON.parse(produtosJson);
+                }
+            } catch (e) {
+                console.error('Erro ao parsear JSON de produtos:', e, produtosJson);
+                alert('Erro ao carregar produtos: ' + e.message);
+                produtosSacoAtuais = [];
+            }
+            
+            // Carregar produtos disponíveis filtrados por IDs permitidos
+            if (typeof PageMethods !== 'undefined') {
+                PageMethods.ObterProdutosDisponiveis(produtosPermitidosAtuais, function(result) {
+                    if (result && !result.erro) {
+                        window.produtosDisponiveis = result;
+                        preencherModalProdutosSaco();
+                    } else {
+                        alert('Erro ao carregar produtos disponíveis.');
+                        console.error('Erro ao obter produtos:', result);
+                    }
+                });
+            } else {
+                // Se PageMethods não estiver disponível, usar produtos já carregados e filtrar
+                if (window.produtosDisponiveis && window.produtosDisponiveis.length > 0) {
+                    filtrarProdutosPorIds(produtosPermitidosAtuais);
+                    preencherModalProdutosSaco();
+                } else {
+                    alert('Erro: Produtos não carregados. Por favor, recarregue a página.');
+                }
+            }
+        }
+        
+        function filtrarProdutosPorIds(produtosPermitidosJson) {
+            if (!produtosPermitidosJson || !window.produtosDisponiveis) return;
+            
+            try {
+                var produtosIds = JSON.parse(produtosPermitidosJson);
+                window.produtosDisponiveis = window.produtosDisponiveis.filter(function(p) {
+                    var pId = p.Id || p.id;
+                    return produtosIds.indexOf(pId) !== -1;
+                });
+            } catch (e) {
+                console.error('Erro ao filtrar produtos por IDs:', e);
+            }
+        }
+        
+        function preencherModalProdutosSaco() {
+            // Preencher modal com produtos atuais
+            var container = document.getElementById('produtosSacoContainer');
+            if (!container) {
+                alert('Erro: Container de produtos não encontrado.');
+                console.error('Container produtosSacoContainer não encontrado');
+                return;
+            }
+            container.innerHTML = '';
+            
+            if (produtosSacoAtuais && produtosSacoAtuais.length > 0) {
+                produtosSacoAtuais.forEach(function(produto, index) {
+                    adicionarProdutoSacoNoModal(produto.id, produto.qt, index);
+                });
+            } else {
+                // Se não houver produtos, adicionar um campo vazio
+                adicionarProdutoSacoNoModal('', 1, 0);
+            }
+            
+            // Verificar se Bootstrap está disponível
+            if (typeof bootstrap === 'undefined') {
+                alert('Erro: Bootstrap não está carregado. Por favor, recarregue a página.');
+                console.error('Bootstrap não está disponível');
+                return;
+            }
+            
+            // Mostrar modal
+            var modalElement = document.getElementById('modalEditarProdutosSaco');
+            if (!modalElement) {
+                alert('Erro: Modal não encontrado.');
+                console.error('Modal modalEditarProdutosSaco não encontrado');
+                return;
+            }
+            
+            try {
+                var modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                modal.show();
+                console.log('Modal aberto com sucesso');
+            } catch (e) {
+                console.error('Erro ao abrir modal:', e);
+                alert('Erro ao abrir modal: ' + e.message);
+            }
+        }
+
+        function adicionarProdutoSacoNoModal(produtoId, quantidade, index) {
+            var container = document.getElementById('produtosSacoContainer');
+            var produtosDisponiveis = window.produtosDisponiveis || [];
+            
+            // Filtrar produtos por IDs permitidos se necessário
+            if (produtosPermitidosAtuais) {
+                try {
+                    var produtosIds = JSON.parse(produtosPermitidosAtuais);
+                    produtosDisponiveis = produtosDisponiveis.filter(function(p) {
+                        var pId = p.Id || p.id;
+                        return produtosIds.indexOf(pId) !== -1;
+                    });
+                } catch (e) {
+                    console.error('Erro ao filtrar produtos por IDs:', e);
+                }
+            }
+            
+            var produto = produtosDisponiveis.find(p => (p.Id || p.id) == produtoId);
+            var nomeProduto = produto ? (produto.Nome || produto.nome) : 'Produto #' + produtoId;
+            
+            var div = document.createElement('div');
+            div.className = 'row mb-2 produto-saco-item';
+            div.setAttribute('data-index', index);
+            var produtosOptions = produtosDisponiveis.map(function(p) {
+                var pId = p.Id || p.id;
+                var pNome = p.Nome || p.nome;
+                var selected = pId == produtoId ? 'selected' : '';
+                return `<option value='${pId}' ${selected}>${pNome}</option>`;
+            }).join('');
+            
+            div.innerHTML = `
+                <div class='col-md-6'>
+                    <select class='form-select form-select-sm produto-saco-select' onchange='atualizarNomeProdutoSaco(this)'>
+                        <option value=''>Selecione...</option>
+                        ${produtosOptions}
+                    </select>
+                </div>
+                <div class='col-md-3'>
+                    <input type='number' class='form-control form-control-sm quantidade-produto-saco' value='${quantidade || 1}' min='1' />
+                </div>
+                <div class='col-md-3'>
+                    <button type='button' class='btn btn-danger btn-sm' onclick='removerProdutoSaco(this)'>
+                        <i class='fas fa-trash'></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function adicionarNovoProdutoSaco() {
+            var index = produtosSacoAtuais.length;
+            adicionarProdutoSacoNoModal('', 1, index);
+        }
+
+        function removerProdutoSaco(button) {
+            button.closest('.produto-saco-item').remove();
+        }
+
+        function salvarProdutosSaco() {
+            var container = document.getElementById('produtosSacoContainer');
+            var itens = container.querySelectorAll('.produto-saco-item');
+            var produtos = [];
+            var todosPreenchidos = true;
+            var produtosDisponiveis = window.produtosDisponiveis || [];
+            
+            itens.forEach(function(item) {
+                var produtoId = item.querySelector('.produto-saco-select').value;
+                var quantidade = parseInt(item.querySelector('.quantidade-produto-saco').value) || 1;
+                
+                if (produtoId && produtoId !== '') {
+                    // Validar se o produto é permitido
+                    var produto = produtosDisponiveis.find(p => (p.Id || p.id) == produtoId);
+                    if (!produto) {
+                        alert('Erro: O produto selecionado não é permitido neste saco.');
+                        return;
+                    }
+                    produtos.push({ id: parseInt(produtoId), qt: quantidade });
+                } else {
+                    todosPreenchidos = false;
+                }
+            });
+            
+            if (!todosPreenchidos || produtos.length === 0) {
+                alert('Por favor, selecione todos os produtos para o saco/cesta/caixa.');
+                return;
+            }
+            
+            // Atualizar o campo hidden do item
+            var itemReserva = document.querySelectorAll('.item-reserva')[itemIndexEditando];
+            if (itemReserva) {
+                var produtosInput = itemReserva.querySelector('.produtos-item');
+                if (produtosInput) {
+                    produtosInput.value = JSON.stringify(produtos);
+                    // Atualizar também a exibição do item sem recarregar a página
+                    atualizarExibicaoProdutosSaco(itemReserva, produtos);
+                }
+            }
+            
+            // Fechar modal
+            var modalElement = document.getElementById('modalEditarProdutosSaco');
+            if (modalElement) {
+                var modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                } else {
+                    modal = new bootstrap.Modal(modalElement);
+                    modal.hide();
+                }
+            }
+        }
+        
+        function atualizarExibicaoProdutosSaco(itemReserva, produtos) {
+            // Buscar nomes dos produtos
+            var produtosDisponiveis = window.produtosDisponiveis || [];
+            var produtosDetalhes = [];
+            
+            produtos.forEach(function(produtoJson) {
+                var produto = produtosDisponiveis.find(p => (p.Id || p.id) == produtoJson.id);
+                if (produto) {
+                    produtosDetalhes.push(produtoJson.qt + 'x ' + (produto.Nome || produto.nome));
+                }
+            });
+            
+            // Atualizar a exibição do item
+            var nomeDiv = itemReserva.querySelector('.col-md-4');
+            if (nomeDiv) {
+                var nomeProduto = itemReserva.querySelector('.nome-produto').value;
+                var tamanho = itemReserva.querySelector('.tamanho-item').value;
+                var produtosHtml = produtosDetalhes.length > 0 
+                    ? "<br/><small class='text-muted'>Produtos: " + produtosDetalhes.join(', ') + "</small>"
+                    : "";
+                nomeDiv.innerHTML = "<strong>" + nomeProduto + "</strong> (" + tamanho + ")" + produtosHtml;
+            }
+        }
+
+        function atualizarNomeProdutoSaco(select) {
+            // Pode ser usado para validação ou atualização de UI
+        }
     </script>
+    
+    <!-- Modal para editar produtos do saco -->
+    <div class='modal fade' id='modalEditarProdutosSaco' tabindex='-1'>
+        <div class='modal-dialog'>
+            <div class='modal-content'>
+                <div class='modal-header'>
+                    <h5 class='modal-title'>Editar Produtos do Saco/Cesta/Caixa</h5>
+                    <button type='button' class='btn-close' data-bs-dismiss='modal'></button>
+                </div>
+                <div class='modal-body'>
+                    <div id='produtosSacoContainer'></div>
+                    <button type='button' class='btn btn-primary btn-sm mt-2' onclick='adicionarNovoProdutoSaco()'>
+                        <i class='fas fa-plus'></i> Adicionar Produto
+                    </button>
+                </div>
+                <div class='modal-footer'>
+                    <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Cancelar</button>
+                    <button type='button' class='btn btn-primary' onclick='salvarProdutosSaco()'>Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts comuns da aplicação -->
+    <script src="Scripts/app.js"></script>
 </body>
 </html>
 

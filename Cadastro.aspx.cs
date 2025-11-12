@@ -130,9 +130,9 @@ namespace KingdomConfeitaria
                 {
                     _emailService.EnviarConfirmacaoCadastro(cliente);
                 }
-                catch (Exception exEmail)
+                catch
                 {
-                    System.Diagnostics.Debug.WriteLine("Erro ao enviar email de confirmação: " + exEmail.Message);
+                    // Erro ao enviar email - não bloquear o processo
                 }
 
                 // Fazer login após cadastro

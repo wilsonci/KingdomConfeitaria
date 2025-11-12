@@ -7,18 +7,26 @@ namespace KingdomConfeitaria
         protected global::System.Web.UI.WebControls.HiddenField hdnProdutoId;
         protected global::System.Web.UI.WebControls.TextBox txtNomeProduto;
         protected global::System.Web.UI.WebControls.TextBox txtDescricao;
-        protected global::System.Web.UI.WebControls.TextBox txtPrecoPequeno;
-        protected global::System.Web.UI.WebControls.TextBox txtPrecoGrande;
+        protected global::System.Web.UI.WebControls.TextBox txtPreco;
         protected global::System.Web.UI.WebControls.TextBox txtImagemUrl;
         protected global::System.Web.UI.WebControls.TextBox txtOrdem;
+        protected global::System.Web.UI.WebControls.TextBox txtReservavelAte;
+        protected global::System.Web.UI.WebControls.TextBox txtVendivelAte;
+        protected global::System.Web.UI.WebControls.CheckBox chkEhSacoPromocional;
+        protected global::System.Web.UI.WebControls.TextBox txtQuantidadeSaco;
+        protected global::System.Web.UI.WebControls.ListBox lstProdutosPermitidos;
         protected global::System.Web.UI.WebControls.CheckBox chkAtivo;
         protected global::System.Web.UI.WebControls.Button btnSalvarProduto;
         protected global::System.Web.UI.WebControls.TextBox txtNovoNome;
         protected global::System.Web.UI.WebControls.TextBox txtNovaDescricao;
-        protected global::System.Web.UI.WebControls.TextBox txtNovoPrecoPequeno;
-        protected global::System.Web.UI.WebControls.TextBox txtNovoPrecoGrande;
+        protected global::System.Web.UI.WebControls.TextBox txtNovoPreco;
         protected global::System.Web.UI.WebControls.TextBox txtNovaImagemUrl;
         protected global::System.Web.UI.WebControls.TextBox txtNovaOrdem;
+        protected global::System.Web.UI.WebControls.TextBox txtNovoReservavelAte;
+        protected global::System.Web.UI.WebControls.TextBox txtNovoVendivelAte;
+        protected global::System.Web.UI.WebControls.CheckBox chkNovoEhSacoPromocional;
+        protected global::System.Web.UI.WebControls.TextBox txtNovaQuantidadeSaco;
+        protected global::System.Web.UI.WebControls.ListBox lstNovosProdutosPermitidos;
         protected global::System.Web.UI.WebControls.Button btnSalvarNovoProduto;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl resumoContainer;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl reservasContainer;
@@ -31,7 +39,6 @@ namespace KingdomConfeitaria
         protected global::System.Web.UI.WebControls.TextBox txtObservacoesReserva;
         protected global::System.Web.UI.WebControls.Button btnSalvarReserva;
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl alertContainer;
-        protected global::System.Web.UI.WebControls.Button btnLimparDados;
     }
 }
 

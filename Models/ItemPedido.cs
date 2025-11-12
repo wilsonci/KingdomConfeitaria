@@ -10,6 +10,7 @@ namespace KingdomConfeitaria.Models
         public int Quantidade { get; set; }
         public decimal PrecoUnitario { get; set; }
         public decimal Subtotal { get; set; }
+        public string Produtos { get; set; } // Formato: "qt:idproduto,qt:idproduto" para sacos/cestas/caixas
     }
 }
 

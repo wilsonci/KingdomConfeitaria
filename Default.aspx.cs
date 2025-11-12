@@ -7,6 +7,7 @@ using System.Web.UI;
 using System.Web.UI.WebControls;
 using System.Web.Services;
 using System.Web.Script.Services;
+using System.Web.Script.Serialization;
 using KingdomConfeitaria.Models;
 using KingdomConfeitaria.Services;
 using KingdomConfeitaria.Helpers;
@@ -176,14 +177,6 @@ namespace KingdomConfeitaria
             {
                 var produtos = _databaseService.ObterProdutos();
                 
-                // Debug: Log produtos carregados
-                System.Diagnostics.Debug.WriteLine($"=== CARREGAR PRODUTOS ===");
-                System.Diagnostics.Debug.WriteLine($"Total de produtos ativos carregados: {produtos.Count}");
-                foreach (var produto in produtos)
-                {
-                    System.Diagnostics.Debug.WriteLine($"Produto carregado - ID: {produto.Id}, Nome: {produto.Nome}, Ativo: {produto.Ativo}");
-                }
-                
                 produtosContainer.InnerHtml = "";
                 
                 // Se não houver produtos, mostrar mensagem
@@ -196,61 +189,68 @@ namespace KingdomConfeitaria
                 foreach (var produto in produtos)
                 {
                     string nomeEscapado = produto.Nome.Replace("\"", "\\\"").Replace("'", "\\'");
-                    string precoPequenoStr = produto.PrecoPequeno.ToString("F2").Replace(",", ".");
-                    string precoGrandeStr = produto.PrecoGrande.ToString("F2").Replace(",", ".");
-                    // Se o produto tem apenas um preço (pacote), mostrar diferente
-                    bool temPequeno = produto.PrecoPequeno > 0;
-                    bool temGrande = produto.PrecoGrande > 0;
+                    string precoStr = produto.Preco.ToString("F2").Replace(",", ".");
                     
-                    string tamanhosHtml = "";
-                    if (temPequeno && temGrande)
+                    // Extrair tamanho do nome do produto (Pequeno ou Grande)
+                    string tamanho = "";
+                    if (produto.Nome.Contains("Pequeno"))
                     {
-                        tamanhosHtml = string.Format(@"
-                            <div class='mb-2'>
-                                <label class='form-label'><strong>Tamanho:</strong></label>
-                                <select id='tamanho_{0}' class='form-select mb-2' onchange='atualizarPreco({0})'>
-                                    <option value='Pequeno' data-preco='{1}'>Pequeno - R$ {2}</option>
-                                    <option value='Grande' data-preco='{3}'>Grande - R$ {4}</option>
-                                </select>
-                            </div>", produto.Id, precoPequenoStr, produto.PrecoPequeno.ToString("F2"), precoGrandeStr, produto.PrecoGrande.ToString("F2"));
+                        tamanho = "Pequeno";
                     }
-                    else if (temPequeno)
+                    else if (produto.Nome.Contains("Grande"))
                     {
-                        tamanhosHtml = string.Format(@"<input type='hidden' id='tamanho_{0}' value='Pequeno' data-preco='{1}' />", produto.Id, precoPequenoStr);
+                        tamanho = "Grande";
                     }
-                    else if (temGrande)
-                    {
-                        tamanhosHtml = string.Format(@"<input type='hidden' id='tamanho_{0}' value='Grande' data-preco='{1}' />", produto.Id, precoGrandeStr);
-                    }
+                    
+                    // Campo hidden com tamanho (extraído do nome)
+                    string tamanhosHtml = string.Format(@"<input type='hidden' id='tamanho_{0}' value='{1}' data-preco='{2}' />", produto.Id, tamanho, precoStr);
 
                     // Se for saco promocional, mostrar seletor de produtos
                     string seletorProdutosHtml = "";
                     string onclickSaco = "";
-                    if (produto.EhSacoPromocional && produto.QuantidadeSaco > 0 && !string.IsNullOrEmpty(produto.TamanhoSaco))
+                    if (produto.EhSacoPromocional && produto.QuantidadeSaco > 0 && !string.IsNullOrEmpty(produto.Produtos))
                     {
-                        var produtosDisponiveis = _databaseService.ObterProdutosPorTamanho(produto.TamanhoSaco);
-                        string opcoesProdutos = "";
-                        foreach (var prod in produtosDisponiveis)
+                        // Parsear JSON de IDs dos produtos permitidos
+                        List<int> produtosIds = new List<int>();
+                        try
                         {
-                            string nomeProdEscapado = prod.Nome.Replace("\"", "\\\"").Replace("'", "\\'");
-                            opcoesProdutos += string.Format("<option value='{0}'>{1}</option>", prod.Id, prod.Nome);
+                            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                            produtosIds = serializer.Deserialize<List<int>>(produto.Produtos);
+                        }
+                        catch
+                        {
+                            // Se falhar ao parsear, tentar como string separada por vírgula
+                            if (!string.IsNullOrEmpty(produto.Produtos))
+                            {
+                                produtosIds = produto.Produtos.Split(',').Select(id => int.Parse(id.Trim())).ToList();
+                            }
                         }
                         
-                        seletorProdutosHtml = string.Format(@"
-                            <div class='mb-3 p-3 bg-light rounded'>
-                                <label class='form-label'><strong>Escolha os {0} biscoitos ({1}):</strong></label>
-                                <div id='seletorProdutos_{2}'>
-                                    {3}
-                                </div>
-                                <small class='text-muted'>Total selecionado: <span id='totalSelecionado_{2}'>0</span> de {0}</small>
-                            </div>", 
-                            produto.QuantidadeSaco, 
-                            produto.TamanhoSaco,
-                            produto.Id,
-                            GerarSeletoresProdutos(produto.Id, produtosDisponiveis, produto.QuantidadeSaco));
-                        
-                        onclickSaco = string.Format("adicionarSacoAoCarrinho({0}, \"{1}\", \"{2}\", {3})", 
-                            produto.Id, nomeEscapado, produto.TamanhoSaco, produto.QuantidadeSaco);
+                        if (produtosIds.Count > 0)
+                        {
+                            var produtosDisponiveis = _databaseService.ObterProdutosPorIds(produtosIds);
+                            string opcoesProdutos = "";
+                            foreach (var prod in produtosDisponiveis)
+                            {
+                                string nomeProdEscapado = prod.Nome.Replace("\"", "\\\"").Replace("'", "\\'");
+                                opcoesProdutos += string.Format("<option value='{0}'>{1}</option>", prod.Id, prod.Nome);
+                            }
+                            
+                            seletorProdutosHtml = string.Format(@"
+                                <div class='mb-3 p-3 bg-light rounded'>
+                                    <label class='form-label'><strong>Escolha os {0} biscoitos:</strong></label>
+                                    <div id='seletorProdutos_{1}'>
+                                        {2}
+                                    </div>
+                                    <small class='text-muted'>Total selecionado: <span id='totalSelecionado_{1}'>0</span> de {0}</small>
+                                </div>", 
+                                produto.QuantidadeSaco, 
+                                produto.Id,
+                                GerarSeletoresProdutos(produto.Id, produtosDisponiveis, produto.QuantidadeSaco));
+                            
+                            onclickSaco = string.Format("adicionarSacoAoCarrinho({0}, \"{1}\", {2})", 
+                                produto.Id, nomeEscapado, produto.QuantidadeSaco);
+                        }
                     }
 
                     // Usar placeholder SVG inline se a imagem não existir
@@ -263,13 +263,13 @@ namespace KingdomConfeitaria
                         <div class='produto-card mb-3'>
                             <div class='row'>
                                 <div class='col-md-3'>
-                                    <img src='{0}' alt='{1}' class='produto-imagem' data-original-src='{13}' onerror='this.onerror=null; if(this.src !== ""{12}"") {{ this.src=""{12}""; }}' />
+                                    <img src='{0}' alt='{1}' class='produto-imagem' data-original-src='{10}' onerror='this.onerror=null; if(this.src !== ""{9}"") {{ this.src=""{9}""; }}' />
                                 </div>
                                 <div class='col-md-9'>
                                     <h5>{1}</h5>
                                     <p class='text-muted'>{2}</p>
-                                    {9}
-                                    {11}
+                                    {7}
+                                    {8}
                                     <div class='row align-items-end'>
                                         <div class='col-md-4'>
                                             <label class='form-label'><strong>Quantidade:</strong></label>
@@ -281,11 +281,11 @@ namespace KingdomConfeitaria
                                         </div>
                                         <div class='col-md-4'>
                                             <p class='mb-0'><strong>Preço Unitário:</strong></p>
-                                            <p class='h5 text-primary' id='precoUnitario_{3}'>{10}</p>
+                                            <p class='h5 text-primary' id='precoUnitario_{3}'>R$ {6}</p>
                                         </div>
                                         <div class='col-md-4'>
                                             <button class='btn btn-success w-100' type='button' 
-                                                onclick='{12}'>
+                                                onclick='{9}'>
                                                 <i class='fas fa-cart-plus'></i> Adicionar ao Pedido
                                             </button>
                                         </div>
@@ -297,13 +297,10 @@ namespace KingdomConfeitaria
                         produto.Nome,
                         produto.Descricao,
                         produto.Id,
-                        precoPequenoStr,
-                        produto.PrecoPequeno.ToString("F2"),
-                        precoGrandeStr,
-                        produto.PrecoGrande.ToString("F2"),
                         nomeEscapado,
+                        precoStr,
+                        produto.Preco.ToString("F2"),
                         tamanhosHtml,
-                        temPequeno ? "R$ " + produto.PrecoPequeno.ToString("F2") : "R$ " + produto.PrecoGrande.ToString("F2"),
                         seletorProdutosHtml,
                         !string.IsNullOrEmpty(onclickSaco) 
                             ? onclickSaco
@@ -371,24 +368,11 @@ namespace KingdomConfeitaria
                     
                     int quantidade = partes.Length > 4 ? int.Parse(partes[4]) : 1;
 
-                    // Debug: Verificar se o produto existe no banco antes de adicionar
-                    var todosProdutos = _databaseService.ObterTodosProdutos();
-                    var produtoExiste = todosProdutos.Any(p => p.Id == produtoId);
-                    System.Diagnostics.Debug.WriteLine($"=== ADICIONAR AO CARRINHO ===");
-                    System.Diagnostics.Debug.WriteLine($"ProdutoId: {produtoId}, Nome: {nome}, Tamanho: {tamanho}, Produto existe no banco: {produtoExiste}");
-                    
-                    if (!produtoExiste)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"ATENÇÃO: Produto ID {produtoId} não existe no banco de dados!");
-                        // Continuar mesmo assim, pois pode ser um produto que foi removido após carregar a página
-                    }
-
                     var itemExistente = Carrinho.FirstOrDefault(i => i.ProdutoId == produtoId && i.Tamanho == tamanho);
                     if (itemExistente != null)
                     {
                         itemExistente.Quantidade += quantidade;
                         itemExistente.Subtotal = itemExistente.Quantidade * itemExistente.PrecoUnitario;
-                        System.Diagnostics.Debug.WriteLine($"Item existente atualizado - Quantidade: {itemExistente.Quantidade}");
                     }
                     else
                     {
@@ -401,15 +385,11 @@ namespace KingdomConfeitaria
                             PrecoUnitario = preco,
                             Subtotal = preco * quantidade
                         });
-                        System.Diagnostics.Debug.WriteLine($"Novo item adicionado ao carrinho - Total de itens: {Carrinho.Count}");
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                // Log do erro para debug
-                System.Diagnostics.Debug.WriteLine("Erro ao processar adicionar ao carrinho: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine("Argument recebido: " + argument);
                 throw;
             }
         }
@@ -454,38 +434,86 @@ namespace KingdomConfeitaria
             try
             {
                 var partes = argument.Split('|');
-                if (partes.Length >= 6)
+                if (partes.Length >= 5)
                 {
                     int sacoId = int.Parse(partes[0]);
                     string nomeSaco = partes[1];
-                    string tamanhoSaco = partes[2];
-                    decimal precoSaco = decimal.Parse(partes[3].Replace(",", "."), CultureInfo.InvariantCulture);
-                    int quantidadeSacos = int.Parse(partes[4]);
-                    string produtosIdsStr = partes[5];
+                    decimal precoSaco = decimal.Parse(partes[2].Replace(",", "."), CultureInfo.InvariantCulture);
+                    int quantidadeSacos = int.Parse(partes[3]);
+                    string produtosIdsStr = partes.Length > 4 ? partes[4] : "";
                     
                     var produtosIds = produtosIdsStr.Split(',').Select(id => int.Parse(id.Trim())).ToList();
                     
-                    // Obter informações dos produtos selecionados para exibir no nome
-                    var todosProdutos = _databaseService.ObterTodosProdutos();
-                    var produtosSelecionados = todosProdutos.Where(p => produtosIds.Contains(p.Id)).ToList();
+                    // Validar que todos os produtos são permitidos no saco
+                    var produtoSaco = _databaseService.ObterTodosProdutos().FirstOrDefault(p => p.Id == sacoId);
+                    if (produtoSaco != null && produtoSaco.EhSacoPromocional && !string.IsNullOrEmpty(produtoSaco.Produtos))
+                    {
+                        // Parsear JSON de IDs dos produtos permitidos
+                        List<int> produtosPermitidosIds = new List<int>();
+                        try
+                        {
+                            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                            produtosPermitidosIds = serializer.Deserialize<List<int>>(produtoSaco.Produtos);
+                        }
+                        catch
+                        {
+                            // Se falhar ao parsear, tentar como string separada por vírgula
+                            if (!string.IsNullOrEmpty(produtoSaco.Produtos))
+                            {
+                                produtosPermitidosIds = produtoSaco.Produtos.Split(',').Select(id => int.Parse(id.Trim())).ToList();
+                            }
+                        }
+                        
+                        foreach (var produtoId in produtosIds)
+                        {
+                            if (!produtosPermitidosIds.Contains(produtoId))
+                            {
+                                throw new Exception($"O produto selecionado não é permitido neste saco. Por favor, selecione apenas produtos permitidos.");
+                            }
+                        }
+                    }
                     
-                    // Criar nome do saco com os produtos selecionados
-                    string nomesProdutos = string.Join(", ", produtosSelecionados.Select(p => p.Nome));
-                    string nomeSacoCompleto = nomeSaco + " - " + nomesProdutos;
+                    // Criar JSON de produtos no formato [{"qt": quantidade, "id": idProduto}, ...]
+                    var produtosJson = produtosIds.Select(id => new { qt = quantidadeSacos, id = id }).ToList();
+                    var jsonSerializer = new JavaScriptSerializer();
+                    string produtosFormatados = jsonSerializer.Serialize(produtosJson);
+                    
+                    // Criar nome do saco sem incluir os produtos (eles estarão no campo Produtos)
+                    string nomeSacoCompleto = nomeSaco;
                     
                     // Adicionar o saco promocional ao carrinho
-                    // Usar uma chave única baseada no sacoId + tamanho + produtos selecionados
-                    string chaveSaco = sacoId + "|" + tamanhoSaco + "|" + produtosIdsStr;
+                    // Usar uma chave única baseada no sacoId + produtos selecionados
+                    string chaveSaco = sacoId + "|" + produtosIdsStr;
                     var sacoItem = Carrinho.FirstOrDefault(i => 
                         i.ProdutoId == sacoId && 
-                        i.Tamanho == tamanhoSaco && 
-                        i.NomeProduto.Contains(nomeSaco));
+                        i.NomeProduto == nomeSaco);
                     
                     if (sacoItem != null)
                     {
                         // Se já existe um saco similar, aumentar a quantidade
                         sacoItem.Quantidade += quantidadeSacos;
                         sacoItem.Subtotal = sacoItem.Quantidade * sacoItem.PrecoUnitario;
+                        // Atualizar produtos (mesclar JSONs)
+                        if (!string.IsNullOrEmpty(sacoItem.Produtos))
+                        {
+                            try
+                            {
+                                var jsonSerializer2 = new JavaScriptSerializer();
+                                var produtosExistentes = jsonSerializer2.Deserialize<List<Dictionary<string, object>>>(sacoItem.Produtos);
+                                var produtosNovos = jsonSerializer2.Deserialize<List<Dictionary<string, object>>>(produtosFormatados);
+                                produtosExistentes.AddRange(produtosNovos);
+                                sacoItem.Produtos = jsonSerializer2.Serialize(produtosExistentes);
+                            }
+                            catch
+                            {
+                                // Se falhar ao parsear, usar o novo
+                                sacoItem.Produtos = produtosFormatados;
+                            }
+                        }
+                        else
+                        {
+                            sacoItem.Produtos = produtosFormatados;
+                        }
                     }
                     else
                     {
@@ -494,18 +522,17 @@ namespace KingdomConfeitaria
                         {
                             ProdutoId = sacoId,
                             NomeProduto = nomeSacoCompleto,
-                            Tamanho = tamanhoSaco,
+                            Tamanho = "", // Sacos promocionais não têm tamanho
                             Quantidade = quantidadeSacos,
                             PrecoUnitario = precoSaco,
-                            Subtotal = precoSaco * quantidadeSacos
+                            Subtotal = precoSaco * quantidadeSacos,
+                            Produtos = produtosFormatados
                         });
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine("Erro ao processar adicionar saco ao carrinho: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine("Argument recebido: " + argument);
                 throw;
             }
         }
@@ -569,11 +596,6 @@ namespace KingdomConfeitaria
         {
             // Permitir que qualquer um abra o modal para montar a reserva
             // A validação de login será feita apenas ao confirmar a reserva
-            
-            // Log para debug
-            System.Diagnostics.Debug.WriteLine("btnFazerReserva_Click foi chamado!");
-            System.Diagnostics.Debug.WriteLine("Carrinho.Count: " + Carrinho.Count);
-            System.Diagnostics.Debug.WriteLine("ClienteId: " + (Session["ClienteId"] != null ? Session["ClienteId"].ToString() : "null"));
             
             if (Carrinho.Count == 0)
             {
@@ -887,9 +909,8 @@ namespace KingdomConfeitaria
                         VerificarLogin();
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    System.Diagnostics.Debug.WriteLine("Erro ao fazer login automático: " + ex.Message);
                     Page.ClientScript.RegisterStartupScript(this.GetType(), "ErroLogin", 
                         $"alert('{EscapeJavaScript("Erro ao processar login automático. Por favor, tente novamente.")}');", true);
                     return;
@@ -919,12 +940,6 @@ namespace KingdomConfeitaria
                 var todosProdutosIds = todosProdutos.Select(p => p.Id).ToHashSet();
                 var produtosAtivosIds = todosProdutos.Where(p => p.Ativo).Select(p => p.Id).ToHashSet();
                 
-                // Debug: Log informações sobre o carrinho e produtos
-                System.Diagnostics.Debug.WriteLine($"=== VALIDAÇÃO DE PRODUTOS ===");
-                System.Diagnostics.Debug.WriteLine($"Total de itens no carrinho: {Carrinho.Count}");
-                System.Diagnostics.Debug.WriteLine($"Total de produtos no banco: {todosProdutos.Count}");
-                System.Diagnostics.Debug.WriteLine($"Total de produtos ativos: {produtosAtivosIds.Count}");
-                
                 // Validar itens do carrinho
                 var itensValidos = new List<ItemPedido>();
                 var itensInvalidos = new List<ItemPedido>();
@@ -932,9 +947,6 @@ namespace KingdomConfeitaria
                 foreach (var item in Carrinho)
                 {
                     bool produtoExiste = todosProdutosIds.Contains(item.ProdutoId);
-                    bool produtoAtivo = produtosAtivosIds.Contains(item.ProdutoId);
-                    
-                    System.Diagnostics.Debug.WriteLine($"Item no carrinho - ProdutoId: {item.ProdutoId}, Nome: {item.NomeProduto}, Existe: {produtoExiste}, Ativo: {produtoAtivo}");
                     
                     // Aceitar item se o produto existe no banco (mesmo que inativo)
                     // Isso permite salvar reservas de produtos que foram desativados após serem adicionados ao carrinho
@@ -945,20 +957,11 @@ namespace KingdomConfeitaria
                     else
                     {
                         itensInvalidos.Add(item);
-                        System.Diagnostics.Debug.WriteLine($"PRODUTO INVÁLIDO: ID {item.ProdutoId} não existe no banco de dados!");
                     }
                 }
                 
                 if (itensValidos.Count == 0)
                 {
-                    // Listar produtos inválidos para debug
-                    var produtosInvalidos = itensInvalidos.Select(item => $"ID: {item.ProdutoId} ({item.NomeProduto})").ToList();
-                    System.Diagnostics.Debug.WriteLine($"Produtos inválidos no carrinho: {string.Join(", ", produtosInvalidos)}");
-                    
-                    // Listar todos os IDs de produtos válidos para debug
-                    var idsValidos = string.Join(", ", todosProdutosIds.OrderBy(id => id));
-                    System.Diagnostics.Debug.WriteLine($"IDs de produtos válidos no banco: {idsValidos}");
-                    
                     // Criar mensagem mais informativa
                     string mensagemErro = "Nenhum item válido no carrinho. ";
                     if (todosProdutos.Count == 0)
@@ -1037,72 +1040,40 @@ namespace KingdomConfeitaria
                     {
                         throw new Exception("A reserva não foi gravada. O ID não foi retornado.");
                     }
-                    
-                    // Verificar se todos os itens foram gravados
-                    var reservaSalva = _databaseService.ObterReservasPorCliente(clienteId)
-                        .OrderByDescending(r => r.DataReserva)
-                        .FirstOrDefault();
-                    
-                    if (reservaSalva == null)
-                    {
-                        throw new Exception("A reserva foi criada mas não foi encontrada ao verificar. ID: " + reserva.Id);
-                    }
-                    
-                    if (reservaSalva.Itens == null || reservaSalva.Itens.Count == 0)
-                    {
-                        throw new Exception("A reserva foi criada mas nenhum item foi gravado. ID da reserva: " + reserva.Id);
-                    }
-                    
-                    int itensGravados = reservaSalva.Itens.Count;
-                    int itensEsperados = itensValidos.Count;
-                    
-                    if (itensGravados != itensEsperados)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"ATENÇÃO: Esperado {itensEsperados} itens, mas apenas {itensGravados} foram gravados!");
-                        throw new Exception($"Apenas {itensGravados} de {itensEsperados} itens foram gravados na reserva.");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"SUCESSO: Todos os {itensGravados} itens foram gravados corretamente na reserva ID {reservaSalva.Id}");
-                    }
-                    
-                    System.Diagnostics.Debug.WriteLine("Reserva salva com sucesso! ID: " + reserva.Id);
                 }
                 catch (Exception exSalvar)
                 {
-                    System.Diagnostics.Debug.WriteLine($"ERRO ao salvar reserva: {exSalvar.Message}");
-                    System.Diagnostics.Debug.WriteLine($"Stack trace: {exSalvar.StackTrace}");
                     Page.ClientScript.RegisterStartupScript(this.GetType(), "ErroSalvarReserva", 
                         $"alert('{EscapeJavaScript("Erro ao salvar reserva: " + exSalvar.Message)}');", true);
                     return;
                 }
 
-                // Enviar emails (não bloquear se falhar)
-                try
+                // Enviar emails e WhatsApp de forma assíncrona (não bloquear a resposta)
+                System.Threading.Tasks.Task.Run(() =>
                 {
-                    var emailService = new EmailService();
-                    emailService.EnviarConfirmacaoReserva(reserva);
-                }
-                catch (Exception exEmail)
-                {
-                    System.Diagnostics.Debug.WriteLine("Erro ao enviar email: " + exEmail.Message);
-                    // Continuar mesmo se email falhar
-                }
-
-                // Enviar WhatsApp se tiver telefone (não bloquear se falhar)
-                try
-                {
-                    var whatsAppService = new WhatsAppService();
-                    if (!string.IsNullOrEmpty(reserva.Telefone))
+                    try
                     {
-                        whatsAppService.EnviarConfirmacaoReserva(reserva, reserva.Telefone);
+                        var emailService = new EmailService();
+                        emailService.EnviarConfirmacaoReserva(reserva);
                     }
-                }
-                catch (Exception exWhatsApp)
-                {
-                    System.Diagnostics.Debug.WriteLine("Erro ao enviar WhatsApp: " + exWhatsApp.Message);
-                    // Continuar mesmo se WhatsApp falhar
-                }
+                    catch
+                    {
+                        // Erro ao enviar email - não bloquear o processo
+                    }
+
+                    try
+                    {
+                        var whatsAppService = new WhatsAppService();
+                        if (!string.IsNullOrEmpty(reserva.Telefone))
+                        {
+                            whatsAppService.EnviarConfirmacaoReserva(reserva, reserva.Telefone);
+                        }
+                    }
+                    catch
+                    {
+                        // Erro ao enviar WhatsApp - não bloquear o processo
+                    }
+                });
 
                 // Limpar carrinho
                 Carrinho.Clear();
@@ -1194,16 +1165,10 @@ namespace KingdomConfeitaria
                 {
                     // É telefone - remover caracteres não numéricos
                     string telefoneFormatado = System.Text.RegularExpressions.Regex.Replace(loginLimpo, @"[^\d]", "");
-                    System.Diagnostics.Debug.WriteLine($"Verificando telefone: '{loginLimpo}' -> formatado: '{telefoneFormatado}'");
                     
                     if (telefoneFormatado.Length >= 10)
                     {
                         cliente = databaseService.ObterClientePorTelefone(telefoneFormatado);
-                        System.Diagnostics.Debug.WriteLine($"Cliente encontrado por telefone: {(cliente != null ? "SIM" : "NÃO")}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"Telefone muito curto: {telefoneFormatado.Length} caracteres");
                     }
                 }
                 
@@ -1227,9 +1192,8 @@ namespace KingdomConfeitaria
                 
                 return new { existe = false, temSenha = false, cliente = (object)null };
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine("Erro ao verificar cliente: " + ex.Message);
                 return new { existe = false, temSenha = false, cliente = (object)null };
             }
         }
@@ -1298,7 +1262,6 @@ namespace KingdomConfeitaria
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Erro ao validar senha: " + ex.Message);
                 return new { valido = false, mensagem = "Erro ao validar senha: " + ex.Message };
             }
         }
@@ -1348,7 +1311,6 @@ namespace KingdomConfeitaria
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Erro ao fazer login na sessão: " + ex.Message);
                 return new { sucesso = false, mensagem = "Erro ao fazer login: " + ex.Message };
             }
         }
@@ -1410,17 +1372,10 @@ namespace KingdomConfeitaria
                         linkAdmin.Style["display"] = "none";
                     }
                 }
-                else
-                {
-                    // Log de debug se algum controle não foi encontrado
-                    System.Diagnostics.Debug.WriteLine("VerificarLogin: Algum controle não foi encontrado!");
-                    System.Diagnostics.Debug.WriteLine($"clienteNome: {clienteNome != null}, linkLogin: {linkLogin != null}, linkMinhasReservas: {linkMinhasReservas != null}, linkMeusDados: {linkMeusDados != null}, linkLogout: {linkLogout != null}, linkAdmin: {linkAdmin != null}");
-                }
             }
-            catch (Exception ex)
+            catch
             {
-                // Log do erro (implementar logging adequado)
-                System.Diagnostics.Debug.WriteLine("Erro ao verificar login: " + ex.Message);
+                // Erro ao verificar login - continuar execução
             }
         }
     }

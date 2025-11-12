@@ -27,11 +27,33 @@
             z-index: 1000;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
+        .header-actions {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+        .header-actions a {
+            color: white;
+            text-decoration: none;
+            margin-left: 15px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .header-actions a:hover {
+            text-decoration: underline;
+            color: #d4af37;
+        }
+        .header-actions span {
+            color: white;
+            font-weight: 500;
+        }
         .header-logo img {
             max-width: 20%;
             width: auto;
             height: auto;
             max-height: 80px;
+            display: block;
+            margin: 0 auto;
         }
         .container-main {
             background: white;
@@ -58,6 +80,9 @@
         .produto-imagem-admin {
             max-width: 200px;
             max-height: 200px;
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
             border-radius: 10px;
         }
         .status-badge {
@@ -77,14 +102,20 @@
     <form id="form1" runat="server">
         <div class="container-fluid">
             <div class="header-logo">
+                <div class="header-actions">
+                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
+                    <span id="clienteNome" runat="server" style="color: white; margin-right: 15px;"></span>
+                    <a href="#" id="linkLogin" runat="server" style="display: none;" onclick="abrirModalLogin(); return false;">Entrar</a>
+                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;">Minhas Reservas</a>
+                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;">Meus Dados</a>
+                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;">Painel Gestor</a>
+                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;">Sair</a>
+                </div>
                 <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
             </div>
             <div class="container-main">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1><i class="fas fa-cog"></i> Administração</h1>
-                    <a href="Default.aspx" class="btn btn-outline-primary">
-                        <i class="fas fa-home"></i> Voltar para o Site
-                    </a>
                 </div>
 
                 <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
@@ -104,15 +135,6 @@
                         </button>
                     </li>
                 </ul>
-
-                <div class="alert alert-warning mb-3">
-                    <strong><i class="fas fa-exclamation-triangle"></i> Ações Administrativas:</strong>
-                    <asp:Button ID="btnLimparDados" runat="server" 
-                        Text="Limpar Todos os Clientes e Reservas" 
-                        CssClass="btn btn-danger btn-sm ms-2" 
-                        OnClick="btnLimparDados_Click"
-                        OnClientClick="return confirm('ATENÇÃO: Esta ação irá apagar TODOS os clientes e reservas do banco de dados. Esta ação não pode ser desfeita. Deseja continuar?');" />
-                </div>
 
                 <div id="alertContainer" runat="server"></div>
 
@@ -164,19 +186,10 @@
                             <label class="form-label">Descrição</label>
                             <asp:TextBox ID="txtDescricao" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="3"></asp:TextBox>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Preço Pequeno (R$) *</label>
-                                    <asp:TextBox ID="txtPrecoPequeno" runat="server" CssClass="form-control" TextMode="Number" step="0.01" required></asp:TextBox>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Preço Grande (R$) *</label>
-                                    <asp:TextBox ID="txtPrecoGrande" runat="server" CssClass="form-control" TextMode="Number" step="0.01" required></asp:TextBox>
-                                </div>
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">Preço (R$) *</label>
+                            <asp:TextBox ID="txtPreco" runat="server" CssClass="form-control" TextMode="Number" step="0.01" required></asp:TextBox>
+                            <small class="text-muted">O tamanho (Pequeno/Grande) deve ser incluído no nome do produto</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">URL da Imagem *</label>
@@ -186,6 +199,42 @@
                         <div class="mb-3">
                             <label class="form-label">Ordem de Exibição</label>
                             <asp:TextBox ID="txtOrdem" runat="server" CssClass="form-control" TextMode="Number" value="0"></asp:TextBox>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Reservável até</label>
+                                    <asp:TextBox ID="txtReservavelAte" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
+                                    <small class="text-muted">Data até quando o produto pode ser reservado</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Vendível até</label>
+                                    <asp:TextBox ID="txtVendivelAte" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
+                                    <small class="text-muted">Data até quando o produto pode ser vendido</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <asp:CheckBox ID="chkEhSacoPromocional" runat="server" CssClass="form-check-input" onchange="toggleSacoPromocional(this)" />
+                                <label class="form-check-label" for="<%= chkEhSacoPromocional.ClientID %>">
+                                    É Saco Promocional
+                                </label>
+                            </div>
+                        </div>
+                        <div id="divSacoPromocional" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Quantidade de Produtos no Saco</label>
+                                <asp:TextBox ID="txtQuantidadeSaco" runat="server" CssClass="form-control" TextMode="Number" min="1" value="0"></asp:TextBox>
+                                <small class="text-muted">Quantidade de produtos que o cliente deve selecionar para o saco</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Produtos Permitidos no Saco</label>
+                                <asp:ListBox ID="lstProdutosPermitidos" runat="server" CssClass="form-control" SelectionMode="Multiple" Rows="5"></asp:ListBox>
+                                <small class="text-muted">Selecione os produtos que podem ser escolhidos para este saco (segure Ctrl para selecionar múltiplos)</small>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <div class="form-check">
@@ -219,34 +268,61 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Nome *</label>
-                            <asp:TextBox ID="txtNovoNome" runat="server" CssClass="form-control" required></asp:TextBox>
+                            <asp:TextBox ID="txtNovoNome" runat="server" CssClass="form-control"></asp:TextBox>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Descrição</label>
                             <asp:TextBox ID="txtNovaDescricao" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="3"></asp:TextBox>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Preço Pequeno (R$) *</label>
-                                    <asp:TextBox ID="txtNovoPrecoPequeno" runat="server" CssClass="form-control" TextMode="Number" step="0.01" required></asp:TextBox>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Preço Grande (R$) *</label>
-                                    <asp:TextBox ID="txtNovoPrecoGrande" runat="server" CssClass="form-control" TextMode="Number" step="0.01" required></asp:TextBox>
-                                </div>
-                            </div>
+                        <div class="mb-3">
+                            <label class="form-label">Preço (R$) *</label>
+                            <asp:TextBox ID="txtNovoPreco" runat="server" CssClass="form-control" TextMode="Number" step="0.01"></asp:TextBox>
+                            <small class="text-muted">O tamanho (Pequeno/Grande) deve ser incluído no nome do produto</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">URL da Imagem *</label>
-                            <asp:TextBox ID="txtNovaImagemUrl" runat="server" CssClass="form-control" required></asp:TextBox>
+                            <asp:TextBox ID="txtNovaImagemUrl" runat="server" CssClass="form-control"></asp:TextBox>
                             <small class="text-muted">Cole aqui a URL da imagem</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Ordem de Exibição</label>
                             <asp:TextBox ID="txtNovaOrdem" runat="server" CssClass="form-control" TextMode="Number" value="0"></asp:TextBox>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Reservável até</label>
+                                    <asp:TextBox ID="txtNovoReservavelAte" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
+                                    <small class="text-muted">Data até quando o produto pode ser reservado</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Vendível até</label>
+                                    <asp:TextBox ID="txtNovoVendivelAte" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
+                                    <small class="text-muted">Data até quando o produto pode ser vendido</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <asp:CheckBox ID="chkNovoEhSacoPromocional" runat="server" CssClass="form-check-input" onchange="toggleSacoPromocionalNovo(this)" />
+                                <label class="form-check-label" for="<%= chkNovoEhSacoPromocional.ClientID %>">
+                                    É Saco Promocional
+                                </label>
+                            </div>
+                        </div>
+                        <div id="divNovoSacoPromocional" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Quantidade de Produtos no Saco</label>
+                                <asp:TextBox ID="txtNovaQuantidadeSaco" runat="server" CssClass="form-control" TextMode="Number" value="0"></asp:TextBox>
+                                <small class="text-muted">Quantidade de produtos que o cliente deve selecionar para o saco</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Produtos Permitidos no Saco</label>
+                                <asp:ListBox ID="lstNovosProdutosPermitidos" runat="server" CssClass="form-control" SelectionMode="Multiple" Rows="5"></asp:ListBox>
+                                <small class="text-muted">Selecione os produtos que podem ser escolhidos para este saco (segure Ctrl para selecionar múltiplos)</small>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -371,6 +447,21 @@
     <script src="Scripts/app.js"></script>
     <!-- Scripts específicos da página Admin -->
     <script src="Scripts/admin.js"></script>
+    <script type="text/javascript">
+        function toggleSacoPromocional(checkbox) {
+            var div = document.getElementById('divSacoPromocional');
+            if (div) {
+                div.style.display = checkbox.checked ? 'block' : 'none';
+            }
+        }
+        
+        function toggleSacoPromocionalNovo(checkbox) {
+            var div = document.getElementById('divNovoSacoPromocional');
+            if (div) {
+                div.style.display = checkbox.checked ? 'block' : 'none';
+            }
+        }
+    </script>
     <script>
         // Scripts inline apenas para dados dinâmicos do servidor (ClientIDs)
         (function() {

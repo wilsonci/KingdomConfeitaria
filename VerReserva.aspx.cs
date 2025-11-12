@@ -75,18 +75,30 @@ namespace KingdomConfeitaria
             }
 
             // Atualizar header
+            var linkMeusDados = FindControl("linkMeusDados") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkAdmin = FindControl("linkAdmin") as System.Web.UI.HtmlControls.HtmlAnchor;
+            
             if (Session["ClienteId"] != null)
             {
                 clienteNome.InnerText = "Olá, " + (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "");
+                clienteNome.Style["display"] = "inline";
                 linkLogin.Visible = false;
                 linkMinhasReservas.Visible = true;
+                if (linkMeusDados != null) linkMeusDados.Visible = true;
                 linkLogout.Visible = true;
+                
+                // Verificar se é admin
+                bool isAdmin = Session["IsAdmin"] != null && (bool)Session["IsAdmin"];
+                if (linkAdmin != null) linkAdmin.Visible = isAdmin;
             }
             else
             {
                 clienteNome.InnerText = "";
+                clienteNome.Style["display"] = "none";
                 linkLogin.Visible = true;
                 linkMinhasReservas.Visible = false;
+                if (linkMeusDados != null) linkMeusDados.Visible = false;
+                if (linkAdmin != null) linkAdmin.Visible = false;
                 linkLogout.Visible = false;
             }
         }
@@ -115,11 +127,63 @@ namespace KingdomConfeitaria
                 int itemIndex = 0;
                 foreach (var item in reserva.Itens)
                 {
+                    // Verificar se é um saco promocional (tem produtos dentro)
+                    bool temProdutos = !string.IsNullOrEmpty(item.Produtos);
+                    string botaoEditarProdutos = "";
+                    string produtosInfo = "";
+                    string produtosPermitidosJson = "";
+                    
+                    // Obter os produtos permitidos no saco do produto original
+                    var produtoSaco = _databaseService.ObterTodosProdutos().FirstOrDefault(p => p.Id == item.ProdutoId);
+                    if (produtoSaco != null && produtoSaco.EhSacoPromocional && !string.IsNullOrEmpty(produtoSaco.Produtos))
+                    {
+                        produtosPermitidosJson = produtoSaco.Produtos;
+                    }
+                    
+                    if (temProdutos)
+                    {
+                        try
+                        {
+                            var todosProdutos = _databaseService.ObterTodosProdutos();
+                            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                            var produtosJson = serializer.Deserialize<List<Dictionary<string, object>>>(item.Produtos);
+                            var produtosDetalhes = new List<string>();
+                            
+                            foreach (var produtoJson in produtosJson)
+                            {
+                                int qt = Convert.ToInt32(produtoJson["qt"]);
+                                int prodId = Convert.ToInt32(produtoJson["id"]);
+                                var produto = todosProdutos.FirstOrDefault(p => p.Id == prodId);
+                                if (produto != null)
+                                {
+                                    produtosDetalhes.Add($"{qt}x {produto.Nome}");
+                                }
+                            }
+                            
+                            if (produtosDetalhes.Count > 0)
+                            {
+                                produtosInfo = "<br/><small class='text-muted'>Produtos: " + string.Join(", ", produtosDetalhes) + "</small>";
+                            }
+                            
+                            // Usar data-attribute para passar o JSON dos produtos permitidos (mais seguro que onclick)
+                            string produtosJsonEscapado = System.Web.HttpUtility.HtmlAttributeEncode(item.Produtos ?? "");
+                            
+                            botaoEditarProdutos = string.Format(
+                                "<button type='button' class='btn btn-info btn-sm ms-2 btn-editar-produtos-saco' " +
+                                "data-item-index='{0}' data-produtos-json='{1}' data-produtos-permitidos='{2}' title='Editar produtos do saco'>" +
+                                "<i class='fas fa-edit'></i> Editar Produtos</button>",
+                                itemIndex,
+                                produtosJsonEscapado,
+                                System.Web.HttpUtility.HtmlAttributeEncode(produtosPermitidosJson));
+                        }
+                        catch { }
+                    }
+                    
                     itensHtml += string.Format(@"
                         <div class='item-reserva mb-3 p-3 border rounded' data-item-index='{0}'>
                             <div class='row align-items-center'>
                                 <div class='col-md-4'>
-                                    <strong>{1}</strong> ({2})
+                                    <strong>{1}</strong> ({2}){8}
                                 </div>
                                 <div class='col-md-3'>
                                     <label class='form-label small'>Quantidade:</label>
@@ -133,6 +197,7 @@ namespace KingdomConfeitaria
                                            value='R$ {6}' readonly data-subtotal='{6}' />
                                 </div>
                                 <div class='col-md-2 text-end'>
+                                    {9}
                                     <button type='button' class='btn btn-danger btn-sm' onclick='removerItem(this)'>
                                         <i class='fas fa-trash'></i>
                                     </button>
@@ -142,6 +207,7 @@ namespace KingdomConfeitaria
                             <input type='hidden' class='nome-produto' value='{1}' />
                             <input type='hidden' class='tamanho-item' value='{2}' />
                             <input type='hidden' class='preco-unitario' value='{5}' />
+                            <input type='hidden' class='produtos-item' value='{7}' />
                         </div>",
                         itemIndex++,
                         System.Web.HttpUtility.HtmlEncode(item.NomeProduto),
@@ -149,7 +215,10 @@ namespace KingdomConfeitaria
                         item.Quantidade,
                         item.ProdutoId,
                         item.PrecoUnitario.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
-                        item.Subtotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture));
+                        item.Subtotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+                        System.Web.HttpUtility.HtmlAttributeEncode(item.Produtos ?? ""),
+                        produtosInfo,
+                        botaoEditarProdutos);
                 }
                 itensHtml += "</div>";
                 
@@ -210,11 +279,48 @@ namespace KingdomConfeitaria
                 itensHtml = "<ul class='list-unstyled'>";
                 foreach (var item in reserva.Itens)
                 {
-                    itensHtml += string.Format("<li class='mb-2'>{0} ({1}) - Quantidade: {2} - R$ {3}</li>",
+                    string itemTexto = string.Format("{0} ({1}) - Quantidade: {2} - R$ {3}",
                         System.Web.HttpUtility.HtmlEncode(item.NomeProduto), 
                         System.Web.HttpUtility.HtmlEncode(item.Tamanho), 
                         item.Quantidade, 
                         item.Subtotal.ToString("F2"));
+                    
+                    // Se tiver produtos do saco, mostrar detalhes
+                    if (!string.IsNullOrEmpty(item.Produtos))
+                    {
+                        try
+                        {
+                            var databaseService = new DatabaseService();
+                            var todosProdutos = databaseService.ObterTodosProdutos();
+                            var produtosDetalhes = new List<string>();
+                            
+                            // Parsear JSON de produtos no formato [{"qt": quantidade, "id": idProduto}, ...]
+                            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                            var produtosJson = serializer.Deserialize<List<Dictionary<string, object>>>(item.Produtos);
+                            
+                            foreach (var produtoJson in produtosJson)
+                            {
+                                int qt = Convert.ToInt32(produtoJson["qt"]);
+                                int prodId = Convert.ToInt32(produtoJson["id"]);
+                                var produto = todosProdutos.FirstOrDefault(p => p.Id == prodId);
+                                if (produto != null)
+                                {
+                                    produtosDetalhes.Add($"{qt}x {produto.Nome}");
+                                }
+                            }
+                            
+                            if (produtosDetalhes.Count > 0)
+                            {
+                                itemTexto += "<br/><small class='text-muted'>Produtos: " + string.Join(", ", produtosDetalhes) + "</small>";
+                            }
+                        }
+                        catch
+                        {
+                            // Se falhar ao parsear, ignorar
+                        }
+                    }
+                    
+                    itensHtml += "<li class='mb-2'>" + itemTexto + "</li>";
                 }
                 itensHtml += "</ul>";
             }
@@ -248,6 +354,37 @@ namespace KingdomConfeitaria
 
             string textoCompartilhar = string.Format("Minha reserva na Kingdom Confeitaria - Valor: R$ {0} - Data de Retirada: {1}",
                 reserva.ValorTotal.ToString("F2"), reserva.DataRetirada.ToString("dd/MM/yyyy"));
+
+            // Verificar se a reserva está cancelada (verificando status "Cancelado")
+            var statusCancelado = _databaseService.ObterStatusReservaPorNome("Cancelado");
+            bool jaCancelada = reserva.Cancelado || (reserva.StatusId.HasValue && statusCancelado != null && reserva.StatusId.Value == statusCancelado.Id);
+            
+            // Seção de compartilhamento (apenas se não estiver cancelada)
+            string compartilharHtml = "";
+            if (!jaCancelada)
+            {
+                compartilharHtml = string.Format(@"
+                    <div class='border-top pt-4 mt-4'>
+                        <h5><i class='fas fa-share-alt'></i> Compartilhar Reserva</h5>
+                        <p>Compartilhe sua reserva nas redes sociais:</p>
+                        <div>
+                            <button type='button' class='btn btn-share btn-primary' onclick='compartilharFacebook(\""{0}\"", \""{1}\"")'>
+                                <i class='fab fa-facebook'></i> Facebook
+                            </button>
+                            <button type='button' class='btn btn-share btn-success' onclick='compartilharWhatsApp(\""{0}\"", \""{1}\"")'>
+                                <i class='fab fa-whatsapp'></i> WhatsApp
+                            </button>
+                            <button type='button' class='btn btn-share btn-info' onclick='compartilharTwitter(\""{0}\"", \""{1}\"")'>
+                                <i class='fab fa-twitter'></i> Twitter
+                            </button>
+                            <button type='button' class='btn btn-share btn-secondary' onclick='compartilharEmail(\""{0}\"", \""{1}\"")'>
+                                <i class='fas fa-envelope'></i> Email
+                            </button>
+                        </div>
+                    </div>",
+                    linkReserva,
+                    textoCompartilhar.Replace("\"", "&quot;"));
+            }
 
             // Botões de ação
             string acoesHtml = "";
@@ -344,24 +481,7 @@ namespace KingdomConfeitaria
                     
                     {14}
                     
-                    <div class='border-top pt-4 mt-4'>
-                        <h5><i class='fas fa-share-alt'></i> Compartilhar Reserva</h5>
-                        <p>Compartilhe sua reserva nas redes sociais:</p>
-                        <div>
-                            <button type='button' class='btn btn-share btn-primary' onclick='compartilharFacebook(\""{11}\"", \""{12}\"")'>
-                                <i class='fab fa-facebook'></i> Facebook
-                            </button>
-                            <button type='button' class='btn btn-share btn-success' onclick='compartilharWhatsApp(\""{11}\"", \""{12}\"")'>
-                                <i class='fab fa-whatsapp'></i> WhatsApp
-                            </button>
-                            <button type='button' class='btn btn-share btn-info' onclick='compartilharTwitter(\""{11}\"", \""{12}\"")'>
-                                <i class='fab fa-twitter'></i> Twitter
-                            </button>
-                            <button type='button' class='btn btn-share btn-secondary' onclick='compartilharEmail(\""{11}\"", \""{12}\"")'>
-                                <i class='fas fa-envelope'></i> Email
-                            </button>
-                        </div>
-                    </div>
+                    {17}
                     
                     {13}
                 </div>
@@ -383,7 +503,8 @@ namespace KingdomConfeitaria
                 acoesHtml,
                 botoesEdicaoHtml,
                 Request.QueryString["token"],
-                reserva.ValorTotal.ToString("F2")
+                reserva.ValorTotal.ToString("F2"),
+                compartilharHtml // {17} - Seção de compartilhamento (vazia se cancelada)
             );
         }
 
@@ -449,6 +570,7 @@ namespace KingdomConfeitaria
                                 string tamanho = Request.Form[$"itens[{itemIndex}].Tamanho"];
                                 string precoUnitarioStr = Request.Form[$"itens[{itemIndex}].PrecoUnitario"];
                                 string nomeProduto = Request.Form[$"itens[{itemIndex}].NomeProduto"];
+                                string produtos = Request.Form[$"itens[{itemIndex}].Produtos"];
 
                                 if (!string.IsNullOrEmpty(produtoIdStr) &&
                                     int.TryParse(produtoIdStr, out int produtoId) &&
@@ -456,6 +578,50 @@ namespace KingdomConfeitaria
                                     quantidade > 0 &&
                                     decimal.TryParse(precoUnitarioStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal precoUnitario))
                                 {
+                                    // Validar produtos do saco se houver
+                                    if (!string.IsNullOrEmpty(produtos))
+                                    {
+                                        var produtoSaco = _databaseService.ObterTodosProdutos().FirstOrDefault(p => p.Id == produtoId);
+                                        if (produtoSaco != null && produtoSaco.EhSacoPromocional && !string.IsNullOrEmpty(produtoSaco.Produtos))
+                                        {
+                                            try
+                                            {
+                                                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                                                var produtosJson = serializer.Deserialize<List<Dictionary<string, object>>>(produtos);
+                                                
+                                                // Parsear JSON de IDs dos produtos permitidos
+                                                List<int> produtosPermitidosIds = new List<int>();
+                                                try
+                                                {
+                                                    produtosPermitidosIds = serializer.Deserialize<List<int>>(produtoSaco.Produtos);
+                                                }
+                                                catch
+                                                {
+                                                    // Se falhar ao parsear, tentar como string separada por vírgula
+                                                    if (!string.IsNullOrEmpty(produtoSaco.Produtos))
+                                                    {
+                                                        produtosPermitidosIds = produtoSaco.Produtos.Split(',').Select(id => int.Parse(id.Trim())).ToList();
+                                                    }
+                                                }
+                                                
+                                                foreach (var produtoJson in produtosJson)
+                                                {
+                                                    int prodId = Convert.ToInt32(produtoJson["id"]);
+                                                    if (!produtosPermitidosIds.Contains(prodId))
+                                                    {
+                                                        MostrarErro("O produto selecionado não é permitido neste saco. Por favor, selecione apenas produtos permitidos.");
+                                                        return;
+                                                    }
+                                                }
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                MostrarErro("Erro ao validar produtos do saco: " + ex.Message);
+                                                return;
+                                            }
+                                        }
+                                    }
+                                    
                                     novosItens.Add(new ItemPedido
                                     {
                                         ProdutoId = produtoId,
@@ -463,7 +629,8 @@ namespace KingdomConfeitaria
                                         Tamanho = tamanho ?? "",
                                         Quantidade = quantidade,
                                         PrecoUnitario = precoUnitario,
-                                        Subtotal = precoUnitario * quantidade
+                                        Subtotal = precoUnitario * quantidade,
+                                        Produtos = produtos ?? ""
                                     });
                                 }
                             }
@@ -497,19 +664,38 @@ namespace KingdomConfeitaria
 
         [System.Web.Services.WebMethod]
         [System.Web.Script.Services.ScriptMethod]
-        public static object ObterProdutosDisponiveis()
+        public static object ObterProdutosDisponiveis(string produtosPermitidosJson = null)
         {
             try
             {
                 var databaseService = new DatabaseService();
-                var produtos = databaseService.ObterProdutos();
+                List<Produto> produtos;
+                
+                // Se produtosPermitidosJson foi especificado, filtrar por IDs
+                if (!string.IsNullOrEmpty(produtosPermitidosJson))
+                {
+                    try
+                    {
+                        var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                        var produtosIds = serializer.Deserialize<List<int>>(produtosPermitidosJson);
+                        produtos = databaseService.ObterProdutosPorIds(produtosIds);
+                    }
+                    catch
+                    {
+                        // Se falhar ao parsear, retornar todos os produtos não-sacos
+                        produtos = databaseService.ObterProdutos().Where(p => !p.EhSacoPromocional).ToList();
+                    }
+                }
+                else
+                {
+                    produtos = databaseService.ObterProdutos().Where(p => !p.EhSacoPromocional).ToList();
+                }
                 
                 return produtos.Select(p => new
                 {
                     id = p.Id,
                     nome = p.Nome,
-                    precoPequeno = p.PrecoPequeno,
-                    precoGrande = p.PrecoGrande
+                    preco = p.Preco
                 }).ToList();
             }
             catch (Exception ex)

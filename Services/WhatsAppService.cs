@@ -91,14 +91,10 @@ namespace KingdomConfeitaria.Services
 
                     // Descomente quando configurar a API real
                     // var response = client.UploadString(_whatsAppApiUrl, "POST", json);
-                    
-                    // Por enquanto, apenas log
-                    System.Diagnostics.Debug.WriteLine(string.Format("WhatsApp enviado para {0}: {1}", telefone, mensagem));
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine(string.Format("Erro ao enviar WhatsApp: {0}", ex.Message));
                 // Não lançar exceção para não interromper o fluxo
             }
         }

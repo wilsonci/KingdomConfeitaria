@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Web.Script.Serialization;
 using KingdomConfeitaria.Models;
 
 namespace KingdomConfeitaria.Services
@@ -48,18 +49,72 @@ namespace KingdomConfeitaria.Services
                                 [Id] [int] IDENTITY(1,1) NOT NULL,
                                 [Nome] [nvarchar](200) NOT NULL,
                                 [Descricao] [nvarchar](1000) NULL,
-                                [PrecoPequeno] [decimal](10, 2) NOT NULL,
-                                [PrecoGrande] [decimal](10, 2) NOT NULL,
+                                [Preco] [decimal](10, 2) NOT NULL,
                                 [ImagemUrl] [nvarchar](500) NULL,
                                 [Ativo] [bit] NOT NULL DEFAULT(1),
                                 [Ordem] [int] NOT NULL DEFAULT(0),
                                 [EhSacoPromocional] [bit] NOT NULL DEFAULT(0),
                                 [QuantidadeSaco] [int] NOT NULL DEFAULT(0),
-                                [TamanhoSaco] [nvarchar](50) NULL,
+                                [Produtos] [nvarchar](500) NULL,
+                                [ReservavelAte] [datetime] NULL,
+                                [VendivelAte] [datetime] NULL,
                                 CONSTRAINT [PK_Produtos] PRIMARY KEY CLUSTERED ([Id] ASC)
                             )
                         END", connection);
                     checkTable.ExecuteNonQuery();
+                    
+                    // Migração: Garantir que a coluna Preco existe
+                    // Primeiro, verificar se Preco não existe
+                    var checkPrecoExists = new SqlCommand("SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Produtos]') AND name = 'Preco'", connection);
+                    var precoExists = (int)checkPrecoExists.ExecuteScalar() > 0;
+                    
+                    if (!precoExists)
+                    {
+                        // Verificar se PrecoPequeno existe (para migração de dados)
+                        var checkPrecoPequenoExists = new SqlCommand("SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Produtos]') AND name = 'PrecoPequeno'", connection);
+                        var precoPequenoExists = (int)checkPrecoPequenoExists.ExecuteScalar() > 0;
+                        
+                        if (precoPequenoExists)
+                        {
+                            // Migração: Adicionar coluna Preco como nullable primeiro
+                            checkTable.CommandText = "ALTER TABLE [dbo].[Produtos] ADD [Preco] [decimal](10, 2) NULL";
+                            checkTable.ExecuteNonQuery();
+                            
+                            // Migrar dados: usar PrecoGrande se > 0, senão PrecoPequeno
+                            checkTable.CommandText = @"
+                                UPDATE [dbo].[Produtos] 
+                                SET [Preco] = CASE 
+                                    WHEN [PrecoGrande] > 0 THEN [PrecoGrande]
+                                    ELSE [PrecoPequeno]
+                                END";
+                            checkTable.ExecuteNonQuery();
+                            
+                            // Tornar NOT NULL após migração
+                            checkTable.CommandText = "ALTER TABLE [dbo].[Produtos] ALTER COLUMN [Preco] [decimal](10, 2) NOT NULL";
+                            checkTable.ExecuteNonQuery();
+                            
+                            // Remover colunas antigas
+                            try
+                            {
+                                checkTable.CommandText = "ALTER TABLE [dbo].[Produtos] DROP COLUMN [PrecoPequeno]";
+                                checkTable.ExecuteNonQuery();
+                            }
+                            catch { /* Ignorar se já removida */ }
+                            
+                            try
+                            {
+                                checkTable.CommandText = "ALTER TABLE [dbo].[Produtos] DROP COLUMN [PrecoGrande]";
+                                checkTable.ExecuteNonQuery();
+                            }
+                            catch { /* Ignorar se já removida */ }
+                        }
+                        else
+                        {
+                            // Se não tem PrecoPequeno, apenas adicionar Preco com valor padrão
+                            checkTable.CommandText = "ALTER TABLE [dbo].[Produtos] ADD [Preco] [decimal](10, 2) NOT NULL DEFAULT(0)";
+                            checkTable.ExecuteNonQuery();
+                        }
+                    }
 
                     // Verificar se a tabela Reservas existe
                     checkTable.CommandText = @"
@@ -143,9 +198,22 @@ namespace KingdomConfeitaria.Services
                         BEGIN
                             ALTER TABLE [dbo].[Produtos] ADD [QuantidadeSaco] [int] NOT NULL DEFAULT(0)
                         END
-                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Produtos]') AND name = 'TamanhoSaco')
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Produtos]') AND name = 'Produtos')
                         BEGIN
-                            ALTER TABLE [dbo].[Produtos] ADD [TamanhoSaco] [nvarchar](50) NULL
+                            ALTER TABLE [dbo].[Produtos] ADD [Produtos] [nvarchar](500) NULL
+                        END
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Produtos]') AND name = 'ReservavelAte')
+                        BEGIN
+                            ALTER TABLE [dbo].[Produtos] ADD [ReservavelAte] [datetime] NULL
+                        END
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Produtos]') AND name = 'VendivelAte')
+                        BEGIN
+                            ALTER TABLE [dbo].[Produtos] ADD [VendivelAte] [datetime] NULL
+                        END
+                        -- Migração: Remover TamanhoSaco se existir
+                        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Produtos]') AND name = 'TamanhoSaco')
+                        BEGIN
+                            ALTER TABLE [dbo].[Produtos] DROP COLUMN [TamanhoSaco]
                         END";
                     checkTable.ExecuteNonQuery();
                     
@@ -185,6 +253,7 @@ namespace KingdomConfeitaria.Services
                                 [Quantidade] [int] NOT NULL,
                                 [PrecoUnitario] [decimal](10, 2) NOT NULL,
                                 [Subtotal] [decimal](10, 2) NOT NULL,
+                                [Produtos] [nvarchar](500) NULL,
                                 CONSTRAINT [PK_ReservaItens] PRIMARY KEY CLUSTERED ([Id] ASC),
                                 CONSTRAINT [FK_ReservaItens_Reservas] FOREIGN KEY([ReservaId]) 
                                     REFERENCES [dbo].[Reservas] ([Id]) ON DELETE CASCADE,
@@ -193,6 +262,14 @@ namespace KingdomConfeitaria.Services
                             )
                         END";
                     checkTable.ExecuteNonQuery();
+                    
+                    // Adicionar coluna Produtos se não existir (migração)
+                    checkTable.CommandText = @"
+                        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[ReservaItens]') AND name = 'Produtos')
+                        BEGIN
+                            ALTER TABLE [dbo].[ReservaItens] ADD [Produtos] [nvarchar](500) NULL
+                        END";
+                    try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se já existe */ }
 
                     // Verificar se a tabela StatusReserva existe
                     checkTable.CommandText = @"
@@ -461,39 +538,33 @@ namespace KingdomConfeitaria.Services
                     {
                         // Inserir novos produtos
                         var insertData = new SqlCommand(@"
-                        INSERT INTO Produtos (Nome, Descricao, PrecoPequeno, PrecoGrande, ImagemUrl, Ativo, Ordem, EhSacoPromocional, QuantidadeSaco, TamanhoSaco) VALUES
-                        ('Gingerbread Estrela Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Pequeno', 5.00, 0.00, 'Images/estrela-pequeno.jpg', 1, 1, 0, 0, NULL),
-                        ('Gingerbread Estrela Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Grande', 0.00, 10.00, 'Images/estrela-grande.jpg', 1, 2, 0, 0, NULL),
-                        ('Gingerbread Floco de Neve Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Floco de Neve Pequeno', 5.00, 0.00, 'Images/floco-neve-pequeno.jpg', 1, 3, 0, 0, NULL),
-                        ('Gingerbread Floco de Neve Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Floco de Neve Grande', 0.00, 10.00, 'Images/floco-neve-grande.jpg', 1, 4, 0, 0, NULL),
-                        ('Gingerbread Guirlanda Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Guirlanda Pequeno', 5.00, 0.00, 'Images/guirlanda-pequeno.jpg', 1, 5, 0, 0, NULL),
-                        ('Gingerbread Guirlanda Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Guirlanda Grande', 0.00, 10.00, 'Images/guirlanda-grande.jpg', 1, 6, 0, 0, NULL),
-                        ('Gingerbread Meia Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Meia Pequeno', 5.00, 0.00, 'Images/meia-pequeno.jpg', 1, 7, 0, 0, NULL),
-                        ('Gingerbread Meia Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Meia Grande', 0.00, 10.00, 'Images/meia-grande.jpg', 1, 8, 0, 0, NULL),
-                        ('Gingerbread Árvore Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Árvore Pequeno', 5.00, 0.00, 'Images/arvore-pequeno.jpg', 1, 9, 0, 0, NULL),
-                        ('Gingerbread Árvore Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Árvore Grande', 0.00, 10.00, 'Images/arvore-grande.jpg', 1, 10, 0, 0, NULL),
-                        ('Gingerbread Coração Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Coração Pequeno', 5.00, 0.00, 'Images/coracao-pequeno.jpg', 1, 11, 0, 0, NULL),
-                        ('Gingerbread Coração Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Coração Grande', 0.00, 10.00, 'Images/coracao-grande.jpg', 1, 12, 0, 0, NULL),
-                        ('Gingerbread Boneco Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Boneco Pequeno', 5.00, 0.00, 'Images/boneco-pequeno.jpg', 1, 13, 0, 0, NULL),
-                        ('Gingerbread Boneco Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Boneco Grande', 0.00, 10.00, 'Images/boneco-grande.jpg', 1, 14, 0, 0, NULL),
-                        ('Saco Promocional - 6 Pequenos', 'Saco com 6 biscoitos pequenos (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 21.00, 0.00, 'Images/saco-6-pequenos.jpg', 1, 15, 1, 6, 'Pequeno'),
-                        ('Saco Promocional - 3 Grandes', 'Saco com 3 biscoitos grandes (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 0.00, 21.00, 'Images/saco-3-grandes.jpg', 1, 16, 1, 3, 'Grande')", connection);
+                        INSERT INTO Produtos (Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, EhSacoPromocional, QuantidadeSaco, Produtos, ReservavelAte, VendivelAte) VALUES
+                        ('Gingerbread Estrela Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Pequeno', 5.00, 'Images/estrela-pequeno.jpg', 1, 1, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Estrela Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Estrela Grande', 10.00, 'Images/estrela-grande.jpg', 1, 2, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Floco de Neve Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Floco de Neve Pequeno', 5.00, 'Images/floco-neve-pequeno.jpg', 1, 3, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Floco de Neve Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Floco de Neve Grande', 10.00, 'Images/floco-neve-grande.jpg', 1, 4, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Guirlanda Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Guirlanda Pequeno', 5.00, 'Images/guirlanda-pequeno.jpg', 1, 5, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Guirlanda Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Guirlanda Grande', 10.00, 'Images/guirlanda-grande.jpg', 1, 6, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Meia Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Meia Pequeno', 5.00, 'Images/meia-pequeno.jpg', 1, 7, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Meia Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Meia Grande', 10.00, 'Images/meia-grande.jpg', 1, 8, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Árvore Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Árvore Pequeno', 5.00, 'Images/arvore-pequeno.jpg', 1, 9, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Árvore Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Árvore Grande', 10.00, 'Images/arvore-grande.jpg', 1, 10, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Coração Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Coração Pequeno', 5.00, 'Images/coracao-pequeno.jpg', 1, 11, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Coração Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Coração Grande', 10.00, 'Images/coracao-grande.jpg', 1, 12, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Boneco Pequeno', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Boneco Pequeno', 5.00, 'Images/boneco-pequeno.jpg', 1, 13, 0, 0, NULL, NULL, NULL),
+                        ('Gingerbread Boneco Grande', 'Gingerbread biscoito artesanal de gengibre com especiarias com pouca açúcar - Boneco Grande', 10.00, 'Images/boneco-grande.jpg', 1, 14, 0, 0, NULL, NULL, NULL),
+                        ('Saco Promocional - 6 Pequenos', 'Saco com 6 biscoitos pequenos (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 21.00, 'Images/saco-6-pequenos.jpg', 1, 15, 1, 6, '[1,3,5,7,9,11,13]', NULL, NULL),
+                        ('Saco Promocional - 3 Grandes', 'Saco com 3 biscoitos grandes (escolha os formatos). De R$ 30,00 por R$ 21,00 na promoção!', 21.00, 'Images/saco-3-grandes.jpg', 1, 16, 1, 3, '[2,4,6,8,10,12,14]', NULL, NULL)", connection);
                         insertData.ExecuteNonQuery();
                     }
                 }
             }
             catch (SqlException sqlEx)
             {
-                // Log do erro SQL
-                System.Diagnostics.Debug.WriteLine("Erro SQL ao criar banco/tabelas: " + sqlEx.Message);
-                System.Diagnostics.Debug.WriteLine("Número do erro: " + sqlEx.Number);
                 throw new Exception("Erro ao acessar o banco de dados. Verifique se o SQL Server LocalDB está instalado e funcionando. Erro: " + sqlEx.Message, sqlEx);
             }
             catch (Exception ex)
             {
-                // Log do erro (em produção, use um sistema de logging adequado)
-                System.Diagnostics.Debug.WriteLine("Erro ao criar banco/tabelas: " + ex.Message);
-                System.Diagnostics.Debug.WriteLine("Stack trace: " + ex.StackTrace);
                 throw new Exception("Erro ao inicializar o banco de dados: " + ex.Message, ex);
             }
         }
@@ -505,7 +576,7 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                var command = new SqlCommand("SELECT Id, Nome, Descricao, PrecoPequeno, PrecoGrande, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), TamanhoSaco FROM Produtos WHERE Ativo = 1 ORDER BY Ordem", connection);
+                var command = new SqlCommand("SELECT Id, Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), ISNULL(Produtos, ''), ReservavelAte, VendivelAte FROM Produtos WHERE Ativo = 1 ORDER BY Ordem", connection);
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -516,14 +587,15 @@ namespace KingdomConfeitaria.Services
                             Id = reader.GetInt32(0),
                             Nome = reader.GetString(1),
                             Descricao = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                            PrecoPequeno = reader.GetDecimal(3),
-                            PrecoGrande = reader.GetDecimal(4),
-                            ImagemUrl = reader.IsDBNull(5) ? "" : reader.GetString(5),
-                            Ativo = reader.GetBoolean(6),
-                            Ordem = reader.GetInt32(7),
-                            EhSacoPromocional = reader.IsDBNull(8) ? false : reader.GetBoolean(8),
-                            QuantidadeSaco = reader.IsDBNull(9) ? 0 : reader.GetInt32(9),
-                            TamanhoSaco = reader.IsDBNull(10) ? null : reader.GetString(10)
+                            Preco = reader.GetDecimal(3),
+                            ImagemUrl = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            Ativo = reader.GetBoolean(5),
+                            Ordem = reader.GetInt32(6),
+                            EhSacoPromocional = reader.IsDBNull(7) ? false : reader.GetBoolean(7),
+                            QuantidadeSaco = reader.IsDBNull(8) ? 0 : reader.GetInt32(8),
+                            Produtos = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            ReservavelAte = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            VendivelAte = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
                         });
                     }
                 }
@@ -539,7 +611,7 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                var command = new SqlCommand("SELECT Id, Nome, Descricao, PrecoPequeno, PrecoGrande, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), TamanhoSaco FROM Produtos ORDER BY Ordem", connection);
+                var command = new SqlCommand("SELECT Id, Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), ISNULL(Produtos, ''), ReservavelAte, VendivelAte FROM Produtos ORDER BY Ordem", connection);
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -550,14 +622,15 @@ namespace KingdomConfeitaria.Services
                             Id = reader.GetInt32(0),
                             Nome = reader.GetString(1),
                             Descricao = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                            PrecoPequeno = reader.GetDecimal(3),
-                            PrecoGrande = reader.GetDecimal(4),
-                            ImagemUrl = reader.IsDBNull(5) ? "" : reader.GetString(5),
-                            Ativo = reader.GetBoolean(6),
-                            Ordem = reader.GetInt32(7),
-                            EhSacoPromocional = reader.IsDBNull(8) ? false : reader.GetBoolean(8),
-                            QuantidadeSaco = reader.IsDBNull(9) ? 0 : reader.GetInt32(9),
-                            TamanhoSaco = reader.IsDBNull(10) ? null : reader.GetString(10)
+                            Preco = reader.GetDecimal(3),
+                            ImagemUrl = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            Ativo = reader.GetBoolean(5),
+                            Ordem = reader.GetInt32(6),
+                            EhSacoPromocional = reader.IsDBNull(7) ? false : reader.GetBoolean(7),
+                            QuantidadeSaco = reader.IsDBNull(8) ? 0 : reader.GetInt32(8),
+                            Produtos = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            ReservavelAte = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            VendivelAte = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
                         });
                     }
                 }
@@ -566,18 +639,21 @@ namespace KingdomConfeitaria.Services
             return produtos;
         }
 
-        public List<Produto> ObterProdutosPorTamanho(string tamanho)
+        public List<Produto> ObterProdutosPorIds(List<int> ids)
         {
             var produtos = new List<Produto>();
+            
+            if (ids == null || ids.Count == 0)
+            {
+                return produtos;
+            }
             
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                string query = tamanho == "Pequeno" 
-                    ? "SELECT Id, Nome, Descricao, PrecoPequeno, PrecoGrande, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), TamanhoSaco FROM Produtos WHERE Ativo = 1 AND PrecoPequeno > 0 AND EhSacoPromocional = 0 ORDER BY Ordem"
-                    : "SELECT Id, Nome, Descricao, PrecoPequeno, PrecoGrande, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), TamanhoSaco FROM Produtos WHERE Ativo = 1 AND PrecoGrande > 0 AND EhSacoPromocional = 0 ORDER BY Ordem";
-                
-                var command = new SqlCommand(query, connection);
+                // Filtrar produtos pelos IDs fornecidos
+                string idsString = string.Join(",", ids);
+                var command = new SqlCommand($"SELECT Id, Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), ISNULL(Produtos, ''), ReservavelAte, VendivelAte FROM Produtos WHERE Ativo = 1 AND EhSacoPromocional = 0 AND Id IN ({idsString}) ORDER BY Ordem", connection);
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -588,14 +664,15 @@ namespace KingdomConfeitaria.Services
                             Id = reader.GetInt32(0),
                             Nome = reader.GetString(1),
                             Descricao = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                            PrecoPequeno = reader.GetDecimal(3),
-                            PrecoGrande = reader.GetDecimal(4),
-                            ImagemUrl = reader.IsDBNull(5) ? "" : reader.GetString(5),
-                            Ativo = reader.GetBoolean(6),
-                            Ordem = reader.GetInt32(7),
-                            EhSacoPromocional = reader.IsDBNull(8) ? false : reader.GetBoolean(8),
-                            QuantidadeSaco = reader.IsDBNull(9) ? 0 : reader.GetInt32(9),
-                            TamanhoSaco = reader.IsDBNull(10) ? null : reader.GetString(10)
+                            Preco = reader.GetDecimal(3),
+                            ImagemUrl = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            Ativo = reader.GetBoolean(5),
+                            Ordem = reader.GetInt32(6),
+                            EhSacoPromocional = reader.IsDBNull(7) ? false : reader.GetBoolean(7),
+                            QuantidadeSaco = reader.IsDBNull(8) ? 0 : reader.GetInt32(8),
+                            Produtos = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            ReservavelAte = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            VendivelAte = reader.IsDBNull(11) ? (DateTime?)null : reader.GetDateTime(11)
                         });
                     }
                 }
@@ -619,19 +696,11 @@ namespace KingdomConfeitaria.Services
                 // Para novas reservas (Id = 0), SEMPRE usar StatusId de "Aberta"
                 if (reserva.Id == 0)
                 {
-                    // Buscar o StatusId de "Aberta" no banco de dados
-                    var statusAberta = ObterStatusReservaPorNome("Aberta");
-                    if (statusAberta == null)
+                    // Buscar o StatusId de "Aberta" uma única vez e cachear
+                    if (!reserva.StatusId.HasValue || reserva.StatusId.Value <= 0)
                     {
-                        // Se não encontrar "Aberta", criar ou usar ID 1 como fallback
-                        System.Diagnostics.Debug.WriteLine("ATENÇÃO: Status 'Aberta' não encontrado no banco. Usando ID 1 como fallback.");
-                        reserva.StatusId = 1;
-                    }
-                    else
-                    {
-                        // Usar o ID obtido do banco (deve ser 1, mas não assumimos isso)
-                        reserva.StatusId = statusAberta.Id;
-                        System.Diagnostics.Debug.WriteLine($"StatusId definido para nova reserva: {reserva.StatusId.Value} (Aberta)");
+                        var statusAberta = ObterStatusReservaPorNome("Aberta");
+                        reserva.StatusId = statusAberta != null ? statusAberta.Id : 1;
                     }
                 }
                 else
@@ -642,16 +711,7 @@ namespace KingdomConfeitaria.Services
                         if (!string.IsNullOrEmpty(reserva.Status))
                         {
                             var statusReserva = ObterStatusReservaPorNome(reserva.Status);
-                            if (statusReserva != null)
-                            {
-                                reserva.StatusId = statusReserva.Id;
-                            }
-                            else
-                            {
-                                // Se não encontrar, usar "Aberta" como padrão
-                                var statusAberta = ObterStatusReservaPorNome("Aberta");
-                                reserva.StatusId = statusAberta != null ? statusAberta.Id : 1;
-                            }
+                            reserva.StatusId = statusReserva != null ? statusReserva.Id : 1;
                         }
                         else
                         {
@@ -663,34 +723,10 @@ namespace KingdomConfeitaria.Services
                 }
                 
                 // Validação final: garantir que StatusId está definido
-                if (!reserva.StatusId.HasValue)
+                if (!reserva.StatusId.HasValue || reserva.StatusId.Value <= 0)
                 {
-                    System.Diagnostics.Debug.WriteLine("ERRO: StatusId não foi definido. Usando ID 1 como último recurso.");
-                    reserva.StatusId = 1;
+                    reserva.StatusId = 1; // Usar ID 1 como padrão (Aberta)
                 }
-                
-                // Verificar se o StatusId existe na tabela StatusReserva antes de salvar
-                var verificarStatusCommand = new SqlCommand("SELECT COUNT(*) FROM StatusReserva WHERE Id = @StatusId", connection);
-                verificarStatusCommand.Parameters.AddWithValue("@StatusId", reserva.StatusId.Value);
-                var statusExiste = (int)verificarStatusCommand.ExecuteScalar() > 0;
-                
-                if (!statusExiste)
-                {
-                    // Se o StatusId não existir, buscar "Aberta" novamente
-                    var statusAberta = ObterStatusReservaPorNome("Aberta");
-                    if (statusAberta != null)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"ATENÇÃO: StatusId {reserva.StatusId.Value} não existe. Usando StatusId {statusAberta.Id} (Aberta)");
-                        reserva.StatusId = statusAberta.Id;
-                    }
-                    else
-                    {
-                        throw new Exception($"StatusId {reserva.StatusId.Value} não existe na tabela StatusReserva e não foi possível encontrar o status 'Aberta'.");
-                    }
-                }
-                
-                // Log para debug
-                System.Diagnostics.Debug.WriteLine($"Salvando reserva ID {reserva.Id} com StatusId = {reserva.StatusId.Value}");
                 
                 var command = new SqlCommand(@"
                     INSERT INTO Reservas (ClienteId, DataRetirada, DataReserva, StatusId, ValorTotal, Observacoes, ConvertidoEmPedido, PrevisaoEntrega, Cancelado, TokenAcesso)
@@ -713,20 +749,6 @@ namespace KingdomConfeitaria.Services
                 // Atualizar o ID da reserva no objeto
                 reserva.Id = reservaId;
                 
-                System.Diagnostics.Debug.WriteLine($"Reserva criada com ID: {reservaId}");
-                
-                // Obter todos os produtos existentes no banco (ativos ou inativos)
-                // Aceitar produtos inativos também, pois podem ter sido desativados após serem adicionados ao carrinho
-                var produtosExistentes = new HashSet<int>();
-                var produtosCommand = new SqlCommand("SELECT Id FROM Produtos", connection);
-                using (var produtosReader = produtosCommand.ExecuteReader())
-                {
-                    while (produtosReader.Read())
-                    {
-                        produtosExistentes.Add(produtosReader.GetInt32(0));
-                    }
-                }
-                
                 // Validar que há itens para gravar
                 if (reserva.Itens == null || reserva.Itens.Count == 0)
                 {
@@ -740,25 +762,31 @@ namespace KingdomConfeitaria.Services
                 }
 
                 // Salvar TODOS os itens da reserva na tabela ReservaItens
+                // Não validar novamente os produtos aqui, pois já foram validados antes de criar a reserva
+                // Apenas tentar gravar todos os itens e tratar erros individualmente
                 int itensGravados = 0;
                 int itensPulados = 0;
+                var produtosNaoEncontrados = new List<int>();
                 
                 foreach (var item in reserva.Itens)
                 {
-                    // Validar se o produto existe no banco (mesmo que inativo)
-                    if (!produtosExistentes.Contains(item.ProdutoId))
-                    {
-                        // Se o produto não existe, pular este item e registrar um log
-                        System.Diagnostics.Debug.WriteLine($"ATENÇÃO: Produto ID {item.ProdutoId} não encontrado no banco. Item: {item.NomeProduto} será pulado.");
-                        itensPulados++;
-                        continue; // Pular este item
-                    }
-                    
                     try
                     {
+                        // Verificar se o produto existe antes de inserir (validação rápida)
+                        var verificarProduto = new SqlCommand("SELECT COUNT(*) FROM Produtos WHERE Id = @ProdutoId", connection);
+                        verificarProduto.Parameters.AddWithValue("@ProdutoId", item.ProdutoId);
+                        var produtoExiste = (int)verificarProduto.ExecuteScalar() > 0;
+                        
+                        if (!produtoExiste)
+                        {
+                            produtosNaoEncontrados.Add(item.ProdutoId);
+                            itensPulados++;
+                            continue;
+                        }
+                        
                         var itemCommand = new SqlCommand(@"
-                            INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal)
-                            VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal)", connection);
+                            INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, Produtos)
+                            VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal, @Produtos)", connection);
                         
                         itemCommand.Parameters.AddWithValue("@ReservaId", reservaId);
                         itemCommand.Parameters.AddWithValue("@ProdutoId", item.ProdutoId);
@@ -767,17 +795,20 @@ namespace KingdomConfeitaria.Services
                         itemCommand.Parameters.AddWithValue("@Quantidade", item.Quantidade);
                         itemCommand.Parameters.AddWithValue("@PrecoUnitario", item.PrecoUnitario);
                         itemCommand.Parameters.AddWithValue("@Subtotal", item.Subtotal);
+                        itemCommand.Parameters.AddWithValue("@Produtos", item.Produtos ?? (object)DBNull.Value);
                         
                         itemCommand.ExecuteNonQuery();
                         itensGravados++;
-                        
-                        System.Diagnostics.Debug.WriteLine($"Item gravado: {item.NomeProduto} (ProdutoId: {item.ProdutoId}, Quantidade: {item.Quantidade}, Subtotal: {item.Subtotal})");
                     }
-                    catch (Exception exItem)
+                    catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"ERRO ao gravar item {item.NomeProduto} (ProdutoId: {item.ProdutoId}): {exItem.Message}");
                         itensPulados++;
                         // Continuar tentando gravar os outros itens
+                        // Se for erro de produto não encontrado, adicionar à lista
+                        if (ex.Message.Contains("FOREIGN KEY") || ex.Message.Contains("Produto"))
+                        {
+                            produtosNaoEncontrados.Add(item.ProdutoId);
+                        }
                     }
                 }
                 
@@ -790,21 +821,20 @@ namespace KingdomConfeitaria.Services
                         var deleteCommand = new SqlCommand("DELETE FROM Reservas WHERE Id = @Id", connection);
                         deleteCommand.Parameters.AddWithValue("@Id", reservaId);
                         deleteCommand.ExecuteNonQuery();
-                        System.Diagnostics.Debug.WriteLine($"Reserva ID {reservaId} deletada porque nenhum item foi gravado.");
                     }
-                    catch (Exception exDelete)
+                    catch (Exception)
                     {
-                        System.Diagnostics.Debug.WriteLine($"Erro ao deletar reserva vazia: {exDelete.Message}");
+                        // Erro ao deletar reserva vazia - continuar
                     }
                     
-                    throw new Exception($"Nenhum item foi gravado na reserva. Total de itens: {reserva.Itens.Count}, Itens pulados: {itensPulados}. A reserva foi removida.");
-                }
-                
-                // Log final
-                System.Diagnostics.Debug.WriteLine($"Reserva ID {reservaId} salva com sucesso. Itens gravados: {itensGravados}/{reserva.Itens.Count}");
-                if (itensPulados > 0)
-                {
-                    System.Diagnostics.Debug.WriteLine($"ATENÇÃO: {itensPulados} item(ns) foram pulados (produtos não encontrados no banco).");
+                    string mensagemErro = $"Nenhum item foi gravado na reserva. Total de itens: {reserva.Itens.Count}, Itens pulados: {itensPulados}.";
+                    if (produtosNaoEncontrados.Count > 0)
+                    {
+                        mensagemErro += $" Produtos não encontrados no banco de dados (IDs: {string.Join(", ", produtosNaoEncontrados)}).";
+                    }
+                    mensagemErro += " A reserva foi removida.";
+                    
+                    throw new Exception(mensagemErro);
                 }
             }
         }
@@ -816,22 +846,24 @@ namespace KingdomConfeitaria.Services
                 connection.Open();
                 var command = new SqlCommand(@"
                     UPDATE Produtos 
-                    SET Nome = @Nome, Descricao = @Descricao, PrecoPequeno = @PrecoPequeno, 
-                        PrecoGrande = @PrecoGrande, ImagemUrl = @ImagemUrl, Ativo = @Ativo, Ordem = @Ordem,
-                        EhSacoPromocional = @EhSacoPromocional, QuantidadeSaco = @QuantidadeSaco, TamanhoSaco = @TamanhoSaco
+                    SET Nome = @Nome, Descricao = @Descricao, Preco = @Preco, 
+                        ImagemUrl = @ImagemUrl, Ativo = @Ativo, Ordem = @Ordem,
+                        EhSacoPromocional = @EhSacoPromocional, QuantidadeSaco = @QuantidadeSaco, Produtos = @Produtos,
+                        ReservavelAte = @ReservavelAte, VendivelAte = @VendivelAte
                     WHERE Id = @Id", connection);
                 
                 command.Parameters.AddWithValue("@Id", produto.Id);
                 command.Parameters.AddWithValue("@Nome", produto.Nome);
                 command.Parameters.AddWithValue("@Descricao", produto.Descricao ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@PrecoPequeno", produto.PrecoPequeno);
-                command.Parameters.AddWithValue("@PrecoGrande", produto.PrecoGrande);
+                command.Parameters.AddWithValue("@Preco", produto.Preco);
                 command.Parameters.AddWithValue("@ImagemUrl", produto.ImagemUrl ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@Ativo", produto.Ativo);
                 command.Parameters.AddWithValue("@Ordem", produto.Ordem);
                 command.Parameters.AddWithValue("@EhSacoPromocional", produto.EhSacoPromocional);
                 command.Parameters.AddWithValue("@QuantidadeSaco", produto.QuantidadeSaco);
-                command.Parameters.AddWithValue("@TamanhoSaco", produto.TamanhoSaco ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@Produtos", produto.Produtos ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@ReservavelAte", produto.ReservavelAte.HasValue ? (object)produto.ReservavelAte.Value : DBNull.Value);
+                command.Parameters.AddWithValue("@VendivelAte", produto.VendivelAte.HasValue ? (object)produto.VendivelAte.Value : DBNull.Value);
                 
                 command.ExecuteNonQuery();
             }
@@ -843,19 +875,20 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 var command = new SqlCommand(@"
-                    INSERT INTO Produtos (Nome, Descricao, PrecoPequeno, PrecoGrande, ImagemUrl, Ativo, Ordem, EhSacoPromocional, QuantidadeSaco, TamanhoSaco)
-                    VALUES (@Nome, @Descricao, @PrecoPequeno, @PrecoGrande, @ImagemUrl, @Ativo, @Ordem, @EhSacoPromocional, @QuantidadeSaco, @TamanhoSaco)", connection);
+                    INSERT INTO Produtos (Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, EhSacoPromocional, QuantidadeSaco, Produtos, ReservavelAte, VendivelAte)
+                    VALUES (@Nome, @Descricao, @Preco, @ImagemUrl, @Ativo, @Ordem, @EhSacoPromocional, @QuantidadeSaco, @Produtos, @ReservavelAte, @VendivelAte)", connection);
                 
                 command.Parameters.AddWithValue("@Nome", produto.Nome);
                 command.Parameters.AddWithValue("@Descricao", produto.Descricao ?? (object)DBNull.Value);
-                command.Parameters.AddWithValue("@PrecoPequeno", produto.PrecoPequeno);
-                command.Parameters.AddWithValue("@PrecoGrande", produto.PrecoGrande);
+                command.Parameters.AddWithValue("@Preco", produto.Preco);
                 command.Parameters.AddWithValue("@ImagemUrl", produto.ImagemUrl ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@Ativo", produto.Ativo);
                 command.Parameters.AddWithValue("@Ordem", produto.Ordem);
                 command.Parameters.AddWithValue("@EhSacoPromocional", produto.EhSacoPromocional);
                 command.Parameters.AddWithValue("@QuantidadeSaco", produto.QuantidadeSaco);
-                command.Parameters.AddWithValue("@TamanhoSaco", produto.TamanhoSaco ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@Produtos", produto.Produtos ?? (object)DBNull.Value);
+                command.Parameters.AddWithValue("@ReservavelAte", produto.ReservavelAte.HasValue ? (object)produto.ReservavelAte.Value : DBNull.Value);
+                command.Parameters.AddWithValue("@VendivelAte", produto.VendivelAte.HasValue ? (object)produto.VendivelAte.Value : DBNull.Value);
                 
                 command.ExecuteNonQuery();
             }
@@ -908,7 +941,7 @@ namespace KingdomConfeitaria.Services
                 foreach (var reserva in reservas)
                 {
                     var itensCommand = new SqlCommand(@"
-                        SELECT Id, ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal
+                        SELECT Id, ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, ISNULL(Produtos, '')
                         FROM ReservaItens
                         WHERE ReservaId = @ReservaId", connection);
                     itensCommand.Parameters.AddWithValue("@ReservaId", reserva.Id);
@@ -924,7 +957,8 @@ namespace KingdomConfeitaria.Services
                                 Tamanho = itensReader.GetString(4),
                                 Quantidade = itensReader.GetInt32(5),
                                 PrecoUnitario = itensReader.GetDecimal(6),
-                                Subtotal = itensReader.GetDecimal(7)
+                                Subtotal = itensReader.GetDecimal(7),
+                                Produtos = itensReader.IsDBNull(8) ? "" : itensReader.GetString(8)
                             });
                         }
                     }
@@ -981,7 +1015,7 @@ namespace KingdomConfeitaria.Services
                 {
                     // Carregar itens da reserva
                     var itensCommand = new SqlCommand(@"
-                        SELECT Id, ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal
+                        SELECT Id, ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, ISNULL(Produtos, '')
                         FROM ReservaItens
                         WHERE ReservaId = @ReservaId", connection);
                     itensCommand.Parameters.AddWithValue("@ReservaId", reserva.Id);
@@ -997,7 +1031,8 @@ namespace KingdomConfeitaria.Services
                                 Tamanho = itensReader.GetString(4),
                                 Quantidade = itensReader.GetInt32(5),
                                 PrecoUnitario = itensReader.GetDecimal(6),
-                                Subtotal = itensReader.GetDecimal(7)
+                                Subtotal = itensReader.GetDecimal(7),
+                                Produtos = itensReader.IsDBNull(8) ? "" : itensReader.GetString(8)
                             });
                         }
                     }
@@ -1086,8 +1121,8 @@ namespace KingdomConfeitaria.Services
                     }
                     
                     var insertCommand = new SqlCommand(@"
-                        INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal)
-                        VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal)", connection);
+                        INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, Produtos)
+                        VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal, @Produtos)", connection);
                     
                     insertCommand.Parameters.AddWithValue("@ReservaId", reservaId);
                     insertCommand.Parameters.AddWithValue("@ProdutoId", item.ProdutoId);
@@ -1096,6 +1131,7 @@ namespace KingdomConfeitaria.Services
                     insertCommand.Parameters.AddWithValue("@Quantidade", item.Quantidade);
                     insertCommand.Parameters.AddWithValue("@PrecoUnitario", item.PrecoUnitario);
                     insertCommand.Parameters.AddWithValue("@Subtotal", item.Subtotal);
+                    insertCommand.Parameters.AddWithValue("@Produtos", item.Produtos ?? (object)DBNull.Value);
                     
                     insertCommand.ExecuteNonQuery();
                 }
@@ -1336,7 +1372,6 @@ namespace KingdomConfeitaria.Services
                 return null;
 
             string telefoneFormatado = FormatarTelefone(telefone);
-            System.Diagnostics.Debug.WriteLine($"ObterClientePorTelefone: telefone recebido='{telefone}', formatado='{telefoneFormatado}'");
             
             using (var connection = new SqlConnection(_connectionString))
             {
@@ -1350,13 +1385,10 @@ namespace KingdomConfeitaria.Services
                     WHERE LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefone, ''), '(', ''), ')', ''), '-', ''), ' ', ''), '.', ''), '/', ''))) = @Telefone", connection);
                 command.Parameters.AddWithValue("@Telefone", telefoneFormatado);
                 
-                System.Diagnostics.Debug.WriteLine($"Query SQL: Buscando telefone formatado='{telefoneFormatado}'");
-                
                 using (var reader = command.ExecuteReader())
                 {
                     if (reader.Read())
                     {
-                        System.Diagnostics.Debug.WriteLine($"Cliente encontrado! ID={reader.GetInt32(0)}, Nome={reader.GetString(1)}");
                         return new Cliente
                         {
                             Id = reader.GetInt32(0),
@@ -1376,10 +1408,6 @@ namespace KingdomConfeitaria.Services
                             DataCadastro = reader.GetDateTime(14),
                             UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
                         };
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("Nenhum cliente encontrado com esse telefone.");
                     }
                 }
             }
@@ -1723,7 +1751,7 @@ namespace KingdomConfeitaria.Services
                 foreach (var reserva in reservas)
                 {
                     var itensCommand = new SqlCommand(@"
-                        SELECT Id, ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal
+                        SELECT Id, ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, ISNULL(Produtos, '')
                         FROM ReservaItens
                         WHERE ReservaId = @ReservaId", connection);
                     itensCommand.Parameters.AddWithValue("@ReservaId", reserva.Id);
@@ -1739,7 +1767,8 @@ namespace KingdomConfeitaria.Services
                                 Tamanho = itensReader.GetString(4),
                                 Quantidade = itensReader.GetInt32(5),
                                 PrecoUnitario = itensReader.GetDecimal(6),
-                                Subtotal = itensReader.GetDecimal(7)
+                                Subtotal = itensReader.GetDecimal(7),
+                                Produtos = itensReader.IsDBNull(8) ? "" : itensReader.GetString(8)
                             });
                         }
                     }
@@ -1797,7 +1826,7 @@ namespace KingdomConfeitaria.Services
 
                         // Carregar itens da reserva
                         var itensCommand = new SqlCommand(@"
-                            SELECT Id, ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal
+                            SELECT Id, ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, ISNULL(Produtos, '')
                             FROM ReservaItens
                             WHERE ReservaId = @ReservaId", connection);
                         itensCommand.Parameters.AddWithValue("@ReservaId", reserva.Id);
@@ -1813,7 +1842,8 @@ namespace KingdomConfeitaria.Services
                                     Tamanho = itensReader.GetString(4),
                                     Quantidade = itensReader.GetInt32(5),
                                     PrecoUnitario = itensReader.GetDecimal(6),
-                                    Subtotal = itensReader.GetDecimal(7)
+                                    Subtotal = itensReader.GetDecimal(7),
+                                    Produtos = itensReader.IsDBNull(8) ? "" : itensReader.GetString(8)
                                 });
                             }
                         }
@@ -1847,8 +1877,6 @@ namespace KingdomConfeitaria.Services
                 command.Parameters.AddWithValue("@Id", reservaId);
                 command.Parameters.AddWithValue("@StatusId", statusCancelado.Id);
                 command.ExecuteNonQuery();
-                
-                System.Diagnostics.Debug.WriteLine($"Reserva ID {reservaId} cancelada. StatusId alterado para {statusCancelado.Id} (Cancelado)");
             }
         }
 
@@ -1970,6 +1998,85 @@ namespace KingdomConfeitaria.Services
                 var enableFK = new SqlCommand("ALTER TABLE Reservas CHECK CONSTRAINT ALL", connection);
                 enableFK.ExecuteNonQuery();
             }
+        }
+
+        /// <summary>
+        /// Calcula a quantidade total de produtos a produzir, incluindo os que estão dentro de sacos/cestas/caixas
+        /// </summary>
+        /// <param name="dataRetirada">Data de retirada para filtrar reservas (null para todas as datas)</param>
+        /// <returns>Dicionário com ProdutoId como chave e quantidade total como valor</returns>
+        public Dictionary<int, int> CalcularProdutosAProduzir(DateTime? dataRetirada = null)
+        {
+            var produtosQuantidade = new Dictionary<int, int>();
+            
+            // Obter todas as reservas não canceladas
+            var reservas = ObterTodasReservas().Where(r => !r.Cancelado).ToList();
+            
+            // Filtrar por data de retirada se especificada
+            if (dataRetirada.HasValue)
+            {
+                reservas = reservas.Where(r => r.DataRetirada.Date == dataRetirada.Value.Date).ToList();
+            }
+            
+            // Obter status que indicam que ainda precisa produzir
+            var statusAberta = ObterStatusReservaPorNome("Aberta");
+            var statusEmProducao = ObterStatusReservaPorNome("Em Produção");
+            var statusPreparandoEntrega = ObterStatusReservaPorNome("Preparando Entrega");
+            var statusSaiuParaEntrega = ObterStatusReservaPorNome("Saiu para Entrega");
+            
+            var statusIds = new List<int>();
+            if (statusAberta != null) statusIds.Add(statusAberta.Id);
+            if (statusEmProducao != null) statusIds.Add(statusEmProducao.Id);
+            if (statusPreparandoEntrega != null) statusIds.Add(statusPreparandoEntrega.Id);
+            if (statusSaiuParaEntrega != null) statusIds.Add(statusSaiuParaEntrega.Id);
+            
+            // Filtrar reservas que ainda precisam ser produzidas
+            reservas = reservas.Where(r => r.StatusId.HasValue && statusIds.Contains(r.StatusId.Value)).ToList();
+            
+            var serializer = new JavaScriptSerializer();
+            
+            foreach (var reserva in reservas)
+            {
+                foreach (var item in reserva.Itens)
+                {
+                    // Adicionar o produto principal
+                    if (!produtosQuantidade.ContainsKey(item.ProdutoId))
+                    {
+                        produtosQuantidade[item.ProdutoId] = 0;
+                    }
+                    produtosQuantidade[item.ProdutoId] += item.Quantidade;
+                    
+                    // Se tiver produtos dentro do saco/cesta/caixa, adicionar também
+                    if (!string.IsNullOrEmpty(item.Produtos))
+                    {
+                        try
+                        {
+                            var produtosJson = serializer.Deserialize<List<Dictionary<string, object>>>(item.Produtos);
+                            
+                            foreach (var produtoJson in produtosJson)
+                            {
+                                int qt = Convert.ToInt32(produtoJson["qt"]);
+                                int prodId = Convert.ToInt32(produtoJson["id"]);
+                                
+                                // Multiplicar pela quantidade do item (saco/cesta/caixa)
+                                int quantidadeTotal = qt * item.Quantidade;
+                                
+                                if (!produtosQuantidade.ContainsKey(prodId))
+                                {
+                                    produtosQuantidade[prodId] = 0;
+                                }
+                                produtosQuantidade[prodId] += quantidadeTotal;
+                            }
+                        }
+                        catch
+                        {
+                            // Se falhar ao parsear, ignorar
+                        }
+                    }
+                }
+            }
+            
+            return produtosQuantidade;
         }
     }
 }

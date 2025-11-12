@@ -44,25 +44,46 @@ AdminPage.Produtos = {
     /**
      * Editar produto
      */
-    editar: function(id, nome, descricao, precoPequeno, precoGrande, imagemUrl, ordem, ativo) {
+    editar: function(id, nome, descricao, preco, imagemUrl, ordem, ativo, reservavelAte, vendivelAte, ehSacoPromocional, quantidadeSaco, produtosPermitidos) {
         // Obter elementos usando IDs gerados pelo ASP.NET
         var hdnProdutoId = document.querySelector('input[id*="hdnProdutoId"]');
         var txtNomeProduto = document.querySelector('input[id*="txtNomeProduto"]');
         var txtDescricao = document.querySelector('textarea[id*="txtDescricao"]');
-        var txtPrecoPequeno = document.querySelector('input[id*="txtPrecoPequeno"]');
-        var txtPrecoGrande = document.querySelector('input[id*="txtPrecoGrande"]');
+        var txtPreco = document.querySelector('input[id*="txtPreco"]');
         var txtImagemUrl = document.querySelector('input[id*="txtImagemUrl"]');
         var txtOrdem = document.querySelector('input[id*="txtOrdem"]');
         var chkAtivo = document.querySelector('input[id*="chkAtivo"]');
+        var txtReservavelAte = document.querySelector('input[id*="txtReservavelAte"]');
+        var txtVendivelAte = document.querySelector('input[id*="txtVendivelAte"]');
+        var chkEhSacoPromocional = document.querySelector('input[id*="chkEhSacoPromocional"]');
+        var txtQuantidadeSaco = document.querySelector('input[id*="txtQuantidadeSaco"]');
+        var lstProdutosPermitidos = document.querySelector('select[id*="lstProdutosPermitidos"]');
         
         if (hdnProdutoId) hdnProdutoId.value = id;
         if (txtNomeProduto) txtNomeProduto.value = nome || '';
         if (txtDescricao) txtDescricao.value = descricao || '';
-        if (txtPrecoPequeno) txtPrecoPequeno.value = precoPequeno || '0.00';
-        if (txtPrecoGrande) txtPrecoGrande.value = precoGrande || '0.00';
+        if (txtPreco) txtPreco.value = preco || '0.00';
         if (txtImagemUrl) txtImagemUrl.value = imagemUrl || '';
         if (txtOrdem) txtOrdem.value = ordem || '0';
         if (chkAtivo) chkAtivo.checked = ativo === true || ativo === 'true' || ativo === 'True';
+        if (txtReservavelAte) txtReservavelAte.value = reservavelAte || '';
+        if (txtVendivelAte) txtVendivelAte.value = vendivelAte || '';
+        if (chkEhSacoPromocional) {
+            chkEhSacoPromocional.checked = ehSacoPromocional === true || ehSacoPromocional === 'true' || ehSacoPromocional === 'True';
+            toggleSacoPromocional(chkEhSacoPromocional);
+        }
+        if (txtQuantidadeSaco) txtQuantidadeSaco.value = quantidadeSaco || '0';
+        if (lstProdutosPermitidos && produtosPermitidos) {
+            try {
+                var produtosIds = JSON.parse(produtosPermitidos);
+                for (var i = 0; i < lstProdutosPermitidos.options.length; i++) {
+                    var option = lstProdutosPermitidos.options[i];
+                    option.selected = produtosIds.indexOf(parseInt(option.value)) !== -1;
+                }
+            } catch (e) {
+                console.error('Erro ao parsear produtos permitidos:', e);
+            }
+        }
         
         // Atualizar preview da imagem
         var preview = document.getElementById('previewImagem');
@@ -92,8 +113,8 @@ AdminPage.Produtos = {
 };
 
 // Função global para compatibilidade com onclick inline
-function editarProduto(id, nome, descricao, precoPequeno, precoGrande, imagemUrl, ordem, ativo) {
-    AdminPage.Produtos.editar(id, nome, descricao, precoPequeno, precoGrande, imagemUrl, ordem, ativo);
+function editarProduto(id, nome, descricao, preco, imagemUrl, ordem, ativo, reservavelAte, vendivelAte, ehSacoPromocional, quantidadeSaco, produtosPermitidos) {
+    AdminPage.Produtos.editar(id, nome, descricao, preco, imagemUrl, ordem, ativo, reservavelAte || '', vendivelAte || '', ehSacoPromocional || false, quantidadeSaco || 0, produtosPermitidos || '');
 }
 
 // Funções de edição de reservas

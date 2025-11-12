@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Web.UI;
 using KingdomConfeitaria.Models;
 using KingdomConfeitaria.Services;
@@ -26,7 +27,26 @@ namespace KingdomConfeitaria
             }
 
             int clienteId = (int)Session["ClienteId"];
+            
+            // Atualizar menu
             clienteNome.InnerText = "Olá, " + (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "");
+            clienteNome.Style["display"] = "inline";
+            
+            // Atualizar visibilidade dos links do menu
+            var linkLogin = FindControl("linkLogin") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkMinhasReservas = FindControl("linkMinhasReservas") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkMeusDados = FindControl("linkMeusDados") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkAdmin = FindControl("linkAdmin") as System.Web.UI.HtmlControls.HtmlAnchor;
+            var linkLogout = FindControl("linkLogout") as System.Web.UI.HtmlControls.HtmlAnchor;
+            
+            if (linkLogin != null) linkLogin.Style["display"] = "none";
+            if (linkMinhasReservas != null) linkMinhasReservas.Style["display"] = "inline";
+            if (linkMeusDados != null) linkMeusDados.Style["display"] = "inline";
+            if (linkLogout != null) linkLogout.Style["display"] = "inline";
+            
+            // Verificar se é admin
+            bool isAdmin = Session["IsAdmin"] != null && (bool)Session["IsAdmin"];
+            if (linkAdmin != null) linkAdmin.Style["display"] = isAdmin ? "inline" : "none";
 
             // Processar ações
             string eventTarget = Request["__EVENTTARGET"];
@@ -79,8 +99,47 @@ namespace KingdomConfeitaria
                     string itensHtml = "";
                     foreach (var item in reserva.Itens)
                     {
-                        itensHtml += string.Format("<li>{0} ({1}) - Quantidade: {2} - R$ {3}</li>",
-                            item.NomeProduto, item.Tamanho, item.Quantidade, item.Subtotal.ToString("F2"));
+                        string itemTexto = string.Format("{0} ({1}) - Quantidade: {2} - R$ {3}",
+                            System.Web.HttpUtility.HtmlEncode(item.NomeProduto), 
+                            System.Web.HttpUtility.HtmlEncode(item.Tamanho), 
+                            item.Quantidade, 
+                            item.Subtotal.ToString("F2"));
+                        
+                        // Se tiver produtos do saco, mostrar detalhes
+                        if (!string.IsNullOrEmpty(item.Produtos))
+                        {
+                            try
+                            {
+                                var todosProdutos = _databaseService.ObterTodosProdutos();
+                                var produtosDetalhes = new List<string>();
+                                
+                                // Parsear JSON de produtos no formato [{"qt": quantidade, "id": idProduto}, ...]
+                                var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                                var produtosJson = serializer.Deserialize<List<Dictionary<string, object>>>(item.Produtos);
+                                
+                                foreach (var produtoJson in produtosJson)
+                                {
+                                    int qt = Convert.ToInt32(produtoJson["qt"]);
+                                    int prodId = Convert.ToInt32(produtoJson["id"]);
+                                    var produto = todosProdutos.Where(p => p.Id == prodId).FirstOrDefault();
+                                    if (produto != null)
+                                    {
+                                        produtosDetalhes.Add($"{qt}x {produto.Nome}");
+                                    }
+                                }
+                                
+                                if (produtosDetalhes.Count > 0)
+                                {
+                                    itemTexto += "<br/><small class='text-muted'>Produtos: " + string.Join(", ", produtosDetalhes) + "</small>";
+                                }
+                            }
+                            catch
+                            {
+                                // Se falhar ao parsear, ignorar
+                            }
+                        }
+                        
+                        itensHtml += "<li>" + itemTexto + "</li>";
                     }
 
                     string previsaoHtml = "";
@@ -129,6 +188,30 @@ namespace KingdomConfeitaria
                     string botaoExcluir = podeExcluir
                         ? string.Format("<button type='button' class='btn btn-danger btn-sm' onclick='excluirReserva({0})'><i class='fas fa-trash'></i> Excluir</button>", reserva.Id)
                         : "";
+                    
+                    // Botões de compartilhamento (apenas se não estiver cancelada)
+                    string botoesCompartilharHtml = "";
+                    if (!jaCancelada)
+                    {
+                        botoesCompartilharHtml = string.Format(@"
+                                <div>
+                                    <strong>Compartilhar:</strong>
+                                    <button type='button' class='btn btn-share btn-sm btn-primary' onclick='compartilharFacebook(\""{0}\"", \""{1}\"")'>
+                                        <i class='fab fa-facebook'></i>
+                                    </button>
+                                    <button type='button' class='btn btn-share btn-sm btn-success' onclick='compartilharWhatsApp(\""{0}\"", \""{1}\"")'>
+                                        <i class='fab fa-whatsapp'></i>
+                                    </button>
+                                    <button type='button' class='btn btn-share btn-sm btn-info' onclick='compartilharTwitter(\""{0}\"", \""{1}\"")'>
+                                        <i class='fab fa-twitter'></i>
+                                    </button>
+                                    <button type='button' class='btn btn-share btn-sm btn-secondary' onclick='compartilharEmail(\""{0}\"", \""{1}\"")'>
+                                        <i class='fas fa-envelope'></i>
+                                    </button>
+                                </div>",
+                                linkReservaCompleto,
+                                textoCompartilhar.Replace("\"", "&quot;"));
+                    }
 
                     html += string.Format(@"
                         <div class='reserva-card'>
@@ -171,21 +254,7 @@ namespace KingdomConfeitaria
                                     {14}
                                     {15}
                                 </div>
-                                <div>
-                                    <strong>Compartilhar:</strong>
-                                    <button type='button' class='btn btn-share btn-sm btn-primary' onclick='compartilharFacebook(\""{13}\"", \""{12}\"")'>
-                                        <i class='fab fa-facebook'></i>
-                                    </button>
-                                    <button type='button' class='btn btn-share btn-sm btn-success' onclick='compartilharWhatsApp(\""{13}\"", \""{12}\"")'>
-                                        <i class='fab fa-whatsapp'></i>
-                                    </button>
-                                    <button type='button' class='btn btn-share btn-sm btn-info' onclick='compartilharTwitter(\""{13}\"", \""{12}\"")'>
-                                        <i class='fab fa-twitter'></i>
-                                    </button>
-                                    <button type='button' class='btn btn-share btn-sm btn-secondary' onclick='compartilharEmail(\""{13}\"", \""{12}\"")'>
-                                        <i class='fas fa-envelope'></i>
-                                    </button>
-                                </div>
+                                {16}
                             </div>
                         </div>",
                         reserva.Id,
@@ -203,7 +272,8 @@ namespace KingdomConfeitaria
                         textoCompartilhar.Replace("\"", "&quot;"), // {12}
                         linkReservaCompleto, // {13} - URL completa para compartilhamento
                         botaoCancelar, // {14} - Botão de cancelar
-                        botaoExcluir // {15} - Botão de excluir
+                        botaoExcluir, // {15} - Botão de excluir
+                        botoesCompartilharHtml // {16} - Botões de compartilhamento (vazio se cancelada)
                     );
                 }
 

@@ -12,10 +12,46 @@
         body {
             background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 100%);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 90px;
+        }
+        .header-logo {
+            background: #1a4d2e;
+            padding: 10px 20px;
+            text-align: center;
+            border-radius: 0;
+            margin-bottom: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .header-actions {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+        .header-actions a {
+            color: white;
+            text-decoration: none;
+            margin-left: 15px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .header-actions a:hover {
+            text-decoration: underline;
+            color: #d4af37;
+        }
+        .header-logo img {
+            max-width: 20%;
+            width: auto;
+            height: auto;
+            max-height: 80px;
+            display: block;
+            margin: 0 auto;
         }
         .login-container {
             background: white;
@@ -24,19 +60,6 @@
             padding: 40px;
             max-width: 450px;
             width: 100%;
-        }
-        .header-logo {
-            text-align: center;
-            margin-bottom: 20px;
-            width: 100%;
-            padding-top: 0;
-        }
-        .header-logo img {
-            max-width: 20%;
-            width: auto;
-            height: auto;
-            max-height: 80px;
-            display: block;
             margin: 0 auto;
         }
         .is-valid {
@@ -56,11 +79,14 @@
 </head>
 <body>
     <form id="form1" runat="server">
-        <div class="login-container">
-            <div class="header-logo">
-                <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
+        <div class="header-logo">
+            <div class="header-actions">
+                <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
             </div>
-            
+            <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
+        </div>
+        
+        <div class="login-container">
             <h2 class="text-center mb-4" style="color: #1a4d2e;">Entrar</h2>
             
             <div id="alertContainer" runat="server"></div>
