@@ -515,8 +515,10 @@ namespace KingdomConfeitaria
                         }
                     }
                     
-                    // Criar JSON de produtos no formato [{"qt": quantidade, "id": idProduto}, ...]
-                    var produtosJson = produtosIds.Select(id => new { qt = quantidadeSacos, id = id }).ToList();
+                    // Criar JSON de produtos no formato [{"qt": 1, "id": idProduto}, ...]
+                    // A quantidade de cada produto dentro de UM saco é sempre 1
+                    // A quantidade de sacos é controlada pelo campo Quantidade do ItemPedido
+                    var produtosJson = produtosIds.Select(id => new { qt = 1, id = id }).ToList();
                     var jsonSerializer = new JavaScriptSerializer();
                     string produtosFormatados = jsonSerializer.Serialize(produtosJson);
                     
@@ -524,42 +526,44 @@ namespace KingdomConfeitaria
                     string nomeSacoCompleto = nomeSaco;
                     
                     // Adicionar o saco promocional ao carrinho
-                    // Usar uma chave única baseada no sacoId + produtos selecionados
-                    string chaveSaco = sacoId + "|" + produtosIdsStr;
+                    // Verificar se já existe um saco com os MESMOS produtos (mesma chave)
+                    // Ordenar os IDs dos produtos para comparar corretamente
+                    var produtosIdsOrdenados = produtosIds.OrderBy(id => id).ToList();
+                    string chaveProdutos = string.Join(",", produtosIdsOrdenados);
+                    
                     var sacoItem = Carrinho.FirstOrDefault(i => 
                         i.ProdutoId == sacoId && 
-                        i.NomeProduto == nomeSaco);
+                        i.NomeProduto == nomeSaco &&
+                        !string.IsNullOrEmpty(i.Produtos));
                     
-                    if (sacoItem != null)
+                    // Verificar se os produtos são os mesmos
+                    bool produtosIguais = false;
+                    if (sacoItem != null && !string.IsNullOrEmpty(sacoItem.Produtos))
                     {
-                        // Se já existe um saco similar, aumentar a quantidade
+                        try
+                        {
+                            var jsonSerializer2 = new JavaScriptSerializer();
+                            var produtosExistentes = jsonSerializer2.Deserialize<List<Dictionary<string, object>>>(sacoItem.Produtos);
+                            var idsExistentes = produtosExistentes.Select(p => Convert.ToInt32(p["id"])).OrderBy(id => id).ToList();
+                            produtosIguais = idsExistentes.SequenceEqual(produtosIdsOrdenados);
+                        }
+                        catch
+                        {
+                            produtosIguais = false;
+                        }
+                    }
+                    
+                    if (sacoItem != null && produtosIguais)
+                    {
+                        // Se já existe um saco com os mesmos produtos, apenas aumentar a quantidade
+                        // Os produtos permanecem os mesmos (não mesclar)
                         sacoItem.Quantidade += quantidadeSacos;
                         sacoItem.Subtotal = sacoItem.Quantidade * sacoItem.PrecoUnitario;
-                        // Atualizar produtos (mesclar JSONs)
-                        if (!string.IsNullOrEmpty(sacoItem.Produtos))
-                        {
-                            try
-                            {
-                                var jsonSerializer2 = new JavaScriptSerializer();
-                                var produtosExistentes = jsonSerializer2.Deserialize<List<Dictionary<string, object>>>(sacoItem.Produtos);
-                                var produtosNovos = jsonSerializer2.Deserialize<List<Dictionary<string, object>>>(produtosFormatados);
-                                produtosExistentes.AddRange(produtosNovos);
-                                sacoItem.Produtos = jsonSerializer2.Serialize(produtosExistentes);
-                            }
-                            catch
-                            {
-                                // Se falhar ao parsear, usar o novo
-                                sacoItem.Produtos = produtosFormatados;
-                            }
-                        }
-                        else
-                        {
-                            sacoItem.Produtos = produtosFormatados;
-                        }
+                        // Manter os produtos originais (não atualizar)
                     }
                     else
                     {
-                        // Adicionar novo saco
+                        // Adicionar novo saco (produtos diferentes ou não existe)
                         Carrinho.Add(new ItemPedido
                         {
                             ProdutoId = sacoId,
@@ -1225,7 +1229,20 @@ namespace KingdomConfeitaria
                     return;
                 }
                 
+                // Validar que DatabaseService está inicializado
+                if (_databaseService == null)
+                {
+                    _databaseService = new DatabaseService();
+                }
+                
                 var todosProdutos = _databaseService.ObterTodosProdutos();
+                if (todosProdutos == null)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "ErroObterProdutos", 
+                        $"alert('{EscapeJavaScript("Erro ao obter produtos do banco de dados. Por favor, tente novamente.")}');", true);
+                    return;
+                }
+                
                 var todosProdutosIds = todosProdutos.Select(p => p.Id).ToHashSet();
                 var produtosAtivosIds = todosProdutos.Where(p => p.Ativo).Select(p => p.Id).ToHashSet();
                 
@@ -1291,20 +1308,62 @@ namespace KingdomConfeitaria
                 }
 
                 // Obter o StatusId para "Aberta" (ID = 1)
-                var statusAberta = _databaseService.ObterStatusReservaPorNome("Aberta");
+                StatusReserva statusAberta = null;
+                try
+                {
+                    statusAberta = _databaseService.ObterStatusReservaPorNome("Aberta");
+                }
+                catch
+                {
+                    // Se falhar, usar ID 1 como padrão
+                }
                 int statusIdAberta = statusAberta != null ? statusAberta.Id : 1; // Se não encontrar, usar ID 1 como padrão
+                
+                // Validar data de retirada
+                string dataRetiradaStr = null;
+                if (ddlDataRetirada != null && !string.IsNullOrEmpty(ddlDataRetirada.SelectedValue))
+                {
+                    dataRetiradaStr = ddlDataRetirada.SelectedValue;
+                }
+                else if (!string.IsNullOrEmpty(dataRetiradaSelecionada))
+                {
+                    dataRetiradaStr = dataRetiradaSelecionada;
+                }
+                
+                if (string.IsNullOrEmpty(dataRetiradaStr))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "DataRetiradaVazia", 
+                        $"alert('{EscapeJavaScript("Erro: Data de retirada não foi selecionada.")}');", true);
+                    return;
+                }
+                
+                // Validar e parsear data de retirada
+                DateTime dataRetirada;
+                if (!DateTime.TryParse(dataRetiradaStr, out dataRetirada))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "DataRetiradaInvalida", 
+                        $"alert('{EscapeJavaScript("Erro: Data de retirada inválida.")}');", true);
+                    return;
+                }
+                
+                // Obter observações (pode ser null)
+                string observacoes = null;
+                if (txtObservacoes != null)
+                {
+                    observacoes = txtObservacoes.Text;
+                }
                 
                 var reserva = new Reserva
                 {
                     // Nome, Email e Telefone não são mais armazenados na tabela Reservas
                     // Eles são obtidos via JOIN com a tabela Clientes quando a reserva é lida
-                    DataRetirada = DateTime.Parse(ddlDataRetirada.SelectedValue),
+                    DataRetirada = dataRetirada,
                     DataReserva = DateTime.Now,
                     StatusId = statusIdAberta, // Definir StatusId diretamente como 1 (Aberta)
                     Status = "Aberta", // Para exibição/compatibilidade
                     ValorTotal = itensValidos.Sum(i => i.Subtotal),
                     Itens = itensValidos, // Usar apenas itens válidos
-                    Observacoes = txtObservacoes.Text,
+                    Observacoes = observacoes,
                     ConvertidoEmPedido = false,
                     PrevisaoEntrega = null,
                     Cancelado = false,
