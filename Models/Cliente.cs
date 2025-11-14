@@ -9,8 +9,6 @@ namespace KingdomConfeitaria.Models
         public string Email { get; set; }
         public string Telefone { get; set; }
         public bool TemWhatsApp { get; set; }
-        public string Provider { get; set; } // "Facebook", "Google", "WhatsApp", "Instagram", "Email"
-        public string ProviderId { get; set; } // ID do provedor social
         public string Senha { get; set; }
         public string TokenConfirmacao { get; set; }
         public string TokenRecuperacaoSenha { get; set; }

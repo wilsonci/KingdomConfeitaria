@@ -1725,9 +1725,6 @@ namespace KingdomConfeitaria
                 var txtEmailFrom = FindControl("txtEmailFrom") as TextBox;
                 var txtEmailIsabela = FindControl("txtEmailIsabela") as TextBox;
                 var txtEmailCamila = FindControl("txtEmailCamila") as TextBox;
-                var txtWhatsAppApiUrl = FindControl("txtWhatsAppApiUrl") as TextBox;
-                var txtWhatsAppApiKey = FindControl("txtWhatsAppApiKey") as TextBox;
-                var txtWhatsAppPhoneNumber = FindControl("txtWhatsAppPhoneNumber") as TextBox;
                 
                 if (txtBaseUrl != null) txtBaseUrl.Text = configuracoes["BaseUrl"] ?? "";
                 if (ddlEnvironment != null) ddlEnvironment.SelectedValue = configuracoes["Environment"] ?? "Development";
@@ -1738,9 +1735,6 @@ namespace KingdomConfeitaria
                 if (txtEmailFrom != null) txtEmailFrom.Text = configuracoes["EmailFrom"] ?? "";
                 if (txtEmailIsabela != null) txtEmailIsabela.Text = configuracoes["EmailIsabela"] ?? "";
                 if (txtEmailCamila != null) txtEmailCamila.Text = configuracoes["EmailCamila"] ?? "";
-                if (txtWhatsAppApiUrl != null) txtWhatsAppApiUrl.Text = configuracoes["WhatsAppApiUrl"] ?? "";
-                if (txtWhatsAppApiKey != null) txtWhatsAppApiKey.Text = configuracoes["WhatsAppApiKey"] ?? "";
-                if (txtWhatsAppPhoneNumber != null) txtWhatsAppPhoneNumber.Text = configuracoes["WhatsAppPhoneNumber"] ?? "";
             }
             catch (Exception ex)
             {

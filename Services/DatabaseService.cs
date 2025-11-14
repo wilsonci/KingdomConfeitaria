@@ -2362,6 +2362,7 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes", connection);
+                // Nota: Provider e ProviderId mantidos no SELECT para compatibilidade com banco existente, mas não são mais usados no modelo
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -2375,8 +2376,7 @@ namespace KingdomConfeitaria.Services
                             Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
                             Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
                             TemWhatsApp = reader.GetBoolean(5),
-                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            // Provider e ProviderId não são mais usados (linhas 6 e 7 ignoradas)
                             TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
                             TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
                             DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
@@ -2422,6 +2422,7 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes WHERE LOWER(LTRIM(RTRIM(Email))) = @Email", connection);
+                // Nota: Provider e ProviderId mantidos no SELECT para compatibilidade com banco existente, mas não são mais usados no modelo
                 command.Parameters.AddWithValue("@Email", emailFormatado);
                 
                 using (var reader = command.ExecuteReader())
@@ -2436,8 +2437,7 @@ namespace KingdomConfeitaria.Services
                             Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
                             Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
                             TemWhatsApp = reader.GetBoolean(5),
-                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            // Provider e ProviderId não são mais usados (linhas 6 e 7 ignoradas)
                             TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
                             TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
                             DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
@@ -2459,6 +2459,7 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes WHERE Id = @Id", connection);
+                // Nota: Provider e ProviderId mantidos no SELECT para compatibilidade com banco existente, mas não são mais usados no modelo
                 command.Parameters.AddWithValue("@Id", clienteId);
                 
                 using (var reader = command.ExecuteReader())
@@ -2473,8 +2474,7 @@ namespace KingdomConfeitaria.Services
                             Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
                             Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
                             TemWhatsApp = reader.GetBoolean(5),
-                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            // Provider e ProviderId não são mais usados (linhas 6 e 7 ignoradas)
                             TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
                             TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
                             DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
@@ -2519,8 +2519,7 @@ namespace KingdomConfeitaria.Services
                             Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
                             Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
                             TemWhatsApp = reader.GetBoolean(5),
-                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            // Provider e ProviderId não são mais usados (linhas 6 e 7 ignoradas)
                             TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
                             TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
                             DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
@@ -2554,8 +2553,7 @@ namespace KingdomConfeitaria.Services
                             Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
                             Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
                             TemWhatsApp = reader.GetBoolean(5),
-                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            // Provider e ProviderId não são mais usados (linhas 6 e 7 ignoradas)
                             TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
                             TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
                             DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
@@ -2592,43 +2590,8 @@ namespace KingdomConfeitaria.Services
             return null;
         }
 
-        public Cliente ObterClientePorProvider(string provider, string providerId)
-        {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                connection.Open();
-                var command = new SqlCommand("SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso FROM Clientes WHERE Provider = @Provider AND ProviderId = @ProviderId", connection);
-                command.Parameters.AddWithValue("@Provider", provider);
-                command.Parameters.AddWithValue("@ProviderId", providerId);
-                
-                using (var reader = command.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        return new Cliente
-                        {
-                            Id = reader.GetInt32(0),
-                            Nome = reader.GetString(1),
-                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
-                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
-                            TemWhatsApp = reader.GetBoolean(5),
-                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
-                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
-                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
-                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
-                            EmailConfirmado = reader.GetBoolean(11),
-                            WhatsAppConfirmado = reader.GetBoolean(12),
-                            IsAdmin = reader.GetBoolean(13),
-                            DataCadastro = reader.GetDateTime(14),
-                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
-                        };
-                    }
-                }
-            }
-            return null;
-        }
+        // Método removido - OAuth não está implementado
+        // public Cliente ObterClientePorProvider(string provider, string providerId)
 
         public Cliente ObterClientePorToken(string token)
         {
@@ -2650,8 +2613,7 @@ namespace KingdomConfeitaria.Services
                             Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
                             Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
                             TemWhatsApp = reader.GetBoolean(5),
-                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            // Provider e ProviderId não são mais usados (linhas 6 e 7 ignoradas)
                             TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
                             TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
                             DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
@@ -2712,18 +2674,8 @@ namespace KingdomConfeitaria.Services
             {
                 connection.Open();
                 
-                // Verificar se cliente já existe (por Provider, Email OU Telefone)
-                Cliente clienteExistente = null;
-                if (!string.IsNullOrEmpty(cliente.Provider) && !string.IsNullOrEmpty(cliente.ProviderId))
-                {
-                    clienteExistente = ObterClientePorProvider(cliente.Provider, cliente.ProviderId);
-                }
-                
-                // Se não encontrou por Provider, tentar por Email ou Telefone
-                if (clienteExistente == null)
-                {
-                    clienteExistente = ObterClientePorEmailOuTelefone(cliente.Email, cliente.Telefone);
-                }
+                // Verificar se cliente já existe (por Email OU Telefone)
+                Cliente clienteExistente = ObterClientePorEmailOuTelefone(cliente.Email, cliente.Telefone);
                 
                 if (clienteExistente != null)
                 {
@@ -2835,7 +2787,8 @@ namespace KingdomConfeitaria.Services
                     {
                         var command = new SqlCommand(@"
                             INSERT INTO Clientes (Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro)
-                            VALUES (@Nome, @Email, @Senha, @Telefone, @TemWhatsApp, @Provider, @ProviderId, @TokenConfirmacao, @EmailConfirmado, @WhatsAppConfirmado, @IsAdmin, GETDATE());
+                            VALUES (@Nome, @Email, @Senha, @Telefone, @TemWhatsApp, NULL, NULL, @TokenConfirmacao, @EmailConfirmado, @WhatsAppConfirmado, @IsAdmin, GETDATE());
+                            // Nota: Provider e ProviderId definidos como NULL pois OAuth não está implementado
                             SELECT CAST(SCOPE_IDENTITY() as int);", connection);
                         
                         command.Parameters.AddWithValue("@Nome", cliente.Nome);
@@ -2843,8 +2796,7 @@ namespace KingdomConfeitaria.Services
                         command.Parameters.AddWithValue("@Senha", string.IsNullOrEmpty(cliente.Senha) ? (object)DBNull.Value : cliente.Senha);
                         command.Parameters.AddWithValue("@Telefone", string.IsNullOrEmpty(telefoneFormatado) ? (object)DBNull.Value : telefoneFormatado);
                         command.Parameters.AddWithValue("@TemWhatsApp", cliente.TemWhatsApp);
-                        command.Parameters.AddWithValue("@Provider", string.IsNullOrEmpty(cliente.Provider) ? (object)DBNull.Value : cliente.Provider);
-                        command.Parameters.AddWithValue("@ProviderId", string.IsNullOrEmpty(cliente.ProviderId) ? (object)DBNull.Value : cliente.ProviderId);
+                        // Provider e ProviderId não são mais usados (definidos como NULL no INSERT)
                         command.Parameters.AddWithValue("@TokenConfirmacao", cliente.TokenConfirmacao);
                         command.Parameters.AddWithValue("@EmailConfirmado", cliente.EmailConfirmado);
                         command.Parameters.AddWithValue("@WhatsAppConfirmado", cliente.WhatsAppConfirmado);
@@ -2916,8 +2868,7 @@ namespace KingdomConfeitaria.Services
                             Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
                             Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
                             TemWhatsApp = reader.GetBoolean(5),
-                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
-                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            // Provider e ProviderId não são mais usados (linhas 6 e 7 ignoradas)
                             TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
                             TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
                             DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),

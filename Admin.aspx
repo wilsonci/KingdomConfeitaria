@@ -524,28 +524,6 @@
                                     </div>
                                 </div>
                                 
-                                <div class="row">
-                                    <div class="col-md-12 mb-3">
-                                        <h6 class="border-bottom pb-2 mt-4"><i class="fab fa-whatsapp"></i> Configurações WhatsApp (Opcional)</h6>
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">URL da API WhatsApp</label>
-                                        <asp:TextBox ID="txtWhatsAppApiUrl" runat="server" CssClass="form-control" placeholder="https://api.whatsapp.com"></asp:TextBox>
-                                    </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">Chave da API WhatsApp</label>
-                                        <asp:TextBox ID="txtWhatsAppApiKey" runat="server" CssClass="form-control" TextMode="Password" placeholder="Sua chave da API"></asp:TextBox>
-                                    </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label class="form-label">Número WhatsApp</label>
-                                        <asp:TextBox ID="txtWhatsAppPhoneNumber" runat="server" CssClass="form-control" placeholder="5511999999999"></asp:TextBox>
-                                        <small class="text-muted">Formato: 5511999999999 (código do país + DDD + número)</small>
-                                    </div>
-                                </div>
-                                
                                 <div class="row mt-4">
                                     <div class="col-md-12">
                                         <asp:Button ID="btnSalvarConfiguracoes" runat="server" Text="Salvar Configurações" CssClass="btn btn-primary btn-lg" OnClick="btnSalvarConfiguracoes_Click" />
@@ -566,93 +544,207 @@
 
         <!-- Modal Editar Produto -->
         <div class="modal fade" id="modalEditarProduto" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
                 <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Editar Produto</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-edit"></i> Editar Produto
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <asp:HiddenField ID="hdnProdutoId" runat="server" />
-                        <div class="mb-3">
-                            <label class="form-label">Nome *</label>
-                            <asp:TextBox ID="txtNomeProduto" runat="server" CssClass="form-control"></asp:TextBox>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Descrição</label>
-                            <asp:TextBox ID="txtDescricao" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="3"></asp:TextBox>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Preço (R$) *</label>
-                            <asp:TextBox ID="txtPreco" runat="server" CssClass="form-control" TextMode="Number" step="0.01"></asp:TextBox>
-                            <small class="text-muted">O tamanho (Pequeno/Grande) deve ser incluído no nome do produto</small>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Upload de Imagem</label>
-                            <asp:FileUpload ID="fileUploadImagem" runat="server" CssClass="form-control" accept="image/*" />
-                            <small class="text-muted">Formatos aceitos: JPG, PNG, GIF, WEBP. Tamanho mínimo: 200x200px. Tamanho máximo: 5MB. A imagem será redimensionada automaticamente.</small>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">OU URL da Imagem</label>
-                            <asp:TextBox ID="txtImagemUrl" runat="server" CssClass="form-control"></asp:TextBox>
-                            <small class="text-muted">Cole aqui a URL da imagem (pode ser do Google Drive, Imgur, etc) se preferir não fazer upload</small>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Ordem de Exibição</label>
-                            <asp:TextBox ID="txtOrdem" runat="server" CssClass="form-control" TextMode="Number" value="0"></asp:TextBox>
-                        </div>
+                        
                         <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Reservável até</label>
-                                    <asp:TextBox ID="txtReservavelAte" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
-                                    <small class="text-muted">Data até quando o produto pode ser reservado</small>
+                            <!-- Coluna Esquerda: Informações Básicas -->
+                            <div class="col-lg-8">
+                                <!-- Seção: Informações Básicas -->
+                                <div class="card mb-4 border-0 shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-info-circle text-primary"></i> Informações Básicas
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">
+                                                <i class="fas fa-tag text-muted"></i> Nome do Produto *
+                                            </label>
+                                            <asp:TextBox ID="txtNomeProduto" runat="server" CssClass="form-control form-control-lg" placeholder="Ex: Bolo de Chocolate Grande"></asp:TextBox>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">
+                                                <i class="fas fa-align-left text-muted"></i> Descrição
+                                            </label>
+                                            <asp:TextBox ID="txtDescricao" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="4" placeholder="Descreva o produto..."></asp:TextBox>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">
+                                                        <i class="fas fa-dollar-sign text-success"></i> Preço (R$) *
+                                                    </label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">R$</span>
+                                                        <asp:TextBox ID="txtPreco" runat="server" CssClass="form-control" TextMode="Number" step="0.01" placeholder="0.00"></asp:TextBox>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">
+                                                        <i class="fas fa-sort-numeric-up text-muted"></i> Ordem de Exibição
+                                                    </label>
+                                                    <asp:TextBox ID="txtOrdem" runat="server" CssClass="form-control" TextMode="Number" value="0"></asp:TextBox>
+                                                    <small class="text-muted">Produtos com menor número aparecem primeiro</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Seção: Imagem do Produto -->
+                                <div class="card mb-4 border-0 shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-image text-primary"></i> Imagem do Produto
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">
+                                                        <i class="fas fa-upload text-info"></i> Upload de Imagem
+                                                    </label>
+                                                    <asp:FileUpload ID="fileUploadImagem" runat="server" CssClass="form-control" accept="image/*" />
+                                                    <small class="text-muted d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Formatos: JPG, PNG, GIF, WEBP | Mín: 200x200px | Máx: 5MB
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">
+                                                        <i class="fas fa-link text-info"></i> OU URL da Imagem
+                                                    </label>
+                                                    <asp:TextBox ID="txtImagemUrl" runat="server" CssClass="form-control" placeholder="https://exemplo.com/imagem.jpg" onchange="atualizarPreviewImagem(this)"></asp:TextBox>
+                                                    <small class="text-muted d-block mt-1">
+                                                        <i class="fas fa-info-circle"></i> Cole a URL da imagem (Google Drive, Imgur, etc)
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="text-center mt-3">
+                                            <div class="preview-imagem-container">
+                                                <img id="previewImagem" src="" alt="Preview" class="img-thumbnail" style="display: none; max-width: 300px; max-height: 300px; object-fit: contain;" />
+                                                <div id="previewPlaceholder" class="text-muted p-4 border rounded" style="display: none;">
+                                                    <i class="fas fa-image fa-3x mb-2"></i>
+                                                    <p class="mb-0">Preview da imagem aparecerá aqui</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Seção: Datas de Validade -->
+                                <div class="card mb-4 border-0 shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-calendar-alt text-primary"></i> Datas de Validade
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">
+                                                        <i class="fas fa-calendar-check text-success"></i> Reservável até
+                                                    </label>
+                                                    <asp:TextBox ID="txtReservavelAte" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
+                                                    <small class="text-muted">Data limite para reservas deste produto</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">
+                                                        <i class="fas fa-calendar-times text-danger"></i> Vendível até
+                                                    </label>
+                                                    <asp:TextBox ID="txtVendivelAte" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
+                                                    <small class="text-muted">Data limite para vendas deste produto</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Seção: Saco Promocional -->
+                                <div class="card mb-4 border-0 shadow-sm">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-gift text-primary"></i> Configurações Promocionais
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <asp:CheckBox ID="chkEhSacoPromocional" runat="server" CssClass="form-check-input" onchange="toggleSacoPromocional(this)" />
+                                                <label class="form-check-label fw-bold" for="<%= chkEhSacoPromocional.ClientID %>">
+                                                    <i class="fas fa-shopping-bag"></i> Este produto é um Saco Promocional
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div id="divSacoPromocional" style="display: none;" class="border-top pt-3 mt-3">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">
+                                                    <i class="fas fa-hashtag text-muted"></i> Quantidade de Produtos no Saco
+                                                </label>
+                                                <asp:TextBox ID="txtQuantidadeSaco" runat="server" CssClass="form-control" TextMode="Number" value="0"></asp:TextBox>
+                                                <small class="text-muted">Quantidade de produtos que o cliente deve selecionar</small>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold">
+                                                    <i class="fas fa-list-check text-muted"></i> Produtos Permitidos no Saco
+                                                </label>
+                                                <asp:ListBox ID="lstProdutosPermitidos" runat="server" CssClass="form-control" SelectionMode="Multiple" Rows="6"></asp:ListBox>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle"></i> Selecione os produtos permitidos (Ctrl+Clique para múltiplos)
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label class="form-label">Vendível até</label>
-                                    <asp:TextBox ID="txtVendivelAte" runat="server" CssClass="form-control" TextMode="Date"></asp:TextBox>
-                                    <small class="text-muted">Data até quando o produto pode ser vendido</small>
+
+                            <!-- Coluna Direita: Status e Preview -->
+                            <div class="col-lg-4">
+                                <!-- Seção: Status -->
+                                <div class="card mb-4 border-0 shadow-sm sticky-top" style="top: 20px;">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-toggle-on text-primary"></i> Status do Produto
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <asp:CheckBox ID="chkAtivo" runat="server" CssClass="form-check-input" Checked="true" />
+                                                <label class="form-check-label fw-bold" for="<%= chkAtivo.ClientID %>">
+                                                    <i class="fas fa-check-circle text-success"></i> Produto Ativo
+                                                </label>
+                                            </div>
+                                            <small class="text-muted">Produtos inativos não aparecem no site</small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <asp:CheckBox ID="chkEhSacoPromocional" runat="server" CssClass="form-check-input" onchange="toggleSacoPromocional(this)" />
-                                <label class="form-check-label" for="<%= chkEhSacoPromocional.ClientID %>">
-                                    É Saco Promocional
-                                </label>
-                            </div>
-                        </div>
-                        <div id="divSacoPromocional" style="display: none;">
-                            <div class="mb-3">
-                                <label class="form-label">Quantidade de Produtos no Saco</label>
-                                <asp:TextBox ID="txtQuantidadeSaco" runat="server" CssClass="form-control" TextMode="Number" value="0"></asp:TextBox>
-                                <small class="text-muted">Quantidade de produtos que o cliente deve selecionar para o saco</small>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Produtos Permitidos no Saco</label>
-                                <asp:ListBox ID="lstProdutosPermitidos" runat="server" CssClass="form-control" SelectionMode="Multiple" Rows="5"></asp:ListBox>
-                                <small class="text-muted">Selecione os produtos que podem ser escolhidos para este saco (segure Ctrl para selecionar múltiplos)</small>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <asp:CheckBox ID="chkAtivo" runat="server" CssClass="form-check-input" Checked="true" />
-                                <label class="form-check-label" for="<%= chkAtivo.ClientID %>">
-                                    Produto Ativo
-                                </label>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label>Preview da Imagem:</label><br />
-                            <img id="previewImagem" src="" alt="Preview" class="produto-imagem-admin" style="display: none;" />
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <asp:Button ID="btnSalvarProduto" runat="server" Text="Salvar" CssClass="btn btn-primary" OnClick="btnSalvarProduto_Click" OnClientClick="return validarESalvarProduto();" />
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                        <asp:Button ID="btnSalvarProduto" runat="server" Text="Salvar Alterações" CssClass="btn btn-primary" OnClick="btnSalvarProduto_Click" OnClientClick="return validarESalvarProduto();" />
                     </div>
                 </div>
             </div>
@@ -969,6 +1061,53 @@
             if (confirm('Tem certeza que deseja excluir a reserva de "' + nome + '"?\n\nEsta ação não pode ser desfeita e enviará um email ao cliente.')) {
                 __doPostBack('excluirReserva', reservaId);
             }
+        }
+        
+        // Função para atualizar preview da imagem ao digitar URL
+        function atualizarPreviewImagem(input) {
+            var preview = document.getElementById('previewImagem');
+            var placeholder = document.getElementById('previewPlaceholder');
+            
+            if (!preview || !placeholder) return;
+            
+            var url = input.value.trim();
+            
+            if (url) {
+                preview.src = url;
+                preview.style.display = 'block';
+                placeholder.style.display = 'none';
+                
+                // Tratar erro de carregamento
+                preview.onerror = function() {
+                    preview.style.display = 'none';
+                    placeholder.style.display = 'block';
+                    placeholder.innerHTML = '<i class="fas fa-exclamation-triangle fa-3x mb-2 text-warning"></i><p class="mb-0">Erro ao carregar imagem</p>';
+                };
+                
+                preview.onload = function() {
+                    placeholder.style.display = 'none';
+                };
+            } else {
+                preview.style.display = 'none';
+                placeholder.style.display = 'block';
+                placeholder.innerHTML = '<i class="fas fa-image fa-3x mb-2"></i><p class="mb-0">Preview da imagem aparecerá aqui</p>';
+            }
+        }
+        
+        // Atualizar preview quando o modal de edição abrir
+        var modalEditarProduto = document.getElementById('modalEditarProduto');
+        if (modalEditarProduto) {
+            modalEditarProduto.addEventListener('shown.bs.modal', function() {
+                var txtImagemUrl = document.getElementById('<%= txtImagemUrl.ClientID %>');
+                if (txtImagemUrl && txtImagemUrl.value) {
+                    atualizarPreviewImagem(txtImagemUrl);
+                } else {
+                    var placeholder = document.getElementById('previewPlaceholder');
+                    if (placeholder) {
+                        placeholder.style.display = 'block';
+                    }
+                }
+            });
         }
 
         function carregarDadosReserva(reservaId) {

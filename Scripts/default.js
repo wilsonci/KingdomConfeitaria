@@ -44,12 +44,12 @@ DefaultPage.Carrinho = {
 
         // Obter o preço - usar o fornecido ou tentar obter do DOM
         var preco = precoFornecido;
-        if (!preco || preco === '' || preco === 'undefined' || preco === 'null') {
+        if (!preco || preco === '' || preco === 'undefined' || preco === 'null' || preco === undefined) {
             preco = this.obterPrecoDoProduto(produtoId);
         }
 
         // Validar e normalizar o preço
-        if (!preco || preco === '' || preco === 'undefined' || preco === 'null') {
+        if (!preco || preco === '' || preco === 'undefined' || preco === 'null' || preco === undefined) {
             alert('Erro: Preço inválido. Por favor, selecione um tamanho.');
             return;
         }
@@ -58,16 +58,19 @@ DefaultPage.Carrinho = {
         var precoNormalizado = String(preco).replace(',', '.').trim();
 
         // Validar se é um número válido
-        if (isNaN(parseFloat(precoNormalizado))) {
+        if (isNaN(parseFloat(precoNormalizado)) || parseFloat(precoNormalizado) <= 0) {
             alert('Erro: Preço inválido: ' + preco);
             return;
         }
 
-        // Obter o tamanho se não foi fornecido
-        if (!tamanho) {
+        // Obter o tamanho se não foi fornecido - usar "Único" como padrão
+        if (!tamanho || tamanho === '' || tamanho === 'undefined' || tamanho === 'null') {
             var tamanhoElement = document.getElementById('tamanho_' + produtoId);
             if (tamanhoElement) {
                 tamanho = tamanhoElement.value;
+            }
+            if (!tamanho || tamanho === '' || tamanho === 'undefined' || tamanho === 'null') {
+                tamanho = 'Único';
             }
         }
 

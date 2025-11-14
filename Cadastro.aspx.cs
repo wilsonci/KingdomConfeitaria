@@ -131,7 +131,6 @@ namespace KingdomConfeitaria
                     Senha = senhaHash,
                     Telefone = telefone,
                     TemWhatsApp = !string.IsNullOrEmpty(telefone),
-                    Provider = "Email",
                     IsAdmin = isAdmin, // Definir IsAdmin baseado na lista de emails de administradores
                     DataCadastro = DateTime.Now
                 };

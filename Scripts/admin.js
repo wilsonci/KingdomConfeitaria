@@ -143,10 +143,12 @@ AdminPage.Produtos = {
         }
         
         // Atualizar preview da imagem
-        var preview = document.getElementById('previewImagem');
-        if (preview) {
-            preview.src = imagemUrl || '';
-            preview.style.display = imagemUrl ? 'block' : 'none';
+        if (txtImagemUrl) {
+            if (typeof atualizarPreviewImagem === 'function') {
+                setTimeout(function() { atualizarPreviewImagem(txtImagemUrl); }, 100);
+            } else if (AdminPage.Produtos && AdminPage.Produtos.atualizarPreview) {
+                setTimeout(function() { AdminPage.Produtos.atualizarPreview(txtImagemUrl); }, 100);
+            }
         }
         
         // Abrir modal
@@ -172,9 +174,31 @@ AdminPage.Produtos = {
      */
     atualizarPreview: function(input) {
         var preview = document.getElementById('previewImagem');
-        if (preview && input) {
-            preview.src = input.value;
-            preview.style.display = input.value ? 'block' : 'none';
+        var placeholder = document.getElementById('previewPlaceholder');
+        
+        if (!preview || !placeholder) return;
+        
+        var url = input.value.trim();
+        
+        if (url) {
+            preview.src = url;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+            
+            // Tratar erro de carregamento
+            preview.onerror = function() {
+                preview.style.display = 'none';
+                placeholder.style.display = 'block';
+                placeholder.innerHTML = '<i class="fas fa-exclamation-triangle fa-3x mb-2 text-warning"></i><p class="mb-0">Erro ao carregar imagem</p>';
+            };
+            
+            preview.onload = function() {
+                placeholder.style.display = 'none';
+            };
+        } else {
+            preview.style.display = 'none';
+            placeholder.style.display = 'block';
+            placeholder.innerHTML = '<i class="fas fa-image fa-3x mb-2"></i><p class="mb-0">Preview da imagem aparecerá aqui</p>';
         }
     }
 };

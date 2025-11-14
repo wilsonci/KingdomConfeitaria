@@ -244,7 +244,6 @@
     <Compile Include="Services\DatabaseService.cs" />
     <Compile Include="Services\ImageService.cs" />
     <Compile Include="Services\LogService.cs" />
-    <Compile Include="Services\WhatsAppService.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

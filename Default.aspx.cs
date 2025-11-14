@@ -274,23 +274,37 @@ namespace KingdomConfeitaria
                     // Escapar JSON para uso em data attribute (mais seguro que onclick)
                     string produtoJsonEscapado = System.Web.HttpUtility.HtmlAttributeEncode(produtoJson);
                     
-                    // HTML do card do carrossel - usar data attribute em vez de onclick com JSON
+                    // HTML do card do carrossel - imagem abre modal, botão adiciona ao carrinho
+                    string nomeJsEscapado = System.Web.HttpUtility.JavaScriptStringEncode(produto.Nome);
+                    // Se não houver tamanho, usar "Único" como padrão
+                    string tamanhoFinal = string.IsNullOrEmpty(tamanho) ? "Único" : tamanho;
+                    string tamanhoJsEscapado = System.Web.HttpUtility.JavaScriptStringEncode(tamanhoFinal);
+                    string precoJsEscapado = System.Web.HttpUtility.JavaScriptStringEncode(precoStr);
+                    
                     string html = string.Format(@"
-                        <div class='produto-card-carrossel' data-produto-id='{0}' data-produto-json='{9}' onclick='abrirModalProdutoFromCard(this)'>
-                            <img src='{5}' alt='{1}' class='produto-imagem-carrossel' loading='lazy' decoding='async' onerror='this.onerror=null; if(this.src !== ""{6}"") {{ this.src=""{6}""; }}' />
+                        <div class='produto-card-carrossel' data-produto-id='{0}' data-produto-json='{9}'>
+                            <div class='produto-imagem-carrossel-wrapper' onclick='abrirModalProdutoFromCard(this.closest("".produto-card-carrossel""))'>
+                                <img src='{5}' alt='{1}' class='produto-imagem-carrossel' loading='lazy' decoding='async' onerror='this.onerror=null; if(this.src !== ""{6}"") {{ this.src=""{6}""; }}' />
+                            </div>
                             <div class='produto-nome-carrossel'>{1}</div>
                             <div class='produto-preco-carrossel'>R$ {7}</div>
+                            <button type='button' class='btn-reservar-produto' onclick='event.stopPropagation(); reservarProdutoRapido({0}, ""{10}"", ""{11}"", ""{12}"", this);' title='Adicionar ao carrinho'>
+                                <i class='fas fa-shopping-cart'></i> Reservar
+                            </button>
                         </div>",
                         produto.Id,
                         System.Web.HttpUtility.HtmlEncode(produto.Nome),
                         System.Web.HttpUtility.HtmlEncode(produto.Descricao ?? ""),
                         precoStr,
-                        tamanho,
+                        tamanhoFinal,
                         imagemSrc,
                         placeholderSvg,
                         produto.Preco.ToString("F2"),
                         produtoJson,
-                        produtoJsonEscapado);
+                        produtoJsonEscapado,
+                        nomeJsEscapado,
+                        tamanhoJsEscapado,
+                        precoJsEscapado);
                     produtosContainer.InnerHtml += html;
                 }
             }
@@ -595,25 +609,49 @@ namespace KingdomConfeitaria
                 total += item.Subtotal;
                 totalItens += item.Quantidade;
                 
+                string nomeEscapado = System.Web.HttpUtility.HtmlEncode(item.NomeProduto);
+                string tamanhoEscapado = System.Web.HttpUtility.HtmlEncode(item.Tamanho);
+                string tamanhoJsEscapado = System.Web.HttpUtility.JavaScriptStringEncode(item.Tamanho);
+                
                 // HTML para desktop e mobile (mesmo formato)
                 string itemHtml = string.Format(@"
-                    <div class='item-carrinho'>
-                        <div class='item-carrinho-info'>
-                            <div class='item-carrinho-nome'>{0}</div>
-                            <div class='item-carrinho-detalhes'>{1} - Qtd: {2}</div>
+                    <div class='item-carrinho' data-item-id='{4}' data-item-tamanho='{5}'>
+                        <div class='item-carrinho-header'>
+                            <div class='item-carrinho-info'>
+                                <div class='item-carrinho-nome'>{0}</div>
+                                <div class='item-carrinho-detalhes'>{1}</div>
+                            </div>
+                            <div class='item-carrinho-acoes'>
+                                <div class='item-carrinho-preco'>R$ {3}</div>
+                            </div>
                         </div>
-                        <div class='item-carrinho-acoes'>
-                            <div class='item-carrinho-preco'>R$ {3}</div>
-                            <button class='btn-remover-item' onclick='removerItem({4}, ""{1}"")' title='Remover'>
-                                <i class='fas fa-trash'></i>
-                            </button>
+                        <div class='item-carrinho-controles'>
+                            <div class='controle-quantidade'>
+                                <button type='button' class='btn-quantidade-carrinho' onclick='diminuirQuantidadeCarrinho({4}, ""{6}"")' title='Diminuir quantidade'>
+                                    <i class='fas fa-minus'></i>
+                                </button>
+                                <span class='quantidade-carrinho'>{2}</span>
+                                <button type='button' class='btn-quantidade-carrinho' onclick='aumentarQuantidadeCarrinho({4}, ""{6}"")' title='Aumentar quantidade'>
+                                    <i class='fas fa-plus'></i>
+                                </button>
+                            </div>
+                            <div class='btn-acoes-item'>
+                                <button type='button' class='btn-adicionar-mais' onclick='adicionarMaisItem({4}, ""{6}"")' title='Adicionar mais'>
+                                    <i class='fas fa-plus-circle'></i> Mais
+                                </button>
+                                <button type='button' class='btn-remover-item' onclick='removerItem({4}, ""{6}"")' title='Remover item'>
+                                    <i class='fas fa-trash'></i> Remover
+                                </button>
+                            </div>
                         </div>
                     </div>",
-                    System.Web.HttpUtility.HtmlEncode(item.NomeProduto),
-                    System.Web.HttpUtility.HtmlEncode(item.Tamanho),
+                    nomeEscapado,
+                    tamanhoEscapado,
                     item.Quantidade,
                     item.Subtotal.ToString("F2"),
-                    item.ProdutoId);
+                    item.ProdutoId,
+                    tamanhoEscapado,
+                    tamanhoJsEscapado);
                 
                 html += itemHtml;
                 htmlMobile += itemHtml;
@@ -621,6 +659,11 @@ namespace KingdomConfeitaria
 
             carrinhoContainer.InnerHtml = html;
             totalPedido.InnerText = total.ToString("F2");
+            var totalPedidoFinal = FindControl("totalPedidoFinal") as System.Web.UI.HtmlControls.HtmlGenericControl;
+            if (totalPedidoFinal != null)
+            {
+                totalPedidoFinal.InnerText = total.ToString("F2");
+            }
             totalContainer.Style["display"] = "block";
             
             // Habilitar botão se houver itens
@@ -1042,7 +1085,6 @@ namespace KingdomConfeitaria
                                 Email = emailFormatado,
                                 Telefone = telefoneFormatado,
                                 TemWhatsApp = !string.IsNullOrEmpty(telefoneFormatado),
-                                Provider = "Email",
                                 EmailConfirmado = false,
                                 WhatsAppConfirmado = false,
                                 IsAdmin = false, // Será definido automaticamente pelo CriarOuAtualizarCliente se o email for de administrador
@@ -1326,18 +1368,6 @@ namespace KingdomConfeitaria
                         // Não bloquear o processo
                     }
 
-                    try
-                    {
-                        var whatsAppService = new WhatsAppService();
-                        if (!string.IsNullOrEmpty(reserva.Telefone))
-                        {
-                            whatsAppService.EnviarConfirmacaoReserva(reserva, reserva.Telefone);
-                        }
-                    }
-                    catch
-                    {
-                        // Erro ao enviar WhatsApp - não bloquear o processo
-                    }
                 });
 
                 // Limpar carrinho
