@@ -177,7 +177,13 @@
                 <input type="password" class="form-control form-control-lg" id="txtSenha" runat="server" required style="font-size: 16px; padding: 12px;" />
             </div>
             
-            <div class="mb-3 text-end">
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="chkManterConectado" runat="server" />
+                    <label class="form-check-label" for="chkManterConectado" style="font-size: 14px; cursor: pointer;">
+                        Manter conectado (1 hora)
+                    </label>
+                </div>
                 <a href="RecuperarSenha.aspx" class="text-decoration-none">Esqueci minha senha</a>
             </div>
             

@@ -213,7 +213,15 @@ namespace KingdomConfeitaria
                 {
                     string nomeEscapado = produto.Nome.Replace("\"", "\\\"").Replace("'", "\\'");
                     string descricaoEscapada = (!string.IsNullOrEmpty(produto.Descricao) ? produto.Descricao : "").Replace("\"", "\\\"").Replace("'", "\\'");
-                    string precoStr = produto.Preco.ToString("F2").Replace(",", ".");
+                    // Garantir que o preço sempre tenha um valor válido
+                    decimal precoDecimal = produto.Preco > 0 ? produto.Preco : 0;
+                    string precoStr = precoDecimal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                    
+                    // Se o preço for 0, não adicionar o produto (produtos sem preço não devem aparecer)
+                    if (precoDecimal <= 0)
+                    {
+                        continue; // Pular produtos sem preço válido
+                    }
                     
                     // Extrair tamanho do nome do produto (Pequeno ou Grande)
                     string tamanho = "";
@@ -279,23 +287,24 @@ namespace KingdomConfeitaria
                     // Se não houver tamanho, usar "Único" como padrão
                     string tamanhoFinal = string.IsNullOrEmpty(tamanho) ? "Único" : tamanho;
                     string tamanhoJsEscapado = System.Web.HttpUtility.JavaScriptStringEncode(tamanhoFinal);
-                    string precoJsEscapado = System.Web.HttpUtility.JavaScriptStringEncode(precoStr);
+                    // O preço já está formatado com ponto como separador decimal (CultureInfo.InvariantCulture)
+                    // Passar o preço diretamente como número no onclick (sem aspas) para evitar problemas de escape
                     
                     string html = string.Format(@"
-                        <div class='produto-card-carrossel' data-produto-id='{0}' data-produto-json='{9}'>
+                        <div class='produto-card-carrossel' data-produto-id='{0}' data-produto-json='{9}' data-produto-preco='{3}'>
                             <div class='produto-imagem-carrossel-wrapper' onclick='abrirModalProdutoFromCard(this.closest("".produto-card-carrossel""))'>
                                 <img src='{5}' alt='{1}' class='produto-imagem-carrossel' loading='lazy' decoding='async' onerror='this.onerror=null; if(this.src !== ""{6}"") {{ this.src=""{6}""; }}' />
                             </div>
                             <div class='produto-nome-carrossel'>{1}</div>
                             <div class='produto-preco-carrossel'>R$ {7}</div>
-                            <button type='button' class='btn-reservar-produto' onclick='event.stopPropagation(); reservarProdutoRapido({0}, ""{10}"", ""{11}"", ""{12}"", this);' title='Adicionar ao carrinho'>
+                            <button type='button' class='btn-reservar-produto' onclick='reservarProdutoRapido(this);' title='Adicionar ao carrinho'>
                                 <i class='fas fa-shopping-cart'></i> Reservar
                             </button>
                         </div>",
                         produto.Id,
                         System.Web.HttpUtility.HtmlEncode(produto.Nome),
                         System.Web.HttpUtility.HtmlEncode(produto.Descricao ?? ""),
-                        precoStr,
+                        precoStr, // Passar como número (sem aspas) - já está formatado com ponto
                         tamanhoFinal,
                         imagemSrc,
                         placeholderSvg,
@@ -303,8 +312,7 @@ namespace KingdomConfeitaria
                         produtoJson,
                         produtoJsonEscapado,
                         nomeJsEscapado,
-                        tamanhoJsEscapado,
-                        precoJsEscapado);
+                        tamanhoJsEscapado);
                     produtosContainer.InnerHtml += html;
                 }
             }
@@ -584,11 +592,13 @@ namespace KingdomConfeitaria
                     var totalFlutuante = document.getElementById('totalFlutuante');
                     var qtdItensFlutuante = document.getElementById('qtdItensFlutuante');
                     var btnFazerReservaFlutuante = document.getElementById('btnFazerReservaFlutuante');
+                    var modalCarrinhoBody = document.getElementById('modalCarrinhoBody');
                     var carrinhoHeader = document.getElementById('carrinhoHeader');
                     var carrinhoBadge = document.getElementById('carrinhoBadge');
                     if (totalFlutuante) totalFlutuante.style.display = 'none';
                     if (qtdItensFlutuante) qtdItensFlutuante.textContent = '0';
                     if (btnFazerReservaFlutuante) btnFazerReservaFlutuante.disabled = true;
+                    if (modalCarrinhoBody) modalCarrinhoBody.innerHTML = '<p class=""text-muted"" style=""text-align: center; padding: 20px;"">Seu carrinho está vazio</p>';
                     if (carrinhoHeader) carrinhoHeader.classList.remove('com-itens');
                     if (carrinhoBadge) {
                         carrinhoBadge.textContent = '0';
@@ -677,6 +687,23 @@ namespace KingdomConfeitaria
                 btnFazerReserva.Enabled = false;
             }
             
+            // Adicionar botão de reservar no final do modal mobile
+            string btnReservarHtml = string.Format(@"
+                <div style='margin-top: 20px; padding-top: 20px; border-top: 2px solid #e9ecef;'>
+                    <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;'>
+                        <strong style='font-size: 18px;'>Total:</strong>
+                        <strong style='font-size: 20px; color: #1a4d2e;'>R$ {0}</strong>
+                    </div>
+                    <button type='button' class='btn' onclick='document.getElementById(""{1}"").click();' 
+                        style='background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 100%); color: white; border: none; padding: 14px; border-radius: 8px; width: 100%; font-weight: 600; font-size: 16px; transition: all 0.3s; box-shadow: 0 2px 8px rgba(26, 77, 46, 0.3);'>
+                        <i class='fas fa-calendar-check'></i> Fazer Reserva
+                    </button>
+                </div>",
+                total.ToString("F2"),
+                btnFazerReserva.ClientID);
+            
+            string htmlMobileCompleto = htmlMobile + btnReservarHtml;
+            
             // Atualizar carrinho flutuante mobile e badge do header
             string script = string.Format(@"
                 var totalFlutuante = document.getElementById('totalFlutuante');
@@ -712,7 +739,7 @@ namespace KingdomConfeitaria
             ",
             total.ToString("F2"),
             totalItens,
-            htmlMobile.Replace("`", "\\`").Replace("$", "\\$"));
+            htmlMobileCompleto.Replace("`", "\\`").Replace("$", "\\$"));
             Page.ClientScript.RegisterStartupScript(this.GetType(), "AtualizarCarrinhoFlutuante", script, true);
         }
 

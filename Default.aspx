@@ -1451,7 +1451,8 @@
     <!-- Scripts comuns da aplicação (sem defer - necessário para código inline) -->
     <script src="Scripts/app.js"></script>
     <!-- Scripts específicos da página principal -->
-    <script src="Scripts/default.js" defer></script>
+    <!-- Versão 2.0 - Forçar recarregamento para evitar cache -->
+    <script src="Scripts/default.js?v=2.0" defer></script>
     <script>
         // Scripts inline apenas para dados dinâmicos do servidor (ClientIDs)
         // Todas as funções JavaScript estão em Scripts/app.js e Scripts/default.js
@@ -2792,7 +2793,8 @@
             if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Utils && KingdomConfeitaria.Utils.postBack) {
                 KingdomConfeitaria.Utils.postBack('AdicionarAoCarrinho', produtoAtual.id + '|' + nome + '|' + tamanho + '|' + precoNormalizado + '|' + quantidade);
             } else if (typeof adicionarAoCarrinho === 'function') {
-                adicionarAoCarrinho(produtoAtual.id, nome, tamanho, quantidade);
+                // Passar o preço normalizado como parâmetro
+                adicionarAoCarrinho(produtoAtual.id, nome, tamanho, quantidade, precoNormalizado);
             } else if (typeof DefaultPage !== 'undefined' && DefaultPage.Carrinho) {
                 // Se não conseguir usar postBack diretamente, tentar usar a função do carrinho
                 // mas passar o preço como parâmetro adicional
@@ -3145,45 +3147,202 @@
             DefaultPage.Carrinho.adicionarMais(produtoId, tamanho);
         }
         
-        // Função para reservar produto rapidamente (adiciona ao carrinho diretamente)
-        function reservarProdutoRapido(produtoId, nome, tamanho, preco, eventElement) {
-            // Validar preço antes de adicionar
-            if (!preco || preco === '' || preco === 'undefined' || preco === 'null') {
-                alert('Erro: Preço inválido. Não foi possível adicionar o produto ao carrinho.');
-                return;
+        /**
+         * Função para reservar produto rapidamente (adiciona ao carrinho diretamente)
+         * Refatorada para usar data attributes do botão, tornando o código mais limpo e seguro
+         * @param {HTMLElement} buttonElement - Elemento do botão clicado
+         */
+        function reservarProdutoRapido(buttonElement) {
+            // Prevenir propagação do evento (event está disponível no escopo global quando chamado via onclick)
+            try {
+                if (typeof event !== 'undefined' && event) {
+                    event.stopPropagation();
+                    event.preventDefault();
+                }
+            } catch (e) {
+                // Ignorar se event não estiver disponível
             }
             
-            // Garantir que o tamanho tenha um valor
-            if (!tamanho || tamanho === '' || tamanho === 'undefined' || tamanho === 'null') {
-                tamanho = 'Único';
-            }
-            
-            // Normalizar preço
-            var precoNormalizado = String(preco).replace(',', '.').trim();
-            
-            // Validar se é um número válido
-            if (isNaN(parseFloat(precoNormalizado)) || parseFloat(precoNormalizado) <= 0) {
-                alert('Erro: Preço inválido: ' + preco);
-                return;
-            }
-            
-            // Adicionar produto ao carrinho com quantidade 1
-            DefaultPage.Carrinho.adicionar(produtoId, nome, tamanho, 1, precoNormalizado);
-            
-            // Feedback visual
-            var btn = eventElement ? eventElement.closest('.btn-reservar-produto') : (event && event.target ? event.target.closest('.btn-reservar-produto') : null);
-            if (btn) {
-                var originalHtml = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check"></i> Adicionado!';
-                btn.style.background = '#28a745';
-                setTimeout(function() {
-                    btn.innerHTML = originalHtml;
-                    btn.style.background = '';
-                }, 1500);
+            try {
+                // Validar se o elemento do botão foi fornecido
+                if (!buttonElement) {
+                    console.error('Elemento do botão não fornecido');
+                    return;
+                }
+                
+                // Obter o card do produto
+                var card = buttonElement.closest('.produto-card-carrossel');
+                if (!card) {
+                    console.error('Card do produto não encontrado');
+                    alert('Erro: Não foi possível identificar o produto.');
+                    return;
+                }
+                
+                // Obter dados do produto dos data attributes
+                var produtoId = card.getAttribute('data-produto-id');
+                var produtoJson = card.getAttribute('data-produto-json');
+                var precoStr = card.getAttribute('data-produto-preco');
+                
+                console.log('Dados obtidos do card:', {
+                    produtoId: produtoId,
+                    temJson: !!produtoJson,
+                    precoStr: precoStr,
+                    tipoPreco: typeof precoStr
+                });
+                
+                // Validar ID do produto
+                if (!produtoId || produtoId === '' || produtoId === 'null' || produtoId === 'undefined') {
+                    console.error('ID do produto inválido:', produtoId);
+                    alert('Erro: ID do produto inválido.');
+                    return;
+                }
+                
+                // Tentar obter dados do JSON se disponível
+                var nome = '';
+                var tamanho = 'Único';
+                
+                if (produtoJson) {
+                    try {
+                        var produtoData = JSON.parse(produtoJson);
+                        nome = produtoData.nome || '';
+                        tamanho = produtoData.tamanho || 'Único';
+                    } catch (e) {
+                        console.warn('Erro ao parsear JSON do produto, usando valores padrão:', e);
+                    }
+                }
+                
+                // Se não conseguiu obter do JSON, tentar obter do DOM
+                if (!nome || nome === '') {
+                    var nomeElement = card.querySelector('.produto-nome-carrossel');
+                    if (nomeElement) {
+                        nome = nomeElement.textContent.trim();
+                    }
+                }
+                
+                // Validar nome do produto
+                if (!nome || nome === '') {
+                    console.error('Nome do produto não encontrado');
+                    alert('Erro: Nome do produto não encontrado.');
+                    return;
+                }
+                
+                // Validar e normalizar preço
+                if (!precoStr || precoStr === '' || precoStr === 'undefined' || precoStr === 'null' || precoStr === 'NaN') {
+                    console.error('Preço inválido no data attribute:', precoStr);
+                    alert('Erro: Preço inválido. Não foi possível adicionar o produto ao carrinho.');
+                    return;
+                }
+                
+                // Converter para string e limpar
+                var precoStrLimpo = String(precoStr).trim();
+                
+                // Remover caracteres não numéricos exceto ponto e vírgula
+                precoStrLimpo = precoStrLimpo.replace(/[^\d.,]/g, '');
+                
+                // Normalizar preço - garantir que use ponto como separador decimal
+                var precoNormalizado = precoStrLimpo.replace(',', '.');
+                
+                // Se tiver múltiplos pontos, manter apenas o primeiro
+                var partes = precoNormalizado.split('.');
+                if (partes.length > 2) {
+                    precoNormalizado = partes[0] + '.' + partes.slice(1).join('');
+                }
+                
+                // Validar se é um número válido e maior que zero
+                var precoNum = parseFloat(precoNormalizado);
+                if (isNaN(precoNum) || precoNum <= 0) {
+                    console.error('Preço não é um número válido ou é zero. Original:', precoStr, 'Limpo:', precoStrLimpo, 'Normalizado:', precoNormalizado, 'Número:', precoNum);
+                    alert('Erro: Preço inválido: ' + precoStr);
+                    return;
+                }
+                
+                // Garantir que o preço normalizado seja uma string com formato correto
+                precoNormalizado = precoNum.toFixed(2);
+                
+                console.log('Preço processado - Original:', precoStr, 'Normalizado:', precoNormalizado, 'Número:', precoNum);
+                
+                // Garantir que o tamanho tenha um valor válido
+                if (!tamanho || tamanho === '' || tamanho === 'undefined' || tamanho === 'null') {
+                    tamanho = 'Único';
+                }
+                
+                // Desabilitar botão temporariamente para evitar cliques múltiplos
+                var originalDisabled = buttonElement.disabled;
+                var originalHtml = buttonElement.innerHTML;
+                buttonElement.disabled = true;
+                
+                // Feedback visual - mostrar loading
+                buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adicionando...';
+                buttonElement.style.opacity = '0.7';
+                
+                // Adicionar produto ao carrinho
+                try {
+                    console.log('Chamando DefaultPage.Carrinho.adicionar com:', {
+                        produtoId: parseInt(produtoId),
+                        nome: nome,
+                        tamanho: tamanho,
+                        quantidade: 1,
+                        preco: precoNormalizado,
+                        tipoPreco: typeof precoNormalizado
+                    });
+                    
+                    DefaultPage.Carrinho.adicionar(
+                        parseInt(produtoId), 
+                        nome, 
+                        tamanho, 
+                        1, 
+                        precoNormalizado
+                    );
+                    
+                    // Feedback visual - sucesso
+                    buttonElement.innerHTML = '<i class="fas fa-check"></i> Adicionado!';
+                    buttonElement.style.background = '#28a745';
+                    buttonElement.style.opacity = '1';
+                    
+                    // Restaurar botão após 2 segundos
+                    setTimeout(function() {
+                        buttonElement.innerHTML = originalHtml;
+                        buttonElement.style.background = '';
+                        buttonElement.style.opacity = '1';
+                        buttonElement.disabled = originalDisabled;
+                    }, 2000);
+                    
+                } catch (carrinhoError) {
+                    console.error('Erro ao adicionar ao carrinho:', carrinhoError);
+                    
+                    // Feedback visual - erro
+                    buttonElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Erro';
+                    buttonElement.style.background = '#dc3545';
+                    buttonElement.style.opacity = '1';
+                    
+                    // Restaurar botão após 2 segundos
+                    setTimeout(function() {
+                        buttonElement.innerHTML = originalHtml;
+                        buttonElement.style.background = '';
+                        buttonElement.style.opacity = '1';
+                        buttonElement.disabled = originalDisabled;
+                    }, 2000);
+                    
+                    alert('Erro ao adicionar produto ao carrinho. Por favor, tente novamente.');
+                }
+                
+            } catch (e) {
+                console.error('Erro ao reservar produto:', e, e.stack);
+                alert('Erro ao adicionar produto ao carrinho. Por favor, tente novamente.');
+                
+                // Restaurar botão em caso de erro
+                if (buttonElement) {
+                    var originalHtml = buttonElement.innerHTML;
+                    buttonElement.innerHTML = originalHtml;
+                    buttonElement.style.background = '';
+                    buttonElement.style.opacity = '1';
+                    buttonElement.disabled = false;
+                }
             }
         }
     </script>
 </body>
 </html>
+
 
 

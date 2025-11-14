@@ -1,5 +1,7 @@
 /**
  * Kingdom Confeitaria - JavaScript específico para Default.aspx
+ * Versão: 2.0 - Atualizado para remover referências a preço por tamanho
+ * Data: 2024
  */
 
 // Funções específicas da página principal
@@ -8,26 +10,18 @@ var DefaultPage = DefaultPage || {};
 // Funções de carrinho
 DefaultPage.Carrinho = {
     /**
-     * Obter preço do produto baseado no tamanho selecionado
+     * Obter preço do produto do data attribute do card
+     * NOTA: O produto tem apenas um preço único, não há preços por tamanho
      */
     obterPrecoDoProduto: function(produtoId) {
-        var tamanhoElement = document.getElementById('tamanho_' + produtoId);
-        if (!tamanhoElement) {
-            return null;
-        }
-
-        // Se for um select, pegar a opção selecionada
-        if (tamanhoElement.tagName === 'SELECT') {
-            var option = tamanhoElement.options[tamanhoElement.selectedIndex];
-            if (option) {
-                return option.getAttribute('data-preco');
+        // Tentar obter do card do produto pelo data attribute
+        var card = document.querySelector('[data-produto-id="' + produtoId + '"]');
+        if (card) {
+            var preco = card.getAttribute('data-produto-preco');
+            if (preco) {
+                return preco;
             }
         }
-        // Se for um input hidden, pegar o atributo data-preco
-        else if (tamanhoElement.tagName === 'INPUT') {
-            return tamanhoElement.getAttribute('data-preco');
-        }
-
         return null;
     },
 
@@ -35,46 +29,85 @@ DefaultPage.Carrinho = {
      * Adicionar produto ao carrinho
      * @param {number} produtoId - ID do produto
      * @param {string} nome - Nome do produto
-     * @param {string} tamanho - Tamanho do produto
+     * @param {string} tamanho - Tamanho do produto (apenas descritivo, não afeta o preço)
      * @param {number} quantidade - Quantidade
-     * @param {string|number} precoFornecido - Preço opcional (se fornecido, não tenta obter do DOM)
+     * @param {string|number} precoFornecido - Preço do produto (obrigatório - produto tem apenas um preço único)
      */
     adicionar: function(produtoId, nome, tamanho, quantidade, precoFornecido) {
-        quantidade = quantidade || 1;
+        // Log de versão para verificar se está usando a versão correta
+        console.log('DefaultPage.Carrinho.adicionar - Versão 2.0 - Preço único por produto');
+        
+        try {
+            quantidade = quantidade || 1;
+            var preco = null;
+            var precoNormalizado = null;
 
-        // Obter o preço - usar o fornecido ou tentar obter do DOM
-        var preco = precoFornecido;
-        if (!preco || preco === '' || preco === 'undefined' || preco === 'null' || preco === undefined) {
-            preco = this.obterPrecoDoProduto(produtoId);
-        }
-
-        // Validar e normalizar o preço
-        if (!preco || preco === '' || preco === 'undefined' || preco === 'null' || preco === undefined) {
-            alert('Erro: Preço inválido. Por favor, selecione um tamanho.');
-            return;
-        }
-
-        // Garantir que o preço use ponto como separador decimal
-        var precoNormalizado = String(preco).replace(',', '.').trim();
-
-        // Validar se é um número válido
-        if (isNaN(parseFloat(precoNormalizado)) || parseFloat(precoNormalizado) <= 0) {
-            alert('Erro: Preço inválido: ' + preco);
-            return;
-        }
-
-        // Obter o tamanho se não foi fornecido - usar "Único" como padrão
-        if (!tamanho || tamanho === '' || tamanho === 'undefined' || tamanho === 'null') {
-            var tamanhoElement = document.getElementById('tamanho_' + produtoId);
-            if (tamanhoElement) {
-                tamanho = tamanhoElement.value;
+            // Validar e normalizar o preço fornecido (obrigatório)
+            if (precoFornecido != null && precoFornecido !== undefined && precoFornecido !== '') {
+                var precoStr = String(precoFornecido).trim();
+                // Remover todos os caracteres não numéricos exceto ponto e vírgula
+                precoStr = precoStr.replace(/[^\d.,]/g, '');
+                
+                if (precoStr !== '' && precoStr.toLowerCase() !== 'undefined' && precoStr.toLowerCase() !== 'null' && precoStr !== 'NaN') {
+                    // Normalizar preço - garantir que use ponto como separador decimal
+                    // Se tiver vírgula, substituir por ponto
+                    precoNormalizado = precoStr.replace(',', '.');
+                    // Se tiver múltiplos pontos, manter apenas o primeiro
+                    var partes = precoNormalizado.split('.');
+                    if (partes.length > 2) {
+                        precoNormalizado = partes[0] + '.' + partes.slice(1).join('');
+                    }
+                    
+                    var precoNum = parseFloat(precoNormalizado);
+                    if (!isNaN(precoNum) && precoNum > 0) {
+                        preco = precoNormalizado;
+                        console.log('Preço validado e normalizado:', preco, 'de:', precoFornecido);
+                    } else {
+                        console.warn('Preço fornecido não é um número válido:', precoFornecido, 'normalizado:', precoNormalizado, 'número:', precoNum);
+                    }
+                } else {
+                    console.warn('Preço fornecido está vazio ou inválido:', precoFornecido);
+                }
             }
+
+            // Se o preço não foi fornecido ou é inválido, tentar obter do data attribute do card como fallback
+            if (!preco) {
+                console.log('Tentando obter preço do data attribute do card para produtoId:', produtoId);
+                var precoDoCard = this.obterPrecoDoProduto(produtoId);
+                if (precoDoCard) {
+                    var precoStrCard = String(precoDoCard).trim().replace(/[^\d.,]/g, '');
+                    precoNormalizado = precoStrCard.replace(',', '.');
+                    var precoNum = parseFloat(precoNormalizado);
+                    if (!isNaN(precoNum) && precoNum > 0) {
+                        preco = precoNormalizado;
+                        console.log('Preço obtido do data attribute do card:', preco);
+                    }
+                }
+            }
+
+            // Se ainda não tem preço válido, mostrar erro
+            if (!preco) {
+                console.error('Preço inválido ao adicionar ao carrinho. ProdutoId:', produtoId, 'Nome:', nome, 'Preço fornecido:', precoFornecido, 'Tipo:', typeof precoFornecido);
+                alert('Erro: Preço inválido. Não foi possível adicionar o produto ao carrinho.');
+                return;
+            }
+
+            // Obter o tamanho se não foi fornecido - usar "Único" como padrão
             if (!tamanho || tamanho === '' || tamanho === 'undefined' || tamanho === 'null') {
-                tamanho = 'Único';
+                var tamanhoElement = document.getElementById('tamanho_' + produtoId);
+                if (tamanhoElement) {
+                    tamanho = tamanhoElement.value;
+                }
+                if (!tamanho || tamanho === '' || tamanho === 'undefined' || tamanho === 'null') {
+                    tamanho = 'Único';
+                }
             }
-        }
 
-        KingdomConfeitaria.Utils.postBack('AdicionarAoCarrinho', produtoId + '|' + nome + '|' + tamanho + '|' + precoNormalizado + '|' + quantidade);
+            KingdomConfeitaria.Utils.postBack('AdicionarAoCarrinho', produtoId + '|' + nome + '|' + tamanho + '|' + preco + '|' + quantidade);
+        } catch (e) {
+            console.error('Erro ao adicionar produto ao carrinho:', e);
+            alert('Erro ao adicionar produto ao carrinho. Por favor, tente novamente.');
+        }
     },
 
     /**
@@ -96,6 +129,11 @@ DefaultPage.Carrinho = {
 DefaultPage.Tamanho = {
     /**
      * Selecionar tamanho de um produto
+     * NOTA: O tamanho é apenas descritivo, não afeta o preço do produto
+     * @param {HTMLElement} btn - Botão clicado
+     * @param {number} produtoId - ID do produto
+     * @param {string} tamanho - Tamanho selecionado (apenas descritivo)
+     * @param {string|number} preco - Preço do produto (mantido para compatibilidade, mas não é usado para determinar preço)
      */
     selecionar: function(btn, produtoId, tamanho, preco) {
         // Remover classe active de todos os botões do mesmo produto
@@ -114,9 +152,8 @@ DefaultPage.Tamanho = {
         if (quantidadeContainer) {
             quantidadeContainer.style.display = 'block';
             var tamanhoSelecionado = document.getElementById('tamanhoSelecionado_' + produtoId);
-            var precoSelecionado = document.getElementById('precoSelecionado_' + produtoId);
+            // O preço não é mais armazenado aqui, pois o produto tem apenas um preço único
             if (tamanhoSelecionado) tamanhoSelecionado.value = tamanho;
-            if (precoSelecionado) precoSelecionado.value = preco;
         }
     },
 
@@ -442,8 +479,21 @@ function obterPrecoDoProduto(produtoId) {
     return DefaultPage.Carrinho.obterPrecoDoProduto(produtoId);
 }
 
-function adicionarAoCarrinho(produtoId, nome, tamanho, quantidade) {
-    DefaultPage.Carrinho.adicionar(produtoId, nome, tamanho, quantidade);
+/**
+ * Adicionar produto ao carrinho (função de compatibilidade)
+ * NOTA: Esta função tenta obter o preço do data attribute do card do produto
+ * @param {number} produtoId - ID do produto
+ * @param {string} nome - Nome do produto
+ * @param {string} tamanho - Tamanho do produto (apenas descritivo)
+ * @param {number} quantidade - Quantidade
+ * @param {string|number} preco - Preço opcional (se não fornecido, tenta obter do card)
+ */
+function adicionarAoCarrinho(produtoId, nome, tamanho, quantidade, preco) {
+    // Se o preço não foi fornecido, tentar obter do data attribute do card
+    if (!preco) {
+        preco = DefaultPage.Carrinho.obterPrecoDoProduto(produtoId);
+    }
+    DefaultPage.Carrinho.adicionar(produtoId, nome, tamanho, quantidade, preco);
 }
 
 function atualizarQuantidade(produtoId, tamanho, incremento) {
@@ -466,15 +516,25 @@ function diminuirQuantidade(produtoId) {
     DefaultPage.Tamanho.diminuirQuantidade(produtoId);
 }
 
+/**
+ * Atualizar preço exibido do produto
+ * NOTA: Esta função não é mais necessária, pois o produto tem apenas um preço único
+ * Mantida para compatibilidade, mas não atualiza preço baseado em tamanho
+ */
 function atualizarPreco(produtoId) {
-    var select = document.getElementById('tamanho_' + produtoId);
-    if (select && select.tagName === 'SELECT') {
-        var option = select.options[select.selectedIndex];
-        if (option) {
-            var preco = parseFloat(option.getAttribute('data-preco'));
-            var precoElement = document.getElementById('precoUnitario_' + produtoId);
-            if (precoElement && !isNaN(preco)) {
-                precoElement.textContent = 'R$ ' + preco.toFixed(2).replace('.', ',');
+    // O produto tem apenas um preço único, não há necessidade de atualizar baseado em tamanho
+    // Se houver um elemento de preço, ele já deve estar exibindo o preço correto do produto
+    var precoElement = document.getElementById('precoUnitario_' + produtoId);
+    if (precoElement) {
+        // Tentar obter o preço do data attribute do card do produto
+        var card = document.querySelector('[data-produto-id="' + produtoId + '"]');
+        if (card) {
+            var preco = card.getAttribute('data-produto-preco');
+            if (preco) {
+                var precoNum = parseFloat(preco);
+                if (!isNaN(precoNum)) {
+                    precoElement.textContent = 'R$ ' + precoNum.toFixed(2).replace('.', ',');
+                }
             }
         }
     }

@@ -103,6 +103,23 @@ namespace KingdomConfeitaria
                     // Sessão foi recriada mas ainda tem dados antigos - limpar
                     Session.Clear();
                 }
+                
+                // Verificar se "Manter conectado" está ativo e se expirou (1 hora)
+                if (Session["ClienteId"] != null && Session["ManterConectado"] != null)
+                {
+                    bool manterConectado = (bool)Session["ManterConectado"];
+                    if (manterConectado && Session["SessionExpirationTime"] != null)
+                    {
+                        DateTime expirationTime = (DateTime)Session["SessionExpirationTime"];
+                        if (DateTime.Now > expirationTime)
+                        {
+                            // Sessão expirou após 1 hora - limpar e redirecionar para login
+                            Session.Clear();
+                            // Não redirecionar aqui para evitar loops, apenas limpar a sessão
+                            // O redirecionamento será feito nas páginas que verificam autenticação
+                        }
+                    }
+                }
             }
             
             // Rate limiting básico - prevenir abuso
