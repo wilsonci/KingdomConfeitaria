@@ -83,6 +83,12 @@ namespace KingdomConfeitaria
                     _databaseService = new DatabaseService();
                 }
                 
+                // Garantir que o carrinho está inicializado corretamente
+                if (Session["Carrinho"] == null)
+                {
+                    Session["Carrinho"] = new List<ItemPedido>();
+                }
+                
                 CarregarProdutos();
                 CarregarDatasRetirada();
                 AtualizarCarrinho(); // Atualizar carrinho na primeira carga
@@ -709,6 +715,7 @@ namespace KingdomConfeitaria
             string htmlMobileCompleto = htmlMobile + btnReservarHtml;
             
             // Atualizar carrinho flutuante mobile e badge do header
+            // Manter modal do carrinho aberto se estiver aberto
             string script = string.Format(@"
                 var totalFlutuante = document.getElementById('totalFlutuante');
                 var totalPedidoFlutuante = document.getElementById('totalPedidoFlutuante');
@@ -717,6 +724,19 @@ namespace KingdomConfeitaria
                 var modalCarrinhoBody = document.getElementById('modalCarrinhoBody');
                 var carrinhoHeader = document.getElementById('carrinhoHeader');
                 var carrinhoBadge = document.getElementById('carrinhoBadge');
+                var modalCarrinho = document.getElementById('modalCarrinho');
+                
+                // Verificar se o modal estava aberto antes do postback
+                var modalEstavaAberto = false;
+                if (modalCarrinho) {{
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {{
+                        var bsModal = bootstrap.Modal.getInstance(modalCarrinho);
+                        modalEstavaAberto = bsModal && document.body.classList.contains('modal-open');
+                    }} else {{
+                        // Fallback: verificar apenas pela classe do body
+                        modalEstavaAberto = document.body.classList.contains('modal-open');
+                    }}
+                }}
                 
                 if (totalFlutuante) {{
                     totalFlutuante.style.display = 'block';
@@ -740,6 +760,22 @@ namespace KingdomConfeitaria
                     carrinhoBadge.textContent = '{1}';
                     carrinhoBadge.classList.remove('oculto');
                 }}
+                
+                // Reabrir modal se estava aberto antes do postback
+                if (modalEstavaAberto && modalCarrinho) {{
+                    setTimeout(function() {{
+                        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {{
+                            var bsModal = new bootstrap.Modal(modalCarrinho);
+                            bsModal.show();
+                        }} else if (typeof $ !== 'undefined' && $.fn.modal) {{
+                            $(modalCarrinho).modal('show');
+                        }} else {{
+                            modalCarrinho.style.display = 'block';
+                            modalCarrinho.classList.add('show');
+                            document.body.classList.add('modal-open');
+                        }}
+                    }}, 100);
+                }}
             ",
             total.ToString("F2"),
             totalItens,
@@ -749,19 +785,19 @@ namespace KingdomConfeitaria
 
         protected void btnFazerReserva_Click(object sender, EventArgs e)
         {
-            // Permitir que qualquer um abra o modal para montar a reserva
-            // A validação de login será feita apenas ao confirmar a reserva
-            
+            // Validar que há itens no carrinho
             if (Carrinho.Count == 0)
             {
-                // Usar data attribute para mostrar alerta
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "CarrinhoVazio", 
                     $"alert('{EscapeJavaScript("Adicione produtos ao carrinho antes de fazer a reserva.")}');", true);
                 return;
             }
 
-            // Preencher campos do modal se cliente estiver logado
+            // Verificar se cliente está logado
             bool estaLogado = Session["ClienteId"] != null && !Session.IsNewSession;
+            
+            // Carregar datas de retirada disponíveis
+            CarregarDatasRetirada();
             
             if (estaLogado)
             {
@@ -903,26 +939,20 @@ namespace KingdomConfeitaria
                 return;
             }
 
+            // Obter dados do cliente (prioridade: campos do formulário > hidden fields > sessão)
+            string nome = !string.IsNullOrWhiteSpace(txtNome.Text) ? txtNome.Text.Trim() : 
+                         (hdnNome != null && !string.IsNullOrWhiteSpace(hdnNome.Value) ? hdnNome.Value.Trim() : 
+                         (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString().Trim() : ""));
+            
+            string email = !string.IsNullOrWhiteSpace(txtEmail.Text) ? txtEmail.Text.Trim() : 
+                          (hdnEmail != null && !string.IsNullOrWhiteSpace(hdnEmail.Value) ? hdnEmail.Value.Trim() : 
+                          (Session["ClienteEmail"] != null ? Session["ClienteEmail"].ToString().Trim() : ""));
+            
+            string telefone = !string.IsNullOrWhiteSpace(txtTelefone.Text) ? txtTelefone.Text.Trim() : 
+                             (hdnTelefone != null && !string.IsNullOrWhiteSpace(hdnTelefone.Value) ? hdnTelefone.Value.Trim() : 
+                             (Session["ClienteTelefone"] != null ? Session["ClienteTelefone"].ToString().Trim() : ""));
+            
             // Validar campos obrigatórios
-            // Como os campos são ReadOnly, usar valores dos HiddenFields se os campos estiverem vazios
-            string nome = !string.IsNullOrWhiteSpace(txtNome.Text) ? txtNome.Text.Trim() : (hdnNome != null ? hdnNome.Value : "");
-            string email = !string.IsNullOrWhiteSpace(txtEmail.Text) ? txtEmail.Text.Trim() : (hdnEmail != null ? hdnEmail.Value : "");
-            string telefone = !string.IsNullOrWhiteSpace(txtTelefone.Text) ? txtTelefone.Text.Trim() : (hdnTelefone != null ? hdnTelefone.Value : "");
-            
-            // Se ainda estiver vazio, tentar obter da sessão (caso o usuário esteja logado)
-            if (string.IsNullOrWhiteSpace(nome) && Session["ClienteNome"] != null)
-            {
-                nome = Session["ClienteNome"].ToString();
-            }
-            if (string.IsNullOrWhiteSpace(email) && Session["ClienteEmail"] != null)
-            {
-                email = Session["ClienteEmail"].ToString();
-            }
-            if (string.IsNullOrWhiteSpace(telefone) && Session["ClienteTelefone"] != null)
-            {
-                telefone = Session["ClienteTelefone"].ToString();
-            }
-            
             if (string.IsNullOrWhiteSpace(nome))
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "NomeVazio", 
@@ -944,19 +974,26 @@ namespace KingdomConfeitaria
                 return;
             }
 
-            // Obter data selecionada do radiobutton ou hidden field
+            // Obter e validar data de retirada (obrigatória)
             var hdnDataRetiradaControl = FindControl("hdnDataRetirada") as HiddenField;
-            string dataRetiradaSelecionada = hdnDataRetiradaControl != null ? hdnDataRetiradaControl.Value : "";
+            string dataRetiradaSelecionada = hdnDataRetiradaControl != null && !string.IsNullOrEmpty(hdnDataRetiradaControl.Value) 
+                ? hdnDataRetiradaControl.Value 
+                : Request.Form["dataRetirada"] ?? "";
+            
             if (string.IsNullOrEmpty(dataRetiradaSelecionada))
             {
-                // Tentar obter do formulário
-                dataRetiradaSelecionada = Request.Form["dataRetirada"];
+                // Tentar obter do radio button selecionado
+                string dataRadio = Request.Form["dataRetirada"];
+                if (!string.IsNullOrEmpty(dataRadio))
+                {
+                    dataRetiradaSelecionada = dataRadio;
+                }
             }
             
             if (string.IsNullOrEmpty(dataRetiradaSelecionada))
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "DataVazia", 
-                    $"alert('{EscapeJavaScript("Por favor, selecione uma data de retirada.")}');", true);
+                    $"alert('{EscapeJavaScript("Por favor, selecione uma data de retirada antes de confirmar a reserva.")}');", true);
                 return;
             }
 
@@ -968,6 +1005,12 @@ namespace KingdomConfeitaria
             int clienteId = 0;
             Cliente cliente = null;
             
+            // Garantir que DatabaseService está inicializado
+            if (_databaseService == null)
+            {
+                _databaseService = new DatabaseService();
+            }
+            
             if (Session["ClienteId"] != null && !Session.IsNewSession)
             {
                 // Cliente já está logado
@@ -977,10 +1020,32 @@ namespace KingdomConfeitaria
                     if (clienteId > 0)
                     {
                         cliente = _databaseService.ObterClientePorId(clienteId);
+                        
+                        // Se cliente não foi encontrado no banco, pode ter sido deletado
+                        // Nesse caso, limpar sessão e continuar para fazer login automático
+                        if (cliente == null)
+                        {
+                            Session["ClienteId"] = null;
+                            Session["ClienteNome"] = null;
+                            Session["ClienteEmail"] = null;
+                            Session["ClienteTelefone"] = null;
+                            clienteId = 0;
+                        }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    // Logar o erro para debug
+                    try
+                    {
+                        LogService.Registrar("ERROR", "Sistema", "Verificar Cliente Logado", "Default.aspx", 
+                            $"Erro ao verificar cliente logado: {ex?.Message ?? "Erro desconhecido"} | StackTrace: {ex?.StackTrace ?? "N/A"}");
+                    }
+                    catch
+                    {
+                        // Se falhar ao logar, continuar
+                    }
+                    
                     // Sessão inválida, continuar para fazer login automático
                     clienteId = 0;
                     cliente = null;
@@ -1016,8 +1081,36 @@ namespace KingdomConfeitaria
                         {
                             if (string.IsNullOrEmpty(senhaInformada))
                             {
-                                Page.ClientScript.RegisterStartupScript(this.GetType(), "SenhaObrigatoria", 
-                                    $"alert('{EscapeJavaScript("Este email/telefone já está cadastrado. Por favor, informe sua senha para continuar.")}');", true);
+                                // Mostrar campo de senha no modal e mensagem informativa
+                                string scriptSenhaObrigatoria = $@"
+                                    var divSenhaReserva = document.getElementById('{divSenhaReserva.ClientID}');
+                                    var txtSenhaReserva = document.getElementById('{txtSenhaReserva.ClientID}');
+                                    var divBotoesLogin = document.getElementById('divBotoesLogin');
+                                    var divMensagemLogin = document.getElementById('divMensagemLogin');
+                                    
+                                    if (divSenhaReserva) {{
+                                        divSenhaReserva.style.display = 'block';
+                                    }}
+                                    if (txtSenhaReserva) {{
+                                        txtSenhaReserva.required = true;
+                                        txtSenhaReserva.focus();
+                                    }}
+                                    if (divBotoesLogin) {{
+                                        divBotoesLogin.style.display = 'flex';
+                                    }}
+                                    if (divMensagemLogin) {{
+                                        divMensagemLogin.innerHTML = '<div class=""alert alert-info""><i class=""fas fa-info-circle""></i> Este email/telefone já está cadastrado. Por favor, informe sua senha para continuar.</div>';
+                                        divMensagemLogin.style.display = 'block';
+                                    }}
+                                    
+                                    // Scroll para o campo de senha
+                                    setTimeout(function() {{
+                                        if (txtSenhaReserva) {{
+                                            txtSenhaReserva.scrollIntoView({{ behavior: 'smooth', block: 'center' }});
+                                        }}
+                                    }}, 100);
+                                ";
+                                Page.ClientScript.RegisterStartupScript(this.GetType(), "SenhaObrigatoria", scriptSenhaObrigatoria, true);
                                 return;
                             }
                             
@@ -1210,8 +1303,8 @@ namespace KingdomConfeitaria
                 }
             }
             
-            // Validar que ClienteId é válido
-            if (clienteId <= 0)
+            // Validar que ClienteId é válido e cliente foi encontrado
+            if (clienteId <= 0 || cliente == null)
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "ClienteIdInvalido", 
                     $"alert('{EscapeJavaScript("Erro: Não foi possível identificar o cliente. Por favor, tente novamente.")}');", true);
@@ -1319,21 +1412,25 @@ namespace KingdomConfeitaria
                 }
                 int statusIdAberta = statusAberta != null ? statusAberta.Id : 1; // Se não encontrar, usar ID 1 como padrão
                 
-                // Validar data de retirada
-                string dataRetiradaStr = null;
-                if (ddlDataRetirada != null && !string.IsNullOrEmpty(ddlDataRetirada.SelectedValue))
+                // Validar data de retirada - usar a variável já obtida anteriormente
+                string dataRetiradaStr = dataRetiradaSelecionada;
+                
+                // Se ainda estiver vazia, tentar obter do Request.Form diretamente
+                if (string.IsNullOrEmpty(dataRetiradaStr))
                 {
-                    dataRetiradaStr = ddlDataRetirada.SelectedValue;
+                    dataRetiradaStr = Request.Form["dataRetirada"] ?? "";
                 }
-                else if (!string.IsNullOrEmpty(dataRetiradaSelecionada))
+                
+                // Se ainda estiver vazia, tentar obter do hidden field novamente
+                if (string.IsNullOrEmpty(dataRetiradaStr) && hdnDataRetiradaControl != null)
                 {
-                    dataRetiradaStr = dataRetiradaSelecionada;
+                    dataRetiradaStr = hdnDataRetiradaControl.Value ?? "";
                 }
                 
                 if (string.IsNullOrEmpty(dataRetiradaStr))
                 {
                     Page.ClientScript.RegisterStartupScript(this.GetType(), "DataRetiradaVazia", 
-                        $"alert('{EscapeJavaScript("Erro: Data de retirada não foi selecionada.")}');", true);
+                        $"alert('{EscapeJavaScript("Erro: Data de retirada não foi selecionada. Por favor, selecione uma data antes de confirmar.")}');", true);
                     return;
                 }
                 
@@ -1456,19 +1553,111 @@ namespace KingdomConfeitaria
 
                 });
 
-                // Limpar carrinho
+                // Limpar carrinho ANTES de redirecionar
                 Carrinho.Clear();
-
+                Session["Carrinho"] = new List<ItemPedido>(); // Garantir que está limpo na sessão
+                
                 // Atualizar menu após reserva
                 VerificarLogin();
                 
-                // Redirecionar diretamente para Minhas Reservas
-                Response.Redirect("MinhasReservas.aspx", false);
+                // Limpar campos do modal para próxima reserva
+                txtNome.Text = "";
+                txtEmail.Text = "";
+                txtTelefone.Text = "";
+                txtObservacoes.Text = "";
+                if (hdnNome != null) hdnNome.Value = "";
+                if (hdnEmail != null) hdnEmail.Value = "";
+                if (hdnTelefone != null) hdnTelefone.Value = "";
+                var hdnDataRetiradaParaLimpar = FindControl("hdnDataRetirada") as HiddenField;
+                string hdnDataRetiradaClientID = hdnDataRetiradaParaLimpar != null ? hdnDataRetiradaParaLimpar.ClientID : "hdnDataRetirada";
+                if (hdnDataRetiradaParaLimpar != null) hdnDataRetiradaParaLimpar.Value = "";
+                
+                // Resetar visibilidade do modal
+                divLoginDinamico.Visible = true;
+                divDadosReserva.Visible = true;
+                divDadosReserva.Style["display"] = "none";
+                divSenhaReserva.Visible = true;
+                divSenhaReserva.Style["display"] = "none";
+                btnConfirmarReserva.Style["display"] = "none";
+                
+                // Fechar modal de reserva e mostrar mensagem de sucesso
+                string scriptSucesso = @"
+                    // Fechar modal de reserva
+                    var modalReserva = document.getElementById('modalReserva');
+                    if (modalReserva) {
+                        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                            var bsModal = bootstrap.Modal.getInstance(modalReserva);
+                            if (bsModal) {
+                                bsModal.hide();
+                            }
+                        }
+                    }
+                    
+                    // Limpar estado do modal para próxima reserva
+                    var divLoginDinamico = document.getElementById('" + divLoginDinamico.ClientID + @"');
+                    var divDadosReserva = document.getElementById('" + divDadosReserva.ClientID + @"');
+                    var btnConfirmarReserva = document.getElementById('" + btnConfirmarReserva.ClientID + @"');
+                    if (divLoginDinamico) divLoginDinamico.style.display = 'block';
+                    if (divDadosReserva) divDadosReserva.style.display = 'none';
+                    if (btnConfirmarReserva) btnConfirmarReserva.style.display = 'none';
+                    
+                    // Limpar campos
+                    var txtNome = document.getElementById('" + txtNome.ClientID + @"');
+                    var txtEmail = document.getElementById('" + txtEmail.ClientID + @"');
+                    var txtTelefone = document.getElementById('" + txtTelefone.ClientID + @"');
+                    var txtObservacoes = document.getElementById('" + txtObservacoes.ClientID + @"');
+                    var hdnDataRetirada = document.getElementById('" + hdnDataRetiradaClientID + @"');
+                    if (txtNome) txtNome.value = '';
+                    if (txtEmail) txtEmail.value = '';
+                    if (txtTelefone) txtTelefone.value = '';
+                    if (txtObservacoes) txtObservacoes.value = '';
+                    if (hdnDataRetirada) hdnDataRetirada.value = '';
+                    
+                    // Limpar seleção de radio buttons
+                    var radios = document.querySelectorAll('input[name=""dataRetirada""]');
+                    radios.forEach(function(radio) {
+                        radio.checked = false;
+                    });
+                    
+                    // Mostrar mensagem de sucesso e redirecionar
+                    setTimeout(function() {
+                        alert('Reserva confirmada com sucesso! Você será redirecionado para Minhas Reservas.');
+                        window.location.href = 'MinhasReservas.aspx';
+                    }, 500);
+                ";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "ReservaSucesso", scriptSucesso, true);
             }
             catch (Exception ex)
             {
+                // Log detalhado do erro
+                try
+                {
+                    string detalhesErro = $"Erro ao processar reserva: {ex.Message}";
+                    if (ex.InnerException != null)
+                    {
+                        detalhesErro += $" | InnerException: {ex.InnerException.Message}";
+                    }
+                    detalhesErro += $" | StackTrace: {ex.StackTrace ?? "N/A"}";
+                    LogService.Registrar("ERROR", "Sistema", "Reserva", "Default.aspx", detalhesErro);
+                }
+                catch
+                {
+                    // Se falhar ao logar, continuar
+                }
+                
+                // Mostrar mensagem de erro mais informativa
+                string mensagemErro = "Erro ao processar reserva. ";
+                if (ex != null && !string.IsNullOrEmpty(ex.Message))
+                {
+                    mensagemErro += ex.Message;
+                }
+                else
+                {
+                    mensagemErro += "Por favor, tente novamente.";
+                }
+                
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
-                    string.Format("alert('Erro ao processar reserva: {0}');", EscapeJavaScript(ex.Message)), true);
+                    $"alert('{EscapeJavaScript(mensagemErro)}');", true);
             }
         }
 

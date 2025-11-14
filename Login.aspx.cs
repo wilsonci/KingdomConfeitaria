@@ -92,22 +92,8 @@ namespace KingdomConfeitaria
                     Session["ClienteTelefone"] = cliente.Telefone;
                 }
                 
-                // Verificar se "Manter conectado" está marcado
-                bool manterConectado = chkManterConectado != null && chkManterConectado.Checked;
-                
-                if (manterConectado)
-                {
-                    // Configurar timeout da sessão para 60 minutos (1 hora)
-                    Session.Timeout = 60;
-                    Session["ManterConectado"] = true;
-                    Session["SessionExpirationTime"] = DateTime.Now.AddHours(1);
-                }
-                else
-                {
-                    // Timeout padrão (20 minutos)
-                    Session.Timeout = 20;
-                    Session["ManterConectado"] = false;
-                }
+                // Configurar timeout padrão da sessão (20 minutos)
+                Session.Timeout = 20;
                 
                 // Marcar início da sessão
                 Session["SessionStartTime"] = DateTime.Now;

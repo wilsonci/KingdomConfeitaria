@@ -15,7 +15,6 @@ namespace KingdomConfeitaria
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl alertContainer;
         protected global::System.Web.UI.HtmlControls.HtmlInputGenericControl txtEmail;
         protected global::System.Web.UI.HtmlControls.HtmlInputPassword txtSenha;
-        protected global::System.Web.UI.HtmlControls.HtmlInputCheckBox chkManterConectado;
         protected global::System.Web.UI.WebControls.Button btnEntrar;
     }
 }

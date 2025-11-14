@@ -33,7 +33,8 @@
             margin-bottom: 8px;
         }
         .header-logo img {
-            max-width: 120px;
+            max-width: 200px;
+            width: 100%;
             height: auto;
             display: block;
         }
@@ -106,7 +107,8 @@
                 padding: 10px 12px;
             }
             .header-logo img {
-                max-width: 100px;
+                max-width: 180px;
+                width: 100%;
             }
             .header-actions {
                 gap: 4px;
@@ -155,7 +157,9 @@
     <form id="form1" runat="server">
         <div class="header-logo">
             <div class="header-top">
-                <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" />
+                <a href="Default.aspx" style="text-decoration: none; display: inline-block;">
+                    <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="cursor: pointer;" />
+                </a>
             </div>
             <div class="header-actions">
                 <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
@@ -177,13 +181,7 @@
                 <input type="password" class="form-control form-control-lg" id="txtSenha" runat="server" required style="font-size: 16px; padding: 12px;" />
             </div>
             
-            <div class="mb-3 d-flex justify-content-between align-items-center">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="chkManterConectado" runat="server" />
-                    <label class="form-check-label" for="chkManterConectado" style="font-size: 14px; cursor: pointer;">
-                        Manter conectado (1 hora)
-                    </label>
-                </div>
+            <div class="mb-3 d-flex justify-content-end align-items-center">
                 <a href="RecuperarSenha.aspx" class="text-decoration-none">Esqueci minha senha</a>
             </div>
             

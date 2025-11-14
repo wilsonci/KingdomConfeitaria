@@ -33,7 +33,8 @@
             margin-bottom: 8px;
         }
         .header-logo img {
-            max-width: 120px;
+            max-width: 200px;
+            width: 100%;
             height: auto;
             display: block;
         }
@@ -119,7 +120,8 @@
                 padding: 10px 12px;
             }
             .header-logo img {
-                max-width: 100px;
+                max-width: 180px;
+                width: 100%;
             }
             .header-actions {
                 gap: 4px;
@@ -150,7 +152,9 @@
         </a>
         <div class="header-logo">
             <div class="header-top">
-                <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" />
+                <a href="Default.aspx" style="text-decoration: none; display: inline-block;">
+                    <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="cursor: pointer;" />
+                </a>
             </div>
             <div class="header-actions">
                 <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>

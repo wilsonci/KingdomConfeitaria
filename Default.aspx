@@ -44,7 +44,8 @@
             margin-bottom: 8px;
         }
         .header-logo img {
-            max-width: 120px;
+            max-width: 200px;
+            width: 100%;
             height: auto;
             display: block;
         }
@@ -144,7 +145,8 @@
                 padding: 10px 12px;
             }
             .header-logo img {
-                max-width: 100px;
+                max-width: 180px;
+                width: 100%;
             }
             .header-user-name {
                 font-size: 12px;
@@ -1052,16 +1054,6 @@
             <div class="header-spacer" id="headerSpacer"></div>
             
             <div class="container-main">
-                <!-- Hero Section -->
-                <div class="hero-section">
-                    <h1 class="hero-title">
-                        <i class="fas fa-cookie-bite"></i> Kingdom Confeitaria
-                    </h1>
-                    <p class="hero-subtitle">
-                        Reserve seus Ginger Breads artesanais com sabor único
-                    </p>
-                </div>
-
                 <div class="produtos-wrapper">
                     <!-- Seção de Produtos -->
                     <div class="produtos-section">
@@ -1210,7 +1202,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <div class="text-center w-100">
-                            <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 150px; height: auto; margin-bottom: 10px;" loading="lazy" decoding="async" />
+                            <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 250px; width: 100%; height: auto; margin-bottom: 10px;" loading="lazy" decoding="async" />
                             <h5 class="modal-title mt-2" id="modalLoginDinamicoLabel">Login</h5>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -1383,6 +1375,68 @@
                             Style="display: none;"
                             title="Confirmar Reserva"
                             Text="" />
+                        <script type="text/javascript">
+                            function validarFormularioReserva() {
+                                console.log('Validando formulário de reserva...');
+                                
+                                // Validar data de retirada
+                                var hdnDataRetirada = document.getElementById('<%= hdnDataRetirada.ClientID %>');
+                                var radioGroupDatas = document.getElementById('<%= radioGroupDatas.ClientID %>');
+                                var dataSelecionada = false;
+                                var dataValor = '';
+                                
+                                // Tentar obter do hidden field
+                                if (hdnDataRetirada && hdnDataRetirada.value) {
+                                    dataSelecionada = true;
+                                    dataValor = hdnDataRetirada.value;
+                                    console.log('Data encontrada no hidden field:', dataValor);
+                                } 
+                                // Tentar obter dos radio buttons
+                                else if (radioGroupDatas) {
+                                    var radios = radioGroupDatas.querySelectorAll('input[type="radio"]:checked');
+                                    if (radios && radios.length > 0) {
+                                        dataSelecionada = true;
+                                        dataValor = radios[0].value;
+                                        // Atualizar hidden field se necessário
+                                        if (hdnDataRetirada) {
+                                            hdnDataRetirada.value = dataValor;
+                                        }
+                                        console.log('Data encontrada no radio button:', dataValor);
+                                    }
+                                }
+                                
+                                // Tentar obter do formulário diretamente
+                                if (!dataSelecionada) {
+                                    var dataForm = document.querySelector('input[name="dataRetirada"]:checked');
+                                    if (dataForm && dataForm.value) {
+                                        dataSelecionada = true;
+                                        dataValor = dataForm.value;
+                                        if (hdnDataRetirada) {
+                                            hdnDataRetirada.value = dataValor;
+                                        }
+                                        console.log('Data encontrada no formulário:', dataValor);
+                                    }
+                                }
+                                
+                                if (!dataSelecionada) {
+                                    alert('Por favor, selecione uma data de retirada antes de confirmar a reserva.');
+                                    // Destacar a seção de data
+                                    if (radioGroupDatas) {
+                                        radioGroupDatas.style.border = '2px solid #dc3545';
+                                        radioGroupDatas.style.borderRadius = '4px';
+                                        radioGroupDatas.style.padding = '10px';
+                                        setTimeout(function() {
+                                            radioGroupDatas.style.border = '';
+                                            radioGroupDatas.style.padding = '';
+                                        }, 3000);
+                                    }
+                                    return false;
+                                }
+                                
+                                console.log('Validação passou. Data selecionada:', dataValor);
+                                return true;
+                            }
+                        </script>
                     </div>
                 </div>
             </div>
@@ -3135,11 +3189,66 @@
         }
         
         // Funções para controle de quantidade no carrinho
+        // Salvar estado do modal antes do postback
+        function salvarEstadoModalCarrinho() {
+            var modalCarrinho = document.getElementById('modalCarrinho');
+            if (modalCarrinho) {
+                var estaAberto = false;
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    var bsModal = bootstrap.Modal.getInstance(modalCarrinho);
+                    estaAberto = bsModal && document.body.classList.contains('modal-open');
+                } else {
+                    // Fallback: verificar apenas pela classe do body
+                    estaAberto = document.body.classList.contains('modal-open');
+                }
+                if (typeof(Storage) !== 'undefined') {
+                    sessionStorage.setItem('modalCarrinhoAberto', estaAberto ? 'true' : 'false');
+                }
+            }
+        }
+        
+        // Restaurar estado do modal após postback
+        function restaurarEstadoModalCarrinho() {
+            if (typeof(Storage) !== 'undefined') {
+                var modalAberto = sessionStorage.getItem('modalCarrinhoAberto');
+                if (modalAberto === 'true') {
+                    var modalCarrinho = document.getElementById('modalCarrinho');
+                    if (modalCarrinho) {
+                        setTimeout(function() {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var bsModal = new bootstrap.Modal(modalCarrinho);
+                                bsModal.show();
+                            } else {
+                                // Fallback: usar jQuery se disponível, ou mostrar diretamente
+                                if (typeof $ !== 'undefined' && $.fn.modal) {
+                                    $(modalCarrinho).modal('show');
+                                } else {
+                                    modalCarrinho.style.display = 'block';
+                                    modalCarrinho.classList.add('show');
+                                    document.body.classList.add('modal-open');
+                                }
+                            }
+                            sessionStorage.removeItem('modalCarrinhoAberto');
+                        }, 200);
+                    }
+                }
+            }
+        }
+        
+        // Executar ao carregar a página
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', restaurarEstadoModalCarrinho);
+        } else {
+            restaurarEstadoModalCarrinho();
+        }
+        
         function aumentarQuantidadeCarrinho(produtoId, tamanho) {
+            salvarEstadoModalCarrinho();
             DefaultPage.Carrinho.atualizarQuantidade(produtoId, tamanho, 1);
         }
         
         function diminuirQuantidadeCarrinho(produtoId, tamanho) {
+            salvarEstadoModalCarrinho();
             DefaultPage.Carrinho.atualizarQuantidade(produtoId, tamanho, -1);
         }
         
