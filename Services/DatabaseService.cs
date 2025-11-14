@@ -2788,7 +2788,6 @@ namespace KingdomConfeitaria.Services
                         var command = new SqlCommand(@"
                             INSERT INTO Clientes (Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro)
                             VALUES (@Nome, @Email, @Senha, @Telefone, @TemWhatsApp, NULL, NULL, @TokenConfirmacao, @EmailConfirmado, @WhatsAppConfirmado, @IsAdmin, GETDATE());
-                            // Nota: Provider e ProviderId definidos como NULL pois OAuth não está implementado
                             SELECT CAST(SCOPE_IDENTITY() as int);", connection);
                         
                         command.Parameters.AddWithValue("@Nome", cliente.Nome);
