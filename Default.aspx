@@ -3200,15 +3200,34 @@
                 // Tentar obter dados do JSON se disponível
                 var nome = '';
                 var tamanho = 'Único';
+                var produtoData = null;
+                var ehSacoPromocional = false;
                 
                 if (produtoJson) {
                     try {
-                        var produtoData = JSON.parse(produtoJson);
+                        // Decodificar HTML entities e fazer parse do JSON
+                        var jsonStr = produtoJson
+                            .replace(/&quot;/g, '"')
+                            .replace(/&#39;/g, "'")
+                            .replace(/&amp;/g, '&')
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>');
+                        produtoData = JSON.parse(jsonStr);
                         nome = produtoData.nome || '';
                         tamanho = produtoData.tamanho || 'Único';
+                        ehSacoPromocional = produtoData.ehSaco === true && 
+                                          produtoData.produtosPermitidos && 
+                                          produtoData.produtosPermitidos.length > 0;
                     } catch (e) {
                         console.warn('Erro ao parsear JSON do produto, usando valores padrão:', e);
                     }
+                }
+                
+                // Se for saco promocional, abrir modal ao invés de adicionar ao carrinho
+                if (ehSacoPromocional) {
+                    console.log('Produto é saco promocional, abrindo modal de detalhes');
+                    abrirModalProdutoFromCard(card);
+                    return;
                 }
                 
                 // Se não conseguiu obter do JSON, tentar obter do DOM
