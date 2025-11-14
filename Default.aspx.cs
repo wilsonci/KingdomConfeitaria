@@ -267,7 +267,7 @@ namespace KingdomConfeitaria
                         <div class='produto-card mb-3'>
                             <div class='row'>
                                 <div class='col-md-3'>
-                                    <img src='{0}' alt='{1}' class='produto-imagem' data-original-src='{10}' onerror='this.onerror=null; if(this.src !== ""{9}"") {{ this.src=""{9}""; }}' />
+                                    <img src='{0}' alt='{1}' class='produto-imagem' data-original-src='{10}' loading='lazy' decoding='async' onerror='this.onerror=null; if(this.src !== ""{9}"") {{ this.src=""{9}""; }}' />
                                 </div>
                                 <div class='col-md-9'>
                                     <h5>{1}</h5>

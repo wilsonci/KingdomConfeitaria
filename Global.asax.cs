@@ -17,8 +17,27 @@ namespace KingdomConfeitaria
 
         protected void Application_BeginRequest(object sender, EventArgs e)
         {
-            // Redirecionar raiz para Default.aspx se necessário
+            // Otimizações de performance para recursos estáticos
             string path = Request.Path.ToLower();
+            string extension = System.IO.Path.GetExtension(path);
+            
+            // Cache de recursos estáticos (imagens, CSS, JS, fonts)
+            if (!string.IsNullOrEmpty(extension))
+            {
+                string ext = extension.ToLower();
+                if (ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" || ext == ".svg" || 
+                    ext == ".css" || ext == ".js" || ext == ".woff" || ext == ".woff2" || ext == ".ttf" || ext == ".eot")
+                {
+                    // Cache de 7 dias para recursos estáticos
+                    Response.Cache.SetCacheability(HttpCacheability.Public);
+                    Response.Cache.SetExpires(DateTime.Now.AddDays(7));
+                    Response.Cache.SetMaxAge(TimeSpan.FromDays(7));
+                    Response.Cache.SetLastModified(DateTime.Now);
+                    Response.Cache.SetValidUntilExpires(true);
+                }
+            }
+            
+            // Redirecionar raiz para Default.aspx se necessário
             if (path == "/" || path == "")
             {
                 // Redirecionar explicitamente para Default.aspx
@@ -44,10 +63,25 @@ namespace KingdomConfeitaria
             // Configurar encoding UTF-8 para todas as requisições
             Response.ContentEncoding = System.Text.Encoding.UTF8;
             Response.Charset = "UTF-8";
-            Response.ContentType = "text/html; charset=utf-8";
+            
+            // Só definir ContentType se ainda não foi definido
+            if (string.IsNullOrEmpty(Response.ContentType) || Response.ContentType == "text/html")
+            {
+                Response.ContentType = "text/html; charset=utf-8";
+            }
             
             // Garantir que o Request também está em UTF-8
             Request.ContentEncoding = System.Text.Encoding.UTF8;
+            
+            // Otimizações de cabeçalhos HTTP
+            Response.Headers.Remove("X-Powered-By");
+            Response.Headers.Remove("Server");
+            
+            // Adicionar cabeçalhos de performance
+            if (Array.IndexOf(Response.Headers.AllKeys, "X-Content-Type-Options") < 0)
+            {
+                Response.Headers.Add("X-Content-Type-Options", "nosniff");
+            }
             
             // Proteção CSRF - Validar ViewState
             if (Request.HttpMethod == "POST" && !Request.Path.Contains(".asmx"))

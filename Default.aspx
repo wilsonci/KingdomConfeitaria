@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="Default.aspx.cs" Inherits="KingdomConfeitaria.Default" EnableEventValidation="false" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="Default.aspx.cs" Inherits="KingdomConfeitaria.Default" EnableEventValidation="false" EnableViewState="true" %>
 <%@ Register Assembly="System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31BF3856AD364E35" Namespace="System.Web.UI" TagPrefix="asp" %>
 
 <!DOCTYPE html>
@@ -7,8 +7,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kingdom Confeitaria - Reserva de Ginger Breads</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
     <style>
         body {
             background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 100%);
@@ -236,7 +236,7 @@
                     <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;"><i class="fas fa-cog"></i> Painel Gestor</a>
                     <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
                 </div>
-                <img id="logoImg" src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
+                <img id="logoImg" src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" loading="eager" decoding="async" />
                 <h1 id="logoFallback" class="header-title" style="display: none; color: #d4af37; margin: 0;">
                     <i class="fas fa-crown"></i> Kingdom Confeitaria
                 </h1>
@@ -282,7 +282,7 @@
                 <div class="modal-content">
                     <div class="modal-header">
                         <div class="text-center w-100">
-                            <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 150px; height: auto; margin-bottom: 10px;" />
+                            <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 150px; height: auto; margin-bottom: 10px;" loading="lazy" decoding="async" />
                             <h5 class="modal-title mt-2" id="modalLoginDinamicoLabel">Login</h5>
                         </div>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -457,7 +457,7 @@
         </div>
     </form>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer crossorigin="anonymous"></script>
     <!-- Garantir que __doPostBack esteja disponível antes de carregar os scripts -->
     <script type="text/javascript">
         // Função __doPostBack será gerada pelo ASP.NET automaticamente
@@ -495,16 +495,24 @@
             }
         }
     </script>
-    <!-- Scripts comuns da aplicação -->
+    <!-- Scripts comuns da aplicação (sem defer - necessário para código inline) -->
     <script src="Scripts/app.js"></script>
     <!-- Scripts específicos da página principal -->
-    <script src="Scripts/default.js"></script>
+    <script src="Scripts/default.js" defer></script>
     <script>
         // Scripts inline apenas para dados dinâmicos do servidor (ClientIDs)
         // Todas as funções JavaScript estão em Scripts/app.js e Scripts/default.js
         
-        // Configurar Login Dinâmico
-        KingdomConfeitaria.Utils.ready(function() {
+        // Aguardar carregamento do app.js antes de executar
+        (function() {
+            function initLoginDinamico() {
+                if (typeof KingdomConfeitaria === 'undefined' || !KingdomConfeitaria.Utils) {
+                    setTimeout(initLoginDinamico, 50);
+                    return;
+                }
+                
+                // Configurar Login Dinâmico
+                KingdomConfeitaria.Utils.ready(function() {
             var txtLoginDinamico = document.getElementById('<%= txtLoginDinamico.ClientID %>');
             var txtSenhaReserva = document.getElementById('<%= txtSenhaReserva.ClientID %>');
             var divSenhaReserva = document.getElementById('<%= divSenhaReserva.ClientID %>');
@@ -1314,6 +1322,9 @@
                 };
             }
         });
+            }
+            initLoginDinamico();
+        })();
     </script>
     
     <!-- Componente Modal de Login Dinâmico -->
@@ -1353,7 +1364,14 @@
         }
         
         // Inicializar componente de login dinâmico standalone
-        KingdomConfeitaria.Utils.ready(function() {
+        (function() {
+            function initLoginStandalone() {
+                if (typeof KingdomConfeitaria === 'undefined' || !KingdomConfeitaria.Utils) {
+                    setTimeout(initLoginStandalone, 50);
+                    return;
+                }
+                
+                KingdomConfeitaria.Utils.ready(function() {
             var txtLoginStandalone = document.getElementById('txtLoginDinamicoStandalone');
             var txtSenhaStandalone = document.getElementById('txtSenhaStandalone');
             var btnConfirmarLoginStandalone = document.getElementById('btnConfirmarLoginStandalone');
@@ -1585,6 +1603,9 @@
                 });
             }
         });
+            }
+            initLoginStandalone();
+        })();
     </script>
 </body>
 </html>

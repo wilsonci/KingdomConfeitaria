@@ -198,25 +198,58 @@ AdminPage.Reservas = {
         var txtPrevisao = document.querySelector('input[id*="txtPrevisaoEntrega"]');
         var txtObservacoes = document.querySelector('textarea[id*="txtObservacoesReserva"]');
         
-        if (hdnReservaId) hdnReservaId.value = id;
-        if (ddlStatus && statusId) {
-            ddlStatus.value = statusId.toString();
+        // Preencher ID da reserva
+        if (hdnReservaId) {
+            hdnReservaId.value = id ? id.toString() : '';
         }
-        if (txtValorTotal) txtValorTotal.value = valorTotal || '0.00';
-        if (chkConvertido) chkConvertido.checked = convertidoEmPedido === true || convertidoEmPedido === 'true' || convertidoEmPedido === 'True';
-        if (chkCancelado) chkCancelado.checked = cancelado === true || cancelado === 'true' || cancelado === 'True';
         
+        // Preencher Status
+        if (ddlStatus) {
+            if (statusId && statusId !== '0' && statusId !== 0) {
+                ddlStatus.value = statusId.toString();
+            } else {
+                ddlStatus.selectedIndex = 0;
+            }
+        }
+        
+        // Preencher Valor Total
+        if (txtValorTotal) {
+            txtValorTotal.value = valorTotal ? valorTotal.toString().replace(',', '.') : '0.00';
+        }
+        
+        // Preencher Convertido em Pedido
+        if (chkConvertido) {
+            chkConvertido.checked = convertidoEmPedido === true || convertidoEmPedido === 'true' || convertidoEmPedido === 'True' || convertidoEmPedido === '1';
+        }
+        
+        // Preencher Cancelado
+        if (chkCancelado) {
+            chkCancelado.checked = cancelado === true || cancelado === 'true' || cancelado === 'True' || cancelado === '1';
+        }
+        
+        // Preencher Previsão de Entrega
         if (txtPrevisao) {
-            if (previsaoEntrega && previsaoEntrega !== '') {
-                var data = new Date(previsaoEntrega);
-                var dataFormatada = data.toISOString().slice(0, 16);
-                txtPrevisao.value = dataFormatada;
+            if (previsaoEntrega && previsaoEntrega !== '' && previsaoEntrega !== 'null') {
+                try {
+                    var data = new Date(previsaoEntrega);
+                    if (!isNaN(data.getTime())) {
+                        var dataFormatada = data.toISOString().slice(0, 16);
+                        txtPrevisao.value = dataFormatada;
+                    } else {
+                        txtPrevisao.value = '';
+                    }
+                } catch (e) {
+                    txtPrevisao.value = '';
+                }
             } else {
                 txtPrevisao.value = '';
             }
         }
         
-        if (txtObservacoes) txtObservacoes.value = observacoes || '';
+        // Preencher Observações
+        if (txtObservacoes) {
+            txtObservacoes.value = observacoes ? observacoes.toString() : '';
+        }
         
         // Abrir modal
         var modalElement = document.getElementById('modalEditarReserva');

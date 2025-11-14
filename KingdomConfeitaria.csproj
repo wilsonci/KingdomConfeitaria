@@ -80,9 +80,66 @@
     <Content Include="VerReserva.aspx" />
     <Content Include="Global.asax" />
     <Content Include="Scripts\site.js" />
+    <Content Include="Scripts\app.js" />
+    <Content Include="Scripts\default.js" />
+    <Content Include="Scripts\admin.js" />
+    <Content Include="Scripts\minhasreservas.js" />
     <Content Include="web.config" />
-    <Content Include="Images\logo-kingdom-confeitaria.png" />
-    <Content Include="Utils\EncryptPassword.aspx">
+    <Content Include="Images\logo-kingdom-confeitaria.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\logo-kingdom-confeitaria.svg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\arvore-grande.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\arvore-pequeno.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\boneco-grande.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\boneco-pequeno.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\coracao-grande.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\coracao-pequeno.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\estrela-grande.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\estrela-pequeno.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\floco-neve-grande.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\floco-neve-pequeno.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\guirlanda-grande.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\guirlanda-pequeno.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\meia-grande.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\meia-pequeno.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\saco-3-grandes.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\saco-6-pequenos.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Utils\EncryptPassword.aspx" Condition="'$(Configuration)' == 'Debug'">
       <SubType>ASPXCodeBehind</SubType>
     </Content>
   </ItemGroup>
@@ -125,6 +182,9 @@
     <Compile Include="Logout.aspx.cs">
       <DependentUpon>Logout.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Logout.aspx.designer.cs">
+      <DependentUpon>Logout.aspx</DependentUpon>
     </Compile>
     <Compile Include="MinhasReservas.aspx.cs">
       <DependentUpon>MinhasReservas.aspx</DependentUpon>
@@ -197,6 +257,27 @@
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' != '' And Exists('$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets')" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v17.0\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' == '' And Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v17.0\WebApplications\Microsoft.WebApplication.targets')" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' == '' And !Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v17.0\WebApplications\Microsoft.WebApplication.targets') And Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets')" />
+  <!-- Target para copiar imagens durante a publicação -->
+  <Target Name="CopyImagesToPublish" AfterTargets="CopyAllFilesToSingleFolderForPackage">
+    <ItemGroup>
+      <ImagesFiles Include="Images\**\*.*" Exclude="Images\**\*.ps1;Images\**\*.py;Images\**\*.txt;Images\**\*.md" />
+    </ItemGroup>
+    <Message Text="Copiando imagens para publicação..." Importance="high" />
+    <Copy SourceFiles="@(ImagesFiles)" DestinationFolder="$(PackageLocation)Images\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'$(PackageLocation)' != ''" />
+    <Copy SourceFiles="@(ImagesFiles)" DestinationFolder="$(PublishUrl)Images\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'$(PublishUrl)' != '' And '$(PackageLocation)' == ''" />
+    <Copy SourceFiles="@(ImagesFiles)" DestinationFolder="$(WPPAllFilesInSingleFolder)Images\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'$(WPPAllFilesInSingleFolder)' != '' And '$(PackageLocation)' == '' And '$(PublishUrl)' == ''" />
+  </Target>
+  
+  <!-- Target para copiar imagens durante o build normal (para desenvolvimento) -->
+  <Target Name="CopyImagesToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <ImagesFiles Include="Images\**\*.*" Exclude="Images\**\*.ps1;Images\**\*.py;Images\**\*.txt;Images\**\*.md" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ImagesFiles)" DestinationFolder="$(OutputPath)Images\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'$(OutputPath)' != ''" />
+  </Target>
   <ProjectExtensions>
     <VisualStudio>
       <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">

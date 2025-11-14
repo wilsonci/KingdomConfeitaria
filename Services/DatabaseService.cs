@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Linq;
 using System.Web;
 using System.Web.Script.Serialization;
@@ -14,19 +15,198 @@ namespace KingdomConfeitaria.Services
     public class DatabaseService
     {
         private readonly string _connectionString;
+        private static bool _bancoInicializado = false;
+        private static readonly object _lockInicializacao = new object();
+        private static string _connectionStringNormalizada = null;
+        private static readonly object _lockConnectionString = new object();
 
         public DatabaseService()
         {
-            _connectionString = ConfigurationManager.ConnectionStrings["KingdomConfeitariaDB"].ConnectionString;
+            try
+            {
+                // Cachear connection string normalizada (evita testar múltiplas instâncias a cada requisição)
+                if (_connectionStringNormalizada == null)
+                {
+                    lock (_lockConnectionString)
+                    {
+                        if (_connectionStringNormalizada == null)
+                        {
+                            string originalConnectionString = ConfigurationManager.ConnectionStrings["KingdomConfeitariaDB"].ConnectionString;
+                            _connectionStringNormalizada = NormalizarConnectionString(originalConnectionString);
+                        }
+                    }
+                }
+                
+                _connectionString = _connectionStringNormalizada;
+                
+                // Inicializar banco apenas uma vez (usando lock para thread-safety)
+                if (!_bancoInicializado)
+                {
+                    lock (_lockInicializacao)
+                    {
+                        if (!_bancoInicializado)
+                        {
+                            CriarBancoETabelasSeNaoExistirem();
+                            _bancoInicializado = true;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Se o erro for relacionado ao LocalDB não instalado, dar mensagem mais clara
+                string errorMessage = ex.Message;
+                if (ex.InnerException != null)
+                {
+                    errorMessage += " " + ex.InnerException.Message;
+                }
+                
+                if (errorMessage.Contains("LocalDB") || errorMessage.Contains("Local Database Runtime") || 
+                    errorMessage.Contains("Unable to locate a Local Database Runtime") ||
+                    errorMessage.Contains("error: 52"))
+                {
+                    throw new Exception(
+                        "ERRO: SQL Server LocalDB não está instalado ou não está acessível.\n\n" +
+                        "SOLUÇÃO 1 - Instalar LocalDB:\n" +
+                        "1. Baixe o SQL Server Express LocalDB da Microsoft:\n" +
+                        "   https://www.microsoft.com/pt-br/sql-server/sql-server-downloads\n" +
+                        "2. Selecione 'Express' e certifique-se de incluir 'LocalDB' na instalação\n" +
+                        "3. Reinicie o servidor após a instalação\n" +
+                        "4. Verifique se está instalado: sqllocaldb info\n" +
+                        "5. Se estiver instalado mas não rodando, inicie: sqllocaldb start MSSQLLocalDB\n\n" +
+                        "SOLUÇÃO 2 - Usar SQL Server Express ou SQL Server completo:\n" +
+                        "1. Edite o arquivo web.config no servidor\n" +
+                        "2. Altere a connection string para usar SQL Server Express ou SQL Server completo\n" +
+                        "3. Exemplo para SQL Server Express:\n" +
+                        "   Data Source=.\\SQLEXPRESS;Initial Catalog=KingdomConfeitaria_Prod;Integrated Security=True;\n" +
+                        "   Ou para SQL Server completo:\n" +
+                        "   Data Source=localhost;Initial Catalog=KingdomConfeitaria_Prod;Integrated Security=True;\n\n" +
+                        "Erro original: " + ex.Message,
+                        ex
+                    );
+                }
+                throw;
+            }
+        }
+        
+        private string NormalizarConnectionString(string connectionString)
+        {
+            // Tentar encontrar uma instância válida do LocalDB e atualizar a connection string
+            if (connectionString.Contains("Data Source="))
+            {
+                int dsStart = connectionString.IndexOf("Data Source=") + "Data Source=".Length;
+                int dsEnd = connectionString.IndexOf(";", dsStart);
+                if (dsEnd == -1) dsEnd = connectionString.Length;
+                string originalDataSource = connectionString.Substring(dsStart, dsEnd - dsStart).Trim();
+                
+                // Verificar se a connection string original já não é LocalDB
+                // Se for SQL Server normal, não tentar LocalDB
+                bool isLocalDB = originalDataSource.Contains("(localdb)") || 
+                                 originalDataSource.Contains(".\\MSSQLLOCALDB") ||
+                                 originalDataSource.Contains(".\\MSSQLLocalDB") ||
+                                 originalDataSource == ".\\MSSQLLocalDB" ||
+                                 originalDataSource == ".\\MSSQLLOCALDB";
+                
+                if (!isLocalDB && !originalDataSource.Contains("LocalDB"))
+                {
+                    // Não é LocalDB, retornar original (pode ser SQL Server Express ou completo)
+                    return connectionString;
+                }
+                
+                // Se é LocalDB, tentar encontrar uma instância válida
+                // Mas se não encontrar, retornar a original e deixar o erro acontecer na conexão real
+                // Lista de instâncias do LocalDB para tentar (ordem de preferência)
+                // Priorizar a instância original, depois .\MSSQLLocalDB (produção), depois (localdb)\MSSQLLocalDB
+                string[] localDbInstances = {
+                    originalDataSource, // Tentar primeiro a instância original
+                    ".\\MSSQLLocalDB",  // Produção (prioridade)
+                    ".\\MSSQLLOCALDB",  // Produção (alternativa)
+                    "(localdb)\\MSSQLLocalDB",
+                    "(localdb)\\MSSQLLOCALDB",
+                    "(localdb)\\v11.0",
+                    "(localdb)\\ProjectsV13",
+                    "(localdb)\\ProjectsV12"
+                };
+                
+                // Tentar cada instância até encontrar uma que funcione
+                foreach (string instance in localDbInstances)
+                {
+                    if (string.IsNullOrEmpty(instance)) continue;
+                    
+                    // Criar connection string de teste
+                    string testConnectionString = connectionString;
+                    if (testConnectionString.Contains("Data Source="))
+                    {
+                        int start = testConnectionString.IndexOf("Data Source=");
+                        int end = testConnectionString.IndexOf(";", start);
+                        if (end == -1) end = testConnectionString.Length;
+                        testConnectionString = testConnectionString.Remove(start, end - start);
+                    }
+                    testConnectionString = "Data Source=" + instance + ";" + testConnectionString.TrimStart(';');
+                    
+                    // Testar conexão (usar master para teste)
+                    string testMasterConnection = testConnectionString;
+                    if (testMasterConnection.Contains("Initial Catalog="))
+                    {
+                        int catStart = testMasterConnection.IndexOf("Initial Catalog=");
+                        int catEnd = testMasterConnection.IndexOf(";", catStart);
+                        if (catEnd == -1) catEnd = testMasterConnection.Length;
+                        testMasterConnection = testMasterConnection.Remove(catStart, catEnd - catStart);
+                    }
+                    testMasterConnection = testMasterConnection.TrimEnd(';') + ";Initial Catalog=master";
+                    
+                    if (TestarConexaoLocalDB(testMasterConnection))
+                    {
+                        // Instância válida encontrada - atualizar connection string
+                        return testConnectionString;
+                    }
+                }
+                
+                // Se não encontrou nenhuma instância LocalDB válida, tentar iniciar o LocalDB uma última vez
+                try
+                {
+                    TentarIniciarLocalDB();
+                    // Aguardar um pouco para o LocalDB iniciar
+                    System.Threading.Thread.Sleep(2000);
+                    
+                    // Tentar novamente com a instância padrão após iniciar
+                    string testConnectionString = connectionString;
+                    if (testConnectionString.Contains("Data Source="))
+                    {
+                        int start = testConnectionString.IndexOf("Data Source=");
+                        int end = testConnectionString.IndexOf(";", start);
+                        if (end == -1) end = testConnectionString.Length;
+                        testConnectionString = testConnectionString.Remove(start, end - start);
+                    }
+                    testConnectionString = "Data Source=(localdb)\\MSSQLLocalDB;" + testConnectionString.TrimStart(';');
+                    
+                    string testMasterConnection = testConnectionString;
+                    if (testMasterConnection.Contains("Initial Catalog="))
+                    {
+                        int catStart = testMasterConnection.IndexOf("Initial Catalog=");
+                        int catEnd = testMasterConnection.IndexOf(";", catStart);
+                        if (catEnd == -1) catEnd = testMasterConnection.Length;
+                        testMasterConnection = testMasterConnection.Remove(catStart, catEnd - catStart);
+                    }
+                    testMasterConnection = testMasterConnection.TrimEnd(';') + ";Initial Catalog=master";
+                    
+                    if (TestarConexaoLocalDB(testMasterConnection))
+                    {
+                        return testConnectionString;
+                    }
+                }
+                catch
+                {
+                    // Se ainda não funcionar, continuar
+                }
+                
+                // Se não encontrou nenhuma instância válida, retornar a connection string original
+                // O erro real acontecerá na tentativa de conexão, que terá uma mensagem mais clara
+                return connectionString;
+            }
             
-            // Verificar se está em ambiente de desenvolvimento
-            string environment = ConfigurationManager.AppSettings["Environment"] ?? "Development";
-            bool isDevelopment = environment.Equals("Development", StringComparison.OrdinalIgnoreCase);
-            
-            // Criar banco e tabelas automaticamente
-            // Em desenvolvimento: cria banco no LocalDB padrão
-            // Em produção: cria banco na pasta App_Data usando AttachDbFilename
-            CriarBancoETabelasSeNaoExistirem();
+            // Se não encontrou nenhuma instância válida, retornar original
+            return connectionString;
         }
 
         private void CriarBancoETabelasSeNaoExistirem()
@@ -38,7 +218,7 @@ namespace KingdomConfeitaria.Services
                 
                 if (usaAttachDbFilename)
                 {
-                    // Banco na pasta App_Data (desenvolvimento e produção)
+                    // Banco na pasta App_Data (produção)
                     // Extrair caminho do arquivo .mdf
                     string attachDbPath = "";
                     if (_connectionString.Contains("AttachDbFilename="))
@@ -57,133 +237,135 @@ namespace KingdomConfeitaria.Services
                                 dataDirectory = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data");
                             }
                             
-                            // Garantir que a pasta App_Data existe
+                            // Garantir que a pasta App_Data existe e tem permissões
                             if (!System.IO.Directory.Exists(dataDirectory))
                             {
                                 System.IO.Directory.CreateDirectory(dataDirectory);
                             }
                             
+                            // Garantir permissões de escrita na pasta App_Data
+                            try
+                            {
+                                string testFile = System.IO.Path.Combine(dataDirectory, "test_write.tmp");
+                                System.IO.File.WriteAllText(testFile, "test");
+                                System.IO.File.Delete(testFile);
+                            }
+                            catch (Exception ex)
+                            {
+                                throw new Exception($"Não foi possível escrever na pasta App_Data. Verifique as permissões da pasta: {dataDirectory}. Erro: {ex.Message}", ex);
+                            }
+                            
                             attachDbPath = attachDbPath.Replace("|DataDirectory|", dataDirectory);
                         }
                         
-                        // Criar connection string para master
-                        string masterConnectionString = _connectionString;
-                        if (masterConnectionString.Contains("AttachDbFilename="))
-                        {
-                            // Remover AttachDbFilename e Initial Catalog, adicionar master
-                            int attachStart = masterConnectionString.IndexOf("AttachDbFilename=");
-                            int attachEnd = masterConnectionString.IndexOf(";", attachStart);
-                            if (attachEnd == -1) attachEnd = masterConnectionString.Length;
-                            masterConnectionString = masterConnectionString.Remove(attachStart, attachEnd - attachStart);
-                            
-                            if (masterConnectionString.Contains("Initial Catalog="))
-                            {
-                                int catalogStart = masterConnectionString.IndexOf("Initial Catalog=");
-                                int catalogEnd = masterConnectionString.IndexOf(";", catalogStart);
-                                if (catalogEnd == -1) catalogEnd = masterConnectionString.Length;
-                                masterConnectionString = masterConnectionString.Remove(catalogStart, catalogEnd - catalogStart);
-                            }
-                            
-                            masterConnectionString = masterConnectionString.TrimEnd(';') + ";Initial Catalog=master";
-                        }
+                        // Extrair nome do banco primeiro (mais rápido)
+                        string databaseName = ExtrairNomeBanco(_connectionString);
                         
-                        // Extrair nome do banco
-                        string databaseName = "KingdomConfeitaria_Prod";
-                        if (_connectionString.Contains("Initial Catalog="))
-                        {
-                            int startIdx = _connectionString.IndexOf("Initial Catalog=") + "Initial Catalog=".Length;
-                            int endIdx = _connectionString.IndexOf(";", startIdx);
-                            if (endIdx == -1) endIdx = _connectionString.Length;
-                            databaseName = _connectionString.Substring(startIdx, endIdx - startIdx).Trim();
-                        }
+                        // Verificar se o arquivo existe primeiro (mais rápido que verificar banco)
+                        bool arquivoExiste = System.IO.File.Exists(attachDbPath);
                         
-                        // Verificar se o arquivo .mdf já existe
-                        if (!System.IO.File.Exists(attachDbPath))
+                        // Se o arquivo existe, verificar rapidamente se precisa fazer attach
+                        if (arquivoExiste)
                         {
-                            // Verificar se o banco já existe no LocalDB (pode ter sido criado antes sem AttachDbFilename)
-                            using (var masterConnection = new SqlConnection(masterConnectionString))
+                            // Arquivo existe - verificar se o banco está anexado
+                            // Criar connection string para master para verificar
+                            string masterConnectionString = CriarMasterConnectionString(_connectionString);
+                            
+                            if (!string.IsNullOrEmpty(masterConnectionString))
                             {
-                                masterConnection.Open();
+                                bool bancoExiste = VerificarBancoExiste(masterConnectionString, databaseName);
                                 
-                                // Verificar se o banco existe
-                                var checkDbCommand = new SqlCommand($"SELECT COUNT(*) FROM sys.databases WHERE name = '{databaseName}'", masterConnection);
-                                int dbExists = (int)checkDbCommand.ExecuteScalar();
-                                
-                                if (dbExists > 0)
+                                if (!bancoExiste)
                                 {
-                                    // Banco existe no LocalDB, fazer DETACH para poder criar o arquivo .mdf
+                                    // Arquivo existe mas banco não está anexado - FAZER ATTACH
+                                    FazerAttachBanco(masterConnectionString, databaseName, attachDbPath);
+                                }
+                                else
+                                {
+                                    // Banco existe - verificar se está anexado ao arquivo correto
+                                    // Tentar conectar para verificar
                                     try
                                     {
-                                        var detachCommand = new SqlCommand($@"
-                                            ALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                                            EXEC sp_detach_db '{databaseName}', 'true'", masterConnection);
-                                        detachCommand.ExecuteNonQuery();
+                                        using (var testConnection = new SqlConnection(_connectionString))
+                                        {
+                                            testConnection.Open();
+                                            // Se conseguiu conectar, está tudo certo
+                                        }
                                     }
-                                    catch
+                                    catch (SqlException testEx)
                                     {
-                                        // Se não conseguir fazer detach, tentar continuar mesmo assim
+                                        // Se falhar com "already exists", fazer detach e reattach
+                                        if (testEx.Message.Contains("already exists") || testEx.Message.Contains("Cannot attach"))
+                                        {
+                                            try
+                                            {
+                                                FazerDetachBancoForcado(masterConnectionString, databaseName);
+                                                FazerAttachBanco(masterConnectionString, databaseName, attachDbPath);
+                                            }
+                                            catch
+                                            {
+                                                // Se falhar, o erro será tratado na conexão principal
+                                            }
+                                        }
                                     }
                                 }
-                                
-                                // Criar banco no arquivo .mdf
-                                string logPath = attachDbPath.Replace(".mdf", "_log.ldf");
-                                var createDbCommand = new SqlCommand($@"
-                                    CREATE DATABASE [{databaseName}]
-                                    ON (NAME = '{databaseName}', FILENAME = '{attachDbPath.Replace("\\", "\\\\")}')
-                                    LOG ON (NAME = '{databaseName}_Log', FILENAME = '{logPath.Replace("\\", "\\\\")}')", masterConnection);
-                                createDbCommand.ExecuteNonQuery();
                             }
                         }
                         else
                         {
-                            // Arquivo .mdf existe, verificar se o banco está anexado
-                            using (var masterConnection = new SqlConnection(masterConnectionString))
+                            // Arquivo não existe - precisa verificar/criar banco
+                            // Criar connection string para master (tentando diferentes instâncias do LocalDB)
+                            string masterConnectionString = CriarMasterConnectionString(_connectionString);
+                            
+                            // Se não conseguiu criar connection string válida, tentar usar a connection string original
+                            if (string.IsNullOrEmpty(masterConnectionString))
                             {
-                                masterConnection.Open();
-                                
-                                // Verificar se o banco está anexado
-                                var checkDbCommand = new SqlCommand($"SELECT COUNT(*) FROM sys.databases WHERE name = '{databaseName}'", masterConnection);
-                                int dbExists = (int)checkDbCommand.ExecuteScalar();
-                                
-                                if (dbExists == 0)
+                                throw new Exception("Não foi possível encontrar uma instância válida do SQL Server LocalDB. Verifique se o LocalDB está instalado e funcionando.");
+                            }
+                            
+                            // Verificar se o banco já existe no LocalDB
+                            bool bancoExiste = VerificarBancoExiste(masterConnectionString, databaseName);
+                            
+                            if (!bancoExiste && !arquivoExiste)
+                            {
+                                // Banco não existe e arquivo não existe - CRIAR NOVO
+                                CriarNovoBanco(masterConnectionString, databaseName, attachDbPath);
+                            }
+                            else if (bancoExiste && !arquivoExiste)
+                            {
+                                // Banco existe no LocalDB mas arquivo não existe - DETACH e criar arquivo
+                                // Isso acontece quando o banco foi criado antes mas o arquivo foi movido/deletado
+                                try
                                 {
-                                    // Arquivo existe mas banco não está anexado, fazer ATTACH
+                                    FazerDetachBanco(masterConnectionString, databaseName);
+                                    CriarNovoBanco(masterConnectionString, databaseName, attachDbPath);
+                                }
+                                catch (Exception detachEx)
+                                {
+                                    // Se falhar no detach, tentar forçar o detach e depois criar
                                     try
                                     {
-                                        string logPath = attachDbPath.Replace(".mdf", "_log.ldf");
-                                        var attachCommand = new SqlCommand($@"
-                                            CREATE DATABASE [{databaseName}]
-                                            ON (FILENAME = '{attachDbPath.Replace("\\", "\\\\")}')
-                                            FOR ATTACH", masterConnection);
-                                        attachCommand.ExecuteNonQuery();
+                                        // Tentar detach forçado (fecha todas as conexões)
+                                        FazerDetachBancoForcado(masterConnectionString, databaseName);
+                                        CriarNovoBanco(masterConnectionString, databaseName, attachDbPath);
                                     }
                                     catch
                                     {
-                                        // Se não conseguir fazer attach, tentar criar novamente
-                                        // (pode ser que o arquivo esteja corrompido)
-                                        try
-                                        {
-                                            System.IO.File.Delete(attachDbPath);
-                                            string logPath = attachDbPath.Replace(".mdf", "_log.ldf");
-                                            if (System.IO.File.Exists(logPath))
-                                            {
-                                                System.IO.File.Delete(logPath);
-                                            }
-                                            
-                                            // Recriar o banco
-                                            var createDbCommand = new SqlCommand($@"
-                                                CREATE DATABASE [{databaseName}]
-                                                ON (NAME = '{databaseName}', FILENAME = '{attachDbPath.Replace("\\", "\\\\")}')
-                                                LOG ON (NAME = '{databaseName}_Log', FILENAME = '{logPath.Replace("\\", "\\\\")}')", masterConnection);
-                                            createDbCommand.ExecuteNonQuery();
-                                        }
-                                        catch
-                                        {
-                                            // Se falhar, deixar o erro ser propagado
-                                        }
+                                        // Se ainda falhar, lançar exceção com mensagem clara
+                                        throw new Exception(
+                                            $"O banco de dados '{databaseName}' já existe no LocalDB, mas o arquivo não está na pasta App_Data. " +
+                                            $"Arquivo esperado: {attachDbPath}. " +
+                                            $"Para resolver, execute no servidor: sqllocaldb stop MSSQLLocalDB e depois sqllocaldb start MSSQLLocalDB. " +
+                                            $"Ou faça detach manual do banco usando SQL Server Management Studio. Erro: {detachEx.Message}",
+                                            detachEx
+                                        );
                                     }
                                 }
-                                // Se o banco já está anexado, não fazer nada (já está pronto para uso)
+                            }
+                            else if (!bancoExiste && arquivoExiste)
+                            {
+                                // Arquivo existe mas banco não está anexado - FAZER ATTACH
+                                FazerAttachBanco(masterConnectionString, databaseName, attachDbPath);
                             }
                         }
                     }
@@ -215,6 +397,60 @@ namespace KingdomConfeitaria.Services
                     }
                 }
 
+                // Agora conectar ao banco e criar as tabelas
+                // Se usar AttachDbFilename, pode haver conflito se o banco já estiver anexado
+                try
+                {
+                    using (var connection = new SqlConnection(_connectionString))
+                    {
+                        connection.Open();
+                        // Se conseguiu conectar, continuar normalmente
+                    }
+                }
+                catch (SqlException sqlEx)
+                {
+                    // Se o erro for "already exists", o banco está anexado mas com conflito
+                    if (sqlEx.Message.Contains("already exists") || sqlEx.Message.Contains("Cannot attach"))
+                    {
+                        // Tentar fazer detach e reattach
+                        if (usaAttachDbFilename)
+                        {
+                            string masterConnectionString = CriarMasterConnectionString(_connectionString);
+                            if (!string.IsNullOrEmpty(masterConnectionString))
+                            {
+                                string databaseName = ExtrairNomeBanco(_connectionString);
+                                try
+                                {
+                                    // Fazer detach forçado
+                                    FazerDetachBancoForcado(masterConnectionString, databaseName);
+                                    // Tentar conectar novamente
+                                    using (var connection = new SqlConnection(_connectionString))
+                                    {
+                                        connection.Open();
+                                    }
+                                }
+                                catch (Exception reattachEx)
+                                {
+                                    throw new Exception(
+                                        $"Erro ao anexar banco de dados. O banco '{databaseName}' já existe no LocalDB. " +
+                                        $"Tente fazer detach manual: sqllocaldb stop MSSQLLocalDB e depois sqllocaldb start MSSQLLocalDB. " +
+                                        $"Erro: {reattachEx.Message}",
+                                        reattachEx
+                                    );
+                                }
+                            }
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
+                    else
+                    {
+                        throw;
+                    }
+                }
+                
                 // Agora conectar ao banco e criar as tabelas
                 using (var connection = new SqlConnection(_connectionString))
                 {
@@ -363,6 +599,18 @@ namespace KingdomConfeitaria.Services
                             CREATE INDEX [IX_Clientes_Provider] ON [dbo].[Clientes]([Provider], [ProviderId])
                         END";
                     checkTable.ExecuteNonQuery();
+                    
+                    // Criar índices adicionais para otimização (se não existirem)
+                    try
+                    {
+                        checkTable.CommandText = @"
+                            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Clientes_Telefone' AND object_id = OBJECT_ID('Clientes'))
+                            BEGIN
+                                CREATE INDEX [IX_Clientes_Telefone] ON [dbo].[Clientes]([Telefone]) WHERE [Telefone] IS NOT NULL
+                            END";
+                        checkTable.ExecuteNonQuery();
+                    }
+                    catch { /* Ignorar se já existe */ }
 
                     // Atualizar administradores: definir IsAdmin = true para emails específicos
                     checkTable.CommandText = @"
@@ -534,6 +782,40 @@ namespace KingdomConfeitaria.Services
                             ALTER TABLE [dbo].[ReservaItens] ADD [Produtos] [nvarchar](500) NULL
                         END";
                     try { checkTable.ExecuteNonQuery(); } catch { /* Ignorar se já existe */ }
+                    
+                    // Criar índices adicionais para otimização
+                    try
+                    {
+                        checkTable.CommandText = @"
+                            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_ReservaItens_ReservaId' AND object_id = OBJECT_ID('ReservaItens'))
+                            BEGIN
+                                CREATE INDEX [IX_ReservaItens_ReservaId] ON [dbo].[ReservaItens]([ReservaId])
+                            END";
+                        checkTable.ExecuteNonQuery();
+                    }
+                    catch { /* Ignorar se já existe */ }
+                    
+                    try
+                    {
+                        checkTable.CommandText = @"
+                            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Produtos_Ativo' AND object_id = OBJECT_ID('Produtos'))
+                            BEGIN
+                                CREATE INDEX [IX_Produtos_Ativo] ON [dbo].[Produtos]([Ativo], [Ordem]) WHERE [Ativo] = 1
+                            END";
+                        checkTable.ExecuteNonQuery();
+                    }
+                    catch { /* Ignorar se já existe */ }
+                    
+                    try
+                    {
+                        checkTable.CommandText = @"
+                            IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Reservas_ClienteId' AND object_id = OBJECT_ID('Reservas'))
+                            BEGIN
+                                CREATE INDEX [IX_Reservas_ClienteId] ON [dbo].[Reservas]([ClienteId])
+                            END";
+                        checkTable.ExecuteNonQuery();
+                    }
+                    catch { /* Ignorar se já existe */ }
 
                     // Migração: Alterar coluna Email para permitir NULL se ainda não permitir
                     checkTable.CommandText = @"
@@ -752,7 +1034,23 @@ namespace KingdomConfeitaria.Services
             }
             catch (SqlException sqlEx)
             {
-                throw new Exception("Erro ao acessar o banco de dados. Verifique se o SQL Server LocalDB está instalado e funcionando. Erro: " + sqlEx.Message, sqlEx);
+                string mensagemErro = "Erro ao acessar o banco de dados. ";
+                
+                // Mensagens mais específicas baseadas no erro
+                if (sqlEx.Message.Contains("não foi encontrado") || sqlEx.Message.Contains("não estava acessível"))
+                {
+                    mensagemErro += "O SQL Server LocalDB não foi encontrado ou não está acessível. ";
+                    mensagemErro += "Verifique se o LocalDB está instalado. ";
+                    mensagemErro += "Instâncias tentadas: (localdb)\\MSSQLLocalDB, .\\MSSQLLOCALDB, (localdb)\\v11.0. ";
+                    mensagemErro += "Para instalar o LocalDB, baixe o SQL Server Express LocalDB da Microsoft. ";
+                }
+                else
+                {
+                    mensagemErro += "Verifique se o SQL Server LocalDB está instalado e funcionando. ";
+                }
+                
+                mensagemErro += "Erro detalhado: " + sqlEx.Message;
+                throw new Exception(mensagemErro, sqlEx);
             }
             catch (Exception ex)
             {
@@ -762,6 +1060,20 @@ namespace KingdomConfeitaria.Services
 
         public List<Produto> ObterProdutos()
         {
+            // Cache de 5 minutos para lista de produtos ativos
+            string cacheKey = "Produtos_Ativos";
+            List<Produto> cached = null;
+            
+            // Verificar se HttpRuntime está disponível (pode não estar em alguns contextos)
+            if (HttpRuntime.Cache != null)
+            {
+                cached = HttpRuntime.Cache.Get(cacheKey) as List<Produto>;
+                if (cached != null)
+                {
+                    return cached;
+                }
+            }
+            
             var produtos = new List<Produto>();
             
             using (var connection = new SqlConnection(_connectionString))
@@ -792,11 +1104,31 @@ namespace KingdomConfeitaria.Services
                 }
             }
             
+            // Armazenar no cache por 5 minutos (se disponível)
+            if (HttpRuntime.Cache != null)
+            {
+                HttpRuntime.Cache.Insert(cacheKey, produtos, null, DateTime.Now.AddMinutes(5), System.Web.Caching.Cache.NoSlidingExpiration);
+            }
+            
             return produtos;
         }
 
         public List<Produto> ObterTodosProdutos()
         {
+            // Cache de 5 minutos para lista de todos os produtos
+            string cacheKey = "Produtos_Todos";
+            List<Produto> cached = null;
+            
+            // Verificar se HttpRuntime está disponível
+            if (HttpRuntime.Cache != null)
+            {
+                cached = HttpRuntime.Cache.Get(cacheKey) as List<Produto>;
+                if (cached != null)
+                {
+                    return cached;
+                }
+            }
+            
             var produtos = new List<Produto>();
             
             using (var connection = new SqlConnection(_connectionString))
@@ -825,6 +1157,12 @@ namespace KingdomConfeitaria.Services
                         });
                     }
                 }
+            }
+            
+            // Armazenar no cache por 5 minutos (se disponível)
+            if (HttpRuntime.Cache != null)
+            {
+                HttpRuntime.Cache.Insert(cacheKey, produtos, null, DateTime.Now.AddMinutes(5), System.Web.Caching.Cache.NoSlidingExpiration);
             }
             
             return produtos;
@@ -1016,34 +1354,64 @@ namespace KingdomConfeitaria.Services
                 int itensPulados = 0;
                 var produtosNaoEncontrados = new List<int>();
                 
+                // Otimização: Verificar todos os produtos de uma vez (em vez de um por um)
+                var produtosIds = reserva.Itens.Select(i => i.ProdutoId).Distinct().ToList();
+                var produtosExistentes = new HashSet<int>();
+                
+                if (produtosIds.Count > 0)
+                {
+                    // Query única para verificar todos os produtos
+                    var idsParametros = string.Join(",", produtosIds.Select((id, idx) => $"@Id{idx}"));
+                    var verificarProdutosCommand = new SqlCommand($"SELECT Id FROM Produtos WHERE Id IN ({idsParametros})", connection);
+                    for (int i = 0; i < produtosIds.Count; i++)
+                    {
+                        verificarProdutosCommand.Parameters.AddWithValue($"@Id{i}", produtosIds[i]);
+                    }
+                    
+                    using (var reader = verificarProdutosCommand.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            produtosExistentes.Add(reader.GetInt32(0));
+                        }
+                    }
+                }
+                
+                // Preparar comando de inserção uma vez (reutilizar)
+                var itemCommand = new SqlCommand(@"
+                    INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, Produtos)
+                    VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal, @Produtos)", connection);
+                
+                itemCommand.Parameters.Add("@ReservaId", SqlDbType.Int);
+                itemCommand.Parameters.Add("@ProdutoId", SqlDbType.Int);
+                itemCommand.Parameters.Add("@NomeProduto", SqlDbType.NVarChar, 200);
+                itemCommand.Parameters.Add("@Tamanho", SqlDbType.NVarChar, 50);
+                itemCommand.Parameters.Add("@Quantidade", SqlDbType.Int);
+                itemCommand.Parameters.Add("@PrecoUnitario", SqlDbType.Decimal);
+                itemCommand.Parameters.Add("@Subtotal", SqlDbType.Decimal);
+                itemCommand.Parameters.Add("@Produtos", SqlDbType.NVarChar, 500);
+                
                 foreach (var item in reserva.Itens)
                 {
                     try
                     {
-                        // Verificar se o produto existe antes de inserir (validação rápida)
-                        var verificarProduto = new SqlCommand("SELECT COUNT(*) FROM Produtos WHERE Id = @ProdutoId", connection);
-                        verificarProduto.Parameters.AddWithValue("@ProdutoId", item.ProdutoId);
-                        var produtoExiste = (int)verificarProduto.ExecuteScalar() > 0;
-                        
-                        if (!produtoExiste)
+                        // Verificar se o produto existe (usando HashSet - O(1))
+                        if (!produtosExistentes.Contains(item.ProdutoId))
                         {
                             produtosNaoEncontrados.Add(item.ProdutoId);
                             itensPulados++;
                             continue;
                         }
                         
-                        var itemCommand = new SqlCommand(@"
-                            INSERT INTO ReservaItens (ReservaId, ProdutoId, NomeProduto, Tamanho, Quantidade, PrecoUnitario, Subtotal, Produtos)
-                            VALUES (@ReservaId, @ProdutoId, @NomeProduto, @Tamanho, @Quantidade, @PrecoUnitario, @Subtotal, @Produtos)", connection);
-                        
-                        itemCommand.Parameters.AddWithValue("@ReservaId", reservaId);
-                        itemCommand.Parameters.AddWithValue("@ProdutoId", item.ProdutoId);
-                        itemCommand.Parameters.AddWithValue("@NomeProduto", item.NomeProduto ?? "");
-                        itemCommand.Parameters.AddWithValue("@Tamanho", item.Tamanho ?? "");
-                        itemCommand.Parameters.AddWithValue("@Quantidade", item.Quantidade);
-                        itemCommand.Parameters.AddWithValue("@PrecoUnitario", item.PrecoUnitario);
-                        itemCommand.Parameters.AddWithValue("@Subtotal", item.Subtotal);
-                        itemCommand.Parameters.AddWithValue("@Produtos", item.Produtos ?? (object)DBNull.Value);
+                        // Reutilizar comando preparado (mais rápido)
+                        itemCommand.Parameters["@ReservaId"].Value = reservaId;
+                        itemCommand.Parameters["@ProdutoId"].Value = item.ProdutoId;
+                        itemCommand.Parameters["@NomeProduto"].Value = item.NomeProduto ?? "";
+                        itemCommand.Parameters["@Tamanho"].Value = item.Tamanho ?? "";
+                        itemCommand.Parameters["@Quantidade"].Value = item.Quantidade;
+                        itemCommand.Parameters["@PrecoUnitario"].Value = item.PrecoUnitario;
+                        itemCommand.Parameters["@Subtotal"].Value = item.Subtotal;
+                        itemCommand.Parameters["@Produtos"].Value = item.Produtos ?? (object)DBNull.Value;
                         
                         itemCommand.ExecuteNonQuery();
                         itensGravados++;
@@ -1084,6 +1452,338 @@ namespace KingdomConfeitaria.Services
                     
                     throw new Exception(mensagemErro);
                 }
+            }
+        }
+
+        private string CriarMasterConnectionString(string connectionString)
+        {
+            // Criar connection string para master
+            // Tentar diferentes instâncias do LocalDB em ordem de preferência
+            string masterConnectionString = connectionString;
+            
+            // Remover AttachDbFilename
+            if (masterConnectionString.Contains("AttachDbFilename="))
+            {
+                int attachStart = masterConnectionString.IndexOf("AttachDbFilename=");
+                int attachEnd = masterConnectionString.IndexOf(";", attachStart);
+                if (attachEnd == -1) attachEnd = masterConnectionString.Length;
+                masterConnectionString = masterConnectionString.Remove(attachStart, attachEnd - attachStart);
+            }
+            
+            // Remover Initial Catalog
+            if (masterConnectionString.Contains("Initial Catalog="))
+            {
+                int catalogStart = masterConnectionString.IndexOf("Initial Catalog=");
+                int catalogEnd = masterConnectionString.IndexOf(";", catalogStart);
+                if (catalogEnd == -1) catalogEnd = masterConnectionString.Length;
+                masterConnectionString = masterConnectionString.Remove(catalogStart, catalogEnd - catalogStart);
+            }
+            
+            // Extrair Data Source original para tentar diferentes variações
+            string originalDataSource = "";
+            if (masterConnectionString.Contains("Data Source="))
+            {
+                int dsStart = masterConnectionString.IndexOf("Data Source=") + "Data Source=".Length;
+                int dsEnd = masterConnectionString.IndexOf(";", dsStart);
+                if (dsEnd == -1) dsEnd = masterConnectionString.Length;
+                originalDataSource = masterConnectionString.Substring(dsStart, dsEnd - dsStart).Trim();
+            }
+            
+            // Lista de instâncias do LocalDB para tentar (em ordem de preferência)
+            // Priorizar .\MSSQLLocalDB para produção
+            string[] localDbInstances = {
+                originalDataSource, // Tentar primeiro a instância original
+                ".\\MSSQLLocalDB",  // Produção (prioridade)
+                ".\\MSSQLLOCALDB",  // Produção (alternativa)
+                "(localdb)\\MSSQLLocalDB",
+                "(localdb)\\MSSQLLOCALDB",
+                "(localdb)\\v11.0",
+                "(localdb)\\ProjectsV13",
+                "(localdb)\\ProjectsV12"
+            };
+            
+            // Tentar cada instância até encontrar uma que funcione
+            foreach (string instance in localDbInstances)
+            {
+                if (string.IsNullOrEmpty(instance)) continue;
+                
+                string testConnectionString = masterConnectionString;
+                if (testConnectionString.Contains("Data Source="))
+                {
+                    int dsStart = testConnectionString.IndexOf("Data Source=");
+                    int dsEnd = testConnectionString.IndexOf(";", dsStart);
+                    if (dsEnd == -1) dsEnd = testConnectionString.Length;
+                    testConnectionString = testConnectionString.Remove(dsStart, dsEnd - dsStart);
+                }
+                testConnectionString = "Data Source=" + instance + ";" + testConnectionString.TrimStart(';');
+                testConnectionString = testConnectionString.TrimEnd(';') + ";Initial Catalog=master";
+                
+                // Testar conexão
+                if (TestarConexaoLocalDB(testConnectionString))
+                {
+                    return testConnectionString;
+                }
+            }
+            
+            // Se nenhuma funcionou, usar a primeira opção (original ou .\MSSQLLOCALDB)
+            string finalDataSource = !string.IsNullOrEmpty(originalDataSource) ? originalDataSource : ".\\MSSQLLOCALDB";
+            if (masterConnectionString.Contains("Data Source="))
+            {
+                int dsStart = masterConnectionString.IndexOf("Data Source=");
+                int dsEnd = masterConnectionString.IndexOf(";", dsStart);
+                if (dsEnd == -1) dsEnd = masterConnectionString.Length;
+                masterConnectionString = masterConnectionString.Remove(dsStart, dsEnd - dsStart);
+            }
+            masterConnectionString = "Data Source=" + finalDataSource + ";" + masterConnectionString.TrimStart(';');
+            masterConnectionString = masterConnectionString.TrimEnd(';') + ";Initial Catalog=master";
+            
+            return masterConnectionString;
+        }
+        
+        private bool TestarConexaoLocalDB(string connectionString)
+        {
+            try
+            {
+                // Adicionar timeout curto para teste rápido
+                string testConnectionString = connectionString;
+                if (!testConnectionString.Contains("Connect Timeout="))
+                {
+                    testConnectionString = testConnectionString.TrimEnd(';') + ";Connect Timeout=5";
+                }
+                else
+                {
+                    // Substituir timeout existente por um menor para teste
+                    testConnectionString = System.Text.RegularExpressions.Regex.Replace(
+                        testConnectionString, 
+                        @"Connect Timeout=\d+", 
+                        "Connect Timeout=5");
+                }
+                
+                using (var testConnection = new SqlConnection(testConnectionString))
+                {
+                    testConnection.Open();
+                    return true;
+                }
+            }
+            catch (SqlException sqlEx)
+            {
+                // Se o erro for específico de LocalDB não encontrado, tentar iniciar o LocalDB
+                if (sqlEx.Message.Contains("Unable to locate a Local Database Runtime installation") ||
+                    sqlEx.Message.Contains("error: 52") ||
+                    sqlEx.Message.Contains("Local Database Runtime"))
+                {
+                    // Tentar iniciar o LocalDB automaticamente
+                    try
+                    {
+                        TentarIniciarLocalDB();
+                        // Tentar novamente após iniciar (usar a connection string original)
+                        string retryConnectionString = connectionString;
+                        if (!retryConnectionString.Contains("Connect Timeout="))
+                        {
+                            retryConnectionString = retryConnectionString.TrimEnd(';') + ";Connect Timeout=5";
+                        }
+                        else
+                        {
+                            retryConnectionString = System.Text.RegularExpressions.Regex.Replace(
+                                retryConnectionString, 
+                                @"Connect Timeout=\d+", 
+                                "Connect Timeout=5");
+                        }
+                        
+                        using (var testConnection = new SqlConnection(retryConnectionString))
+                        {
+                            testConnection.Open();
+                            return true;
+                        }
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }
+                // Outros erros também retornam false
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        private void TentarIniciarLocalDB()
+        {
+            try
+            {
+                // Tentar iniciar o LocalDB usando sqllocaldb
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = "sqllocaldb",
+                    Arguments = "start MSSQLLocalDB",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using (Process process = Process.Start(startInfo))
+                {
+                    if (process != null)
+                    {
+                        process.WaitForExit(5000); // Aguardar até 5 segundos
+                    }
+                }
+            }
+            catch
+            {
+                // Se não conseguir iniciar, ignorar (pode não ter permissões ou não estar instalado)
+            }
+        }
+        
+        private string ExtrairNomeBanco(string connectionString)
+        {
+            string databaseName = "KingdomConfeitaria_Prod";
+            if (connectionString.Contains("Initial Catalog="))
+            {
+                int startIdx = connectionString.IndexOf("Initial Catalog=") + "Initial Catalog=".Length;
+                int endIdx = connectionString.IndexOf(";", startIdx);
+                if (endIdx == -1) endIdx = connectionString.Length;
+                databaseName = connectionString.Substring(startIdx, endIdx - startIdx).Trim();
+            }
+            return databaseName;
+        }
+        
+        private bool VerificarBancoExiste(string masterConnectionString, string databaseName)
+        {
+            try
+            {
+                using (var masterConnection = new SqlConnection(masterConnectionString))
+                {
+                    masterConnection.Open();
+                    // Usar parâmetro para evitar SQL injection e melhorar performance
+                    var checkDbCommand = new SqlCommand("SELECT COUNT(*) FROM sys.databases WHERE name = @DatabaseName", masterConnection);
+                    checkDbCommand.Parameters.AddWithValue("@DatabaseName", databaseName);
+                    checkDbCommand.CommandTimeout = 5; // Timeout curto para verificação rápida
+                    int dbExists = (int)checkDbCommand.ExecuteScalar();
+                    return dbExists > 0;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        private void CriarNovoBanco(string masterConnectionString, string databaseName, string attachDbPath)
+        {
+            using (var masterConnection = new SqlConnection(masterConnectionString))
+            {
+                masterConnection.Open();
+                string logPath = attachDbPath.Replace(".mdf", "_log.ldf");
+                var createDbCommand = new SqlCommand($@"
+                    CREATE DATABASE [{databaseName}]
+                    ON (NAME = '{databaseName}', FILENAME = '{attachDbPath.Replace("\\", "\\\\")}')
+                    LOG ON (NAME = '{databaseName}_Log', FILENAME = '{logPath.Replace("\\", "\\\\")}')", masterConnection);
+                createDbCommand.ExecuteNonQuery();
+            }
+        }
+        
+        private void FazerAttachBanco(string masterConnectionString, string databaseName, string attachDbPath)
+        {
+            // Primeiro, verificar se o banco já existe e fazer detach se necessário
+            try
+            {
+                bool bancoExiste = VerificarBancoExiste(masterConnectionString, databaseName);
+                if (bancoExiste)
+                {
+                    // Banco já existe - fazer detach primeiro
+                    try
+                    {
+                        FazerDetachBanco(masterConnectionString, databaseName);
+                    }
+                    catch
+                    {
+                        // Se falhar, tentar detach forçado
+                        FazerDetachBancoForcado(masterConnectionString, databaseName);
+                    }
+                }
+            }
+            catch
+            {
+                // Se falhar na verificação, continuar e tentar attach mesmo assim
+            }
+            
+            using (var masterConnection = new SqlConnection(masterConnectionString))
+            {
+                masterConnection.Open();
+                string logPath = attachDbPath.Replace(".mdf", "_log.ldf");
+                
+                // Tentar ATTACH com log file
+                try
+                {
+                    var attachCommand = new SqlCommand($@"
+                        CREATE DATABASE [{databaseName}]
+                        ON (FILENAME = '{attachDbPath.Replace("\\", "\\\\")}')
+                        FOR ATTACH", masterConnection);
+                    attachCommand.ExecuteNonQuery();
+                }
+                catch
+                {
+                    // Se falhar, tentar ATTACH sem log file (SQL Server criará novo)
+                    try
+                    {
+                        var attachCommand = new SqlCommand($@"
+                            CREATE DATABASE [{databaseName}]
+                            ON (FILENAME = '{attachDbPath.Replace("\\", "\\\\")}')
+                            FOR ATTACH_REBUILD_LOG", masterConnection);
+                        attachCommand.ExecuteNonQuery();
+                    }
+                    catch
+                    {
+                        // Se ainda falhar, propagar o erro
+                        throw;
+                    }
+                }
+            }
+        }
+        
+        private void FazerDetachBanco(string masterConnectionString, string databaseName)
+        {
+            using (var masterConnection = new SqlConnection(masterConnectionString))
+            {
+                masterConnection.Open();
+                var detachCommand = new SqlCommand($@"
+                    ALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                    EXEC sp_detach_db '{databaseName}', 'true'", masterConnection);
+                detachCommand.ExecuteNonQuery();
+            }
+        }
+        
+        private void FazerDetachBancoForcado(string masterConnectionString, string databaseName)
+        {
+            using (var masterConnection = new SqlConnection(masterConnectionString))
+            {
+                masterConnection.Open();
+                // Fechar todas as conexões e fazer detach forçado
+                // Reduzir tempo de espera para acelerar
+                var detachCommand = new SqlCommand($@"
+                    -- Fechar todas as conexões ao banco
+                    ALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                    -- Aguardar um pouco para garantir que todas as conexões foram fechadas (reduzido para 500ms)
+                    WAITFOR DELAY '00:00:00.5';
+                    -- Fazer detach
+                    EXEC sp_detach_db '{databaseName}', 'true'", masterConnection);
+                detachCommand.CommandTimeout = 15; // Timeout reduzido de 30 para 15 segundos
+                detachCommand.ExecuteNonQuery();
+            }
+        }
+
+        private void LimparCacheProdutos()
+        {
+            // Limpar cache de produtos quando houver atualização (se disponível)
+            if (HttpRuntime.Cache != null)
+            {
+                HttpRuntime.Cache.Remove("Produtos_Ativos");
+                HttpRuntime.Cache.Remove("Produtos_Todos");
             }
         }
 
@@ -1146,6 +1846,9 @@ namespace KingdomConfeitaria.Services
                 
                 command.ExecuteNonQuery();
                 
+                // Limpar cache de produtos após atualização
+                LimparCacheProdutos();
+                
                 // Registrar log com comparação
                 string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
                 LogService.RegistrarAtualizacaoComComparacao(usuarioLog, "Produto", "DatabaseService.AtualizarProduto", produto.Id.ToString(), valoresAntigos, valoresNovos);
@@ -1174,6 +1877,9 @@ namespace KingdomConfeitaria.Services
                 command.Parameters.AddWithValue("@VendivelAte", produto.VendivelAte.HasValue ? (object)produto.VendivelAte.Value : DBNull.Value);
                 
                 command.ExecuteNonQuery();
+                
+                // Limpar cache de produtos após adicionar
+                LimparCacheProdutos();
                 
                 // Registrar log
                 string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
@@ -1454,14 +2160,26 @@ namespace KingdomConfeitaria.Services
                     }
                 }
                 
-                // Obter lista de produtos existentes
+                // Otimização: Obter apenas IDs dos produtos que estão nos novos itens (em vez de todos)
+                var produtosIdsNovos = novosItens.Select(i => i.ProdutoId).Distinct().ToList();
                 var produtosExistentes = new HashSet<int>();
-                var produtosCommand = new SqlCommand("SELECT Id FROM Produtos", connection);
-                using (var produtosReader = produtosCommand.ExecuteReader())
+                
+                if (produtosIdsNovos.Count > 0)
                 {
-                    while (produtosReader.Read())
+                    // Query única para verificar apenas os produtos necessários
+                    var idsParametros = string.Join(",", produtosIdsNovos.Select((id, idx) => $"@Id{idx}"));
+                    var produtosCommand = new SqlCommand($"SELECT Id FROM Produtos WHERE Id IN ({idsParametros})", connection);
+                    for (int i = 0; i < produtosIdsNovos.Count; i++)
                     {
-                        produtosExistentes.Add(produtosReader.GetInt32(0));
+                        produtosCommand.Parameters.AddWithValue($"@Id{i}", produtosIdsNovos[i]);
+                    }
+                    
+                    using (var produtosReader = produtosCommand.ExecuteReader())
+                    {
+                        while (produtosReader.Read())
+                        {
+                            produtosExistentes.Add(produtosReader.GetInt32(0));
+                        }
                     }
                 }
                 
@@ -1825,13 +2543,46 @@ namespace KingdomConfeitaria.Services
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                // Buscar por telefone formatado (apenas números)
-                // A query remove formatação do telefone no banco e compara com o telefone formatado
-                // Usar LTRIM e RTRIM para remover espaços e garantir comparação correta
+                // Otimização: Primeiro tentar busca exata (mais rápida e usa índice)
                 var command = new SqlCommand(@"
                     SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso 
                     FROM Clientes 
-                    WHERE LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefone, ''), '(', ''), ')', ''), '-', ''), ' ', ''), '.', ''), '/', ''))) = @Telefone", connection);
+                    WHERE LTRIM(RTRIM(Telefone)) = @Telefone", connection);
+                command.Parameters.AddWithValue("@Telefone", telefoneFormatado);
+                
+                using (var reader = command.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        return new Cliente
+                        {
+                            Id = reader.GetInt32(0),
+                            Nome = reader.GetString(1),
+                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                            TemWhatsApp = reader.GetBoolean(5),
+                            Provider = reader.IsDBNull(6) ? null : reader.GetString(6),
+                            ProviderId = reader.IsDBNull(7) ? null : reader.GetString(7),
+                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
+                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
+                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
+                            EmailConfirmado = reader.GetBoolean(11),
+                            WhatsAppConfirmado = reader.GetBoolean(12),
+                            IsAdmin = reader.GetBoolean(13),
+                            DataCadastro = reader.GetDateTime(14),
+                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
+                        };
+                    }
+                }
+                
+                // Se não encontrou com busca exata, tentar busca com formatação (fallback)
+                // Isso é mais lento, mas necessário para telefones com formatação diferente
+                command.CommandText = @"
+                    SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso 
+                    FROM Clientes 
+                    WHERE LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefone, ''), '(', ''), ')', ''), '-', ''), ' ', ''), '.', ''), '/', ''))) = @Telefone";
+                command.Parameters.Clear();
                 command.Parameters.AddWithValue("@Telefone", telefoneFormatado);
                 
                 using (var reader = command.ExecuteReader())

@@ -53,7 +53,7 @@ A aplicação suporta dois ambientes:
 
 ### Production
 - `Environment`: "Production"
-- `BaseUrl`: "https://kindomconfeitaria.com.br" (atualize com seu domínio)
+- `BaseUrl`: "https://kingdomconfeitaria.com.br" (atualize com seu domínio)
 - Banco criado automaticamente na pasta `App_Data` na primeira execução
 - Arquivo: `App_Data\KingdomConfeitaria_Prod.mdf`
 
@@ -71,7 +71,7 @@ A aplicação suporta dois ambientes:
    **NOTA**: O banco será criado automaticamente na primeira execução.
 3. Atualize a `BaseUrl`:
    ```xml
-   <add key="BaseUrl" value="https://kindomconfeitaria.com.br" />
+   <add key="BaseUrl" value="https://kingdomconfeitaria.com.br" />
    ```
 4. Criptografe a senha SMTP de produção e atualize:
    ```xml

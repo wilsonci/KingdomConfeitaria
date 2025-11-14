@@ -152,7 +152,7 @@
             </div>
             
             <div class="d-grid gap-2 mb-3">
-                <asp:Button ID="btnSalvar" runat="server" Text="Salvar Alterações" CssClass="btn btn-success btn-lg" OnClick="btnSalvar_Click" />
+                <asp:Button ID="btnSalvar" runat="server" Text="Salvar Altera&#231;&#245;es" CssClass="btn btn-success btn-lg" OnClick="btnSalvar_Click" />
                 <a href="Default.aspx" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Voltar
                 </a>

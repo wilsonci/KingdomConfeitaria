@@ -132,6 +132,16 @@ namespace KingdomConfeitaria
                 }
                 return;
             }
+            
+            if (eventTarget == "carregarDadosReserva" && !string.IsNullOrEmpty(eventArgument))
+            {
+                int reservaId = 0;
+                if (int.TryParse(eventArgument, out reservaId))
+                {
+                    CarregarDadosReservaParaEdicao(reservaId);
+                }
+                return;
+            }
         }
 
         private string GerarHtmlProdutosAProduzir(Dictionary<DateTime, Dictionary<int, int>> produtosAProduzirPorData, List<Produto> todosProdutos)
@@ -773,7 +783,10 @@ namespace KingdomConfeitaria
                                 </button>" 
                         : "";
 
-                    string html = string.Format(@"
+                    string statusIdValue = reserva.StatusId.HasValue ? reserva.StatusId.Value.ToString() : "0";
+                    string valorTotalStr = reserva.ValorTotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                    
+                    string html = string.Format(@" 
                         <div class='reserva-card'>
                             <div class='d-flex justify-content-between align-items-start mb-3'>
                                 <div>
@@ -797,10 +810,10 @@ namespace KingdomConfeitaria
                             </div>
                             <div class='text-end'>
                                 <button type='button' class='btn btn-primary btn-sm' 
-                                    onclick='editarReserva({12}, {18}, {10}, {14}, {15}, ""{16}"", ""{17}"")'>
+                                    onclick='carregarDadosReserva({12})'>
                                     <i class='fas fa-edit'></i> Editar Reserva
                                 </button>
-                                {19}
+                                {20}
                             </div>
                         </div>",
                         reserva.Nome,
@@ -821,7 +834,8 @@ namespace KingdomConfeitaria
                         reserva.Cancelado.ToString().ToLower(),
                         previsaoValue,
                         observacoesEscapadas,
-                        reserva.StatusId.HasValue ? reserva.StatusId.Value.ToString() : "0",
+                        statusIdValue,
+                        valorTotalStr,
                         botaoExcluir);
                     reservasContainer.InnerHtml += html;
                 }
@@ -1178,8 +1192,32 @@ namespace KingdomConfeitaria
         {
             try
             {
+                // Validar campos obrigatórios
+                if (string.IsNullOrWhiteSpace(txtStatusReservaNome.Text))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Nome é obrigatório.")}');", true);
+                    return;
+                }
+                
+                if (string.IsNullOrWhiteSpace(txtStatusReservaDescricao.Text))
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Descrição é obrigatória.")}');", true);
+                    return;
+                }
+                
                 int statusId = 0;
-                int.TryParse(hdnStatusReservaId.Value, out statusId);
+                if (!int.TryParse(hdnStatusReservaId.Value, out statusId))
+                {
+                    statusId = 0;
+                }
+                
+                int ordem = 0;
+                if (!int.TryParse(txtStatusReservaOrdem.Text, out ordem))
+                {
+                    ordem = 0;
+                }
                 
                 var status = new StatusReserva
                 {
@@ -1188,15 +1226,8 @@ namespace KingdomConfeitaria
                     Descricao = txtStatusReservaDescricao.Text.Trim(),
                     PermiteAlteracao = chkStatusReservaPermiteAlteracao.Checked,
                     PermiteExclusao = chkStatusReservaPermiteExclusao.Checked,
-                    Ordem = int.TryParse(txtStatusReservaOrdem.Text, out int ordem) ? ordem : 0
+                    Ordem = ordem
                 };
-                
-                if (string.IsNullOrEmpty(status.Nome))
-                {
-                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
-                        $"alert('{EscapeJavaScript("Nome é obrigatório.")}');", true);
-                    return;
-                }
                 
                 if (statusId == 0)
                 {
@@ -1213,6 +1244,10 @@ namespace KingdomConfeitaria
                         $"alert('{EscapeJavaScript("Status atualizado com sucesso!")}');", true);
                 }
                 
+                // Recarregar lista de status
+                CarregarStatusReserva();
+                CarregarDropdownStatus(); // Recarregar dropdown também para garantir que está atualizado
+                
                 // Limpar campos
                 hdnStatusReservaId.Value = "0";
                 txtStatusReservaNome.Text = "";
@@ -1221,10 +1256,14 @@ namespace KingdomConfeitaria
                 chkStatusReservaPermiteAlteracao.Checked = true;
                 chkStatusReservaPermiteExclusao.Checked = true;
                 
-                CarregarStatusReserva();
+                // Fechar modal
                 string scriptFecharModalStatus = @"
                     setTimeout(function() {
                         var modalElement = document.getElementById('modalNovoStatusReserva');
+                        var titleElement = document.getElementById('modalStatusReservaTitle');
+                        if (titleElement) {
+                            titleElement.textContent = 'Novo Status de Reserva';
+                        }
                         if (modalElement) {
                             if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
                                 var modal = bootstrap.Modal.getInstance(modalElement);
@@ -1248,7 +1287,7 @@ namespace KingdomConfeitaria
                             }
                         }
                     }, 100);";
-                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModal", scriptFecharModalStatus, true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharModalStatus", scriptFecharModalStatus, true);
             }
             catch (Exception ex)
             {
@@ -1269,13 +1308,15 @@ namespace KingdomConfeitaria
                     return;
                 }
                 
+                // Limpar campos antes de preencher
                 hdnStatusReservaId.Value = status.Id.ToString();
-                txtStatusReservaNome.Text = status.Nome;
-                txtStatusReservaDescricao.Text = status.Descricao;
+                txtStatusReservaNome.Text = status.Nome ?? "";
+                txtStatusReservaDescricao.Text = status.Descricao ?? "";
                 txtStatusReservaOrdem.Text = status.Ordem.ToString();
                 chkStatusReservaPermiteAlteracao.Checked = status.PermiteAlteracao;
                 chkStatusReservaPermiteExclusao.Checked = status.PermiteExclusao;
                 
+                // Atualizar título do modal
                 string scriptAbrirModalStatus = @"
                     setTimeout(function() {
                         var modalElement = document.getElementById('modalNovoStatusReserva');
@@ -1298,12 +1339,91 @@ namespace KingdomConfeitaria
                             }
                         }
                     }, 100);";
-                Page.ClientScript.RegisterStartupScript(this.GetType(), "AbrirModal", scriptAbrirModalStatus, true);
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "AbrirModalEditarStatus", scriptAbrirModalStatus, true);
             }
             catch (Exception ex)
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
                     string.Format("alert('Erro ao carregar status: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void CarregarDadosReservaParaEdicao(int reservaId)
+        {
+            try
+            {
+                var reserva = _databaseService.ObterReservaPorId(reservaId);
+                if (reserva == null)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        $"alert('{EscapeJavaScript("Reserva não encontrada.")}');", true);
+                    return;
+                }
+                
+                // Preencher campos do formulário
+                hdnReservaId.Value = reserva.Id.ToString();
+                
+                // Garantir que o dropdown de status está carregado
+                CarregarDropdownStatus();
+                
+                // Preencher Status
+                if (reserva.StatusId.HasValue)
+                {
+                    ddlStatus.SelectedValue = reserva.StatusId.Value.ToString();
+                }
+                else
+                {
+                    if (ddlStatus.Items.Count > 0)
+                    {
+                        ddlStatus.SelectedIndex = 0;
+                    }
+                }
+                
+                // Preencher Valor Total
+                txtValorTotal.Text = reserva.ValorTotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+                
+                // Preencher checkboxes
+                chkConvertidoEmPedido.Checked = reserva.ConvertidoEmPedido;
+                chkCancelado.Checked = reserva.Cancelado;
+                
+                // Preencher Previsão de Entrega
+                if (reserva.PrevisaoEntrega.HasValue)
+                {
+                    txtPrevisaoEntrega.Text = reserva.PrevisaoEntrega.Value.ToString("yyyy-MM-ddTHH:mm");
+                }
+                else
+                {
+                    txtPrevisaoEntrega.Text = "";
+                }
+                
+                // Preencher Observações
+                txtObservacoesReserva.Text = reserva.Observacoes ?? "";
+                
+                // Abrir modal
+                string scriptAbrirModal = @"
+                    setTimeout(function() {
+                        var modalElement = document.getElementById('modalEditarReserva');
+                        if (modalElement) {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var modal = new bootstrap.Modal(modalElement);
+                                modal.show();
+                            } else {
+                                modalElement.classList.add('show');
+                                modalElement.style.display = 'block';
+                                modalElement.setAttribute('aria-hidden', 'false');
+                                document.body.classList.add('modal-open');
+                                var backdrop = document.createElement('div');
+                                backdrop.className = 'modal-backdrop fade show';
+                                document.body.appendChild(backdrop);
+                            }
+                        }
+                    }, 100);";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "AbrirModalEditarReserva", scriptAbrirModal, true);
+            }
+            catch (Exception ex)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao carregar dados da reserva: {0}');", EscapeJavaScript(ex.Message)), true);
             }
         }
 

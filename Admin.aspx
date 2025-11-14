@@ -412,7 +412,7 @@
                         <div id="divSacoPromocional" style="display: none;">
                             <div class="mb-3">
                                 <label class="form-label">Quantidade de Produtos no Saco</label>
-                                <asp:TextBox ID="txtQuantidadeSaco" runat="server" CssClass="form-control" TextMode="Number" min="1" value="0"></asp:TextBox>
+                                <asp:TextBox ID="txtQuantidadeSaco" runat="server" CssClass="form-control" TextMode="Number" value="0"></asp:TextBox>
                                 <small class="text-muted">Quantidade de produtos que o cliente deve selecionar para o saco</small>
                             </div>
                             <div class="mb-3">
@@ -436,7 +436,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <asp:Button ID="btnSalvarProduto" runat="server" Text="Salvar" CssClass="btn btn-primary" OnClick="btnSalvarProduto_Click" />
+                        <asp:Button ID="btnSalvarProduto" runat="server" Text="Salvar" CssClass="btn btn-primary" OnClick="btnSalvarProduto_Click" OnClientClick="return validarESalvarProduto();" />
                     </div>
                 </div>
             </div>
@@ -512,7 +512,7 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <asp:Button ID="btnSalvarNovoProduto" runat="server" Text="Salvar" CssClass="btn btn-primary" OnClick="btnSalvarNovoProduto_Click" />
+                        <asp:Button ID="btnSalvarNovoProduto" runat="server" Text="Salvar" CssClass="btn btn-primary" OnClick="btnSalvarNovoProduto_Click" OnClientClick="return validarESalvarNovoProduto();" />
                     </div>
                 </div>
             </div>
@@ -708,7 +708,7 @@
                     } else {
                         txtQuantidadeSaco.removeAttribute('disabled');
                         txtQuantidadeSaco.removeAttribute('formnovalidate');
-                        txtQuantidadeSaco.setAttribute('min', '1');
+                        // Não adicionar min aqui, pois pode causar problemas se a div for ocultada novamente
                     }
                 }
             }
@@ -750,76 +750,115 @@
             }
         }
 
-        function validarESalvarReserva() {
-            // Desabilitar validação de todos os campos em modais de produto (que podem estar ocultos)
-            var modais = ['modalEditarProduto', 'modalNovoProduto'];
-            modais.forEach(function(modalId) {
-                var modal = document.getElementById(modalId);
-                if (modal) {
-                    // Remover required de todos os campos
-                    var campos = modal.querySelectorAll('[required]');
-                    campos.forEach(function(campo) {
-                        campo.removeAttribute('required');
-                    });
-                    
-                    // Desabilitar validação de campos com min/max
-                    var camposComValidacao = modal.querySelectorAll('input[type="number"][min], input[type="number"][max]');
-                    camposComValidacao.forEach(function(campo) {
-                        campo.removeAttribute('min');
-                        campo.removeAttribute('max');
-                        campo.setAttribute('formnovalidate', 'true');
-                    });
-                }
-            });
-            
-            // Desabilitar validação de campos específicos que podem estar ocultos
-            var txtQuantidadeSaco = document.getElementById('<%= txtQuantidadeSaco.ClientID %>');
-            if (txtQuantidadeSaco) {
-                var divSaco = document.getElementById('divSacoPromocional');
-                if (divSaco) {
-                    var isDivVisible = divSaco.style.display !== 'none' && divSaco.offsetParent !== null;
+        function carregarDadosReserva(reservaId) {
+            __doPostBack('carregarDadosReserva', reservaId);
+        }
+
+        // Função global para desabilitar validação de campos ocultos
+        function desabilitarValidacaoCamposOcultos() {
+            // Desabilitar validação de campos em divs ocultas
+            var divSaco = document.getElementById('divSacoPromocional');
+            if (divSaco) {
+                var isDivVisible = divSaco.style.display !== 'none' && divSaco.offsetParent !== null;
+                var txtQuantidadeSaco = document.getElementById('<%= txtQuantidadeSaco.ClientID %>');
+                if (txtQuantidadeSaco) {
                     if (!isDivVisible) {
                         txtQuantidadeSaco.removeAttribute('min');
                         txtQuantidadeSaco.removeAttribute('max');
                         txtQuantidadeSaco.setAttribute('formnovalidate', 'true');
                         txtQuantidadeSaco.setAttribute('disabled', 'disabled');
                     }
-                } else {
-                    // Se a div não existe, desabilitar validação
-                    txtQuantidadeSaco.removeAttribute('min');
-                    txtQuantidadeSaco.removeAttribute('max');
-                    txtQuantidadeSaco.setAttribute('formnovalidate', 'true');
                 }
             }
             
-            var txtNovaQuantidadeSaco = document.getElementById('<%= txtNovaQuantidadeSaco.ClientID %>');
-            if (txtNovaQuantidadeSaco) {
-                var divNovoSaco = document.getElementById('divNovoSacoPromocional');
-                if (divNovoSaco) {
-                    var isDivVisible = divNovoSaco.style.display !== 'none' && divNovoSaco.offsetParent !== null;
+            var divNovoSaco = document.getElementById('divNovoSacoPromocional');
+            if (divNovoSaco) {
+                var isDivVisible = divNovoSaco.style.display !== 'none' && divNovoSaco.offsetParent !== null;
+                var txtNovaQuantidadeSaco = document.getElementById('<%= txtNovaQuantidadeSaco.ClientID %>');
+                if (txtNovaQuantidadeSaco) {
                     if (!isDivVisible) {
                         txtNovaQuantidadeSaco.removeAttribute('min');
                         txtNovaQuantidadeSaco.removeAttribute('max');
                         txtNovaQuantidadeSaco.setAttribute('formnovalidate', 'true');
                         txtNovaQuantidadeSaco.setAttribute('disabled', 'disabled');
                     }
-                } else {
-                    // Se a div não existe, desabilitar validação
-                    txtNovaQuantidadeSaco.removeAttribute('min');
-                    txtNovaQuantidadeSaco.removeAttribute('max');
-                    txtNovaQuantidadeSaco.setAttribute('formnovalidate', 'true');
                 }
             }
             
+            // Desabilitar validação de campos em modais ocultos
+            var modais = ['modalEditarProduto', 'modalNovoProduto', 'modalEditarReserva'];
+            modais.forEach(function(modalId) {
+                var modal = document.getElementById(modalId);
+                if (modal) {
+                    var isModalVisible = modal.classList.contains('show') && modal.style.display !== 'none';
+                    if (!isModalVisible) {
+                        // Remover required de todos os campos
+                        var campos = modal.querySelectorAll('[required]');
+                        campos.forEach(function(campo) {
+                            campo.removeAttribute('required');
+                        });
+                        
+                        // Desabilitar validação de campos com min/max
+                        var camposComValidacao = modal.querySelectorAll('input[type="number"][min], input[type="number"][max]');
+                        camposComValidacao.forEach(function(campo) {
+                            campo.removeAttribute('min');
+                            campo.removeAttribute('max');
+                            campo.setAttribute('formnovalidate', 'true');
+                        });
+                    }
+                }
+            });
+        }
+
+        function validarESalvarReserva() {
+            desabilitarValidacaoCamposOcultos();
+            return true;
+        }
+
+        function validarESalvarProduto() {
+            desabilitarValidacaoCamposOcultos();
+            return true;
+        }
+
+        function validarESalvarNovoProduto() {
+            desabilitarValidacaoCamposOcultos();
             return true;
         }
 
         // Resetar modal quando fechar e desabilitar validação de campos ocultos
         document.addEventListener('DOMContentLoaded', function() {
+            // Desabilitar validação de campos ocultos ao carregar a página
+            desabilitarValidacaoCamposOcultos();
+            
+            // Interceptar todos os submits do formulário para garantir validação
+            var form = document.getElementById('form1');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    desabilitarValidacaoCamposOcultos();
+                });
+            }
+            
             var modalStatusReserva = document.getElementById('modalNovoStatusReserva');
             if (modalStatusReserva) {
                 modalStatusReserva.addEventListener('hidden.bs.modal', function() {
-                    document.getElementById('modalStatusReservaTitle').textContent = 'Novo Status de Reserva';
+                    var titleElement = document.getElementById('modalStatusReservaTitle');
+                    if (titleElement) {
+                        titleElement.textContent = 'Novo Status de Reserva';
+                    }
+                    // Limpar campos quando fechar
+                    var hdnStatusId = document.querySelector('input[id*="hdnStatusReservaId"]');
+                    var txtNome = document.querySelector('input[id*="txtStatusReservaNome"]');
+                    var txtDescricao = document.querySelector('textarea[id*="txtStatusReservaDescricao"]');
+                    var txtOrdem = document.querySelector('input[id*="txtStatusReservaOrdem"]');
+                    var chkPermiteAlteracao = document.querySelector('input[id*="chkStatusReservaPermiteAlteracao"]');
+                    var chkPermiteExclusao = document.querySelector('input[id*="chkStatusReservaPermiteExclusao"]');
+                    
+                    if (hdnStatusId) hdnStatusId.value = '0';
+                    if (txtNome) txtNome.value = '';
+                    if (txtDescricao) txtDescricao.value = '';
+                    if (txtOrdem) txtOrdem.value = '0';
+                    if (chkPermiteAlteracao) chkPermiteAlteracao.checked = true;
+                    if (chkPermiteExclusao) chkPermiteExclusao.checked = true;
                 });
             }
             
