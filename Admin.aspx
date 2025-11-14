@@ -16,9 +16,7 @@
         }
         .header-logo {
             background: #1a4d2e;
-            padding: 10px 20px;
-            text-align: center;
-            border-radius: 0;
+            padding: 12px 16px;
             position: fixed;
             top: 0;
             left: 0;
@@ -27,39 +25,80 @@
             z-index: 1000;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
-        .header-actions {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-        }
-        .header-actions a {
-            color: white;
-            text-decoration: none;
-            margin-left: 15px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        .header-actions a:hover {
-            text-decoration: underline;
-            color: #d4af37;
-        }
-        .header-actions span {
-            color: white;
-            font-weight: 500;
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
         }
         .header-logo img {
-            max-width: 20%;
-            width: auto;
+            max-width: 120px;
             height: auto;
-            max-height: 80px;
             display: block;
-            margin: 0 auto;
+        }
+        .header-user-name {
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: right;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .header-actions::-webkit-scrollbar {
+            display: none;
+        }
+        .header-actions a {
+            color: #1a4d2e;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .header-actions a:hover {
+            background: #1a4d2e;
+            color: #fff;
+        }
+        @media (max-width: 768px) {
+            .header-logo {
+                padding: 10px 12px;
+            }
+            .header-logo img {
+                max-width: 100px;
+            }
+            .header-actions {
+                gap: 4px;
+                padding: 6px 8px;
+            }
+            .header-actions a {
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+            .header-actions a i {
+                display: none;
+            }
         }
         .container-main {
             background: white;
             border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            margin: 90px auto 20px auto;
+            margin: 100px auto 20px auto;
             padding: 30px;
         }
         .nav-tabs .nav-link {
@@ -119,6 +158,45 @@
         }
         .log-user-header:hover {
             background-color: #2d5a3d;
+        }
+        /* Botão de voltar na lateral esquerda */
+        .btn-voltar {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 999;
+            background: #1a4d2e;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+        .btn-voltar:hover {
+            background: #2d5a3d;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            color: white;
+            text-decoration: none;
+        }
+        .btn-voltar i {
+            margin-right: 0;
+        }
+        @media (max-width: 768px) {
+            .btn-voltar {
+                left: 10px;
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
         }
         .log-user-header i {
             transition: transform 0.3s;
@@ -210,11 +288,18 @@
     </style>
 </head>
 <body>
-    <form id="form1" runat="server">
+    <form id="form1" runat="server" enctype="multipart/form-data">
+        <!-- Botão de voltar na lateral esquerda -->
+        <a href="javascript:void(0);" class="btn-voltar" title="Voltar" onclick="voltarPagina(); return false;">
+            <i class="fas fa-arrow-left"></i>
+        </a>
         <div class="container-fluid">
             <div class="header-logo">
+                <div class="header-top">
+                    <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" />
+                    <div class="header-user-name" id="clienteNome" runat="server" style="display: none;"></div>
+                </div>
                 <div class="header-actions">
-                    <span id="clienteNome" runat="server" style="color: white; margin-right: 15px;"></span>
                     <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
                     <a href="#" id="linkLogin" runat="server" style="display: none;" onclick="abrirModalLogin(); return false;"><i class="fas fa-sign-in-alt"></i> Entrar</a>
                     <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;"><i class="fas fa-clipboard-list"></i> Minhas Reservas</a>
@@ -222,7 +307,6 @@
                     <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;"><i class="fas fa-cog"></i> Painel Gestor</a>
                     <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
                 </div>
-                <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
             </div>
             <div class="container-main">
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -241,6 +325,11 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="clientes-tab" data-bs-toggle="tab" data-bs-target="#clientes" type="button" role="tab">
+                            <i class="fas fa-users"></i> Clientes
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="reservas-tab" data-bs-toggle="tab" data-bs-target="#reservas" type="button" role="tab">
                             <i class="fas fa-clipboard-list"></i> Reservas
                         </button>
@@ -253,6 +342,11 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">
                             <i class="fas fa-file-alt"></i> Logs
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="configuracoes-tab" data-bs-toggle="tab" data-bs-target="#configuracoes" type="button" role="tab">
+                            <i class="fas fa-cog"></i> Configurações
                         </button>
                     </li>
                 </ul>
@@ -276,6 +370,13 @@
                         </div>
                         <div id="produtosAdminContainer" runat="server">
                             <!-- Produtos serão carregados aqui -->
+                        </div>
+                    </div>
+
+                    <!-- Aba Clientes -->
+                    <div class="tab-pane fade" id="clientes" role="tabpanel">
+                        <div id="clientesContainer" runat="server">
+                            <!-- Clientes serão carregados aqui -->
                         </div>
                     </div>
 
@@ -349,6 +450,116 @@
                             <!-- Logs serão carregados aqui -->
                         </div>
                     </div>
+                    
+                    <!-- Aba Configurações -->
+                    <div class="tab-pane fade" id="configuracoes" role="tabpanel">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="fas fa-cog"></i> Configurações do Sistema</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <h6 class="border-bottom pb-2"><i class="fas fa-globe"></i> Configurações Gerais</h6>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">URL Base do Sistema *</label>
+                                        <asp:TextBox ID="txtBaseUrl" runat="server" CssClass="form-control" placeholder="https://kingdomconfeitaria.com.br"></asp:TextBox>
+                                        <small class="text-muted">URL completa do site (usado em emails e links)</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Ambiente</label>
+                                        <asp:DropDownList ID="ddlEnvironment" runat="server" CssClass="form-select">
+                                            <asp:ListItem Value="Development">Desenvolvimento</asp:ListItem>
+                                            <asp:ListItem Value="Production">Produção</asp:ListItem>
+                                        </asp:DropDownList>
+                                        <small class="text-muted">Ambiente atual do sistema</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <h6 class="border-bottom pb-2 mt-4"><i class="fas fa-envelope"></i> Configurações de Email</h6>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Servidor SMTP *</label>
+                                        <asp:TextBox ID="txtSmtpServer" runat="server" CssClass="form-control" placeholder="smtp.gmail.com"></asp:TextBox>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Porta SMTP *</label>
+                                        <asp:TextBox ID="txtSmtpPort" runat="server" CssClass="form-control" TextMode="Number" placeholder="587"></asp:TextBox>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Usuário SMTP (Email) *</label>
+                                        <asp:TextBox ID="txtSmtpUsername" runat="server" CssClass="form-control" TextMode="Email" placeholder="seuemail@gmail.com"></asp:TextBox>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Senha SMTP *</label>
+                                        <asp:TextBox ID="txtSmtpPassword" runat="server" CssClass="form-control" TextMode="Password" placeholder="Senha de App do Gmail"></asp:TextBox>
+                                        <small class="text-muted">Para Gmail, use uma Senha de App (não a senha normal)</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Email Remetente *</label>
+                                        <asp:TextBox ID="txtEmailFrom" runat="server" CssClass="form-control" TextMode="Email" placeholder="noreply@kingdomconfeitaria.com.br"></asp:TextBox>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Email Isabela</label>
+                                        <asp:TextBox ID="txtEmailIsabela" runat="server" CssClass="form-control" TextMode="Email" placeholder="isabela@kingdomconfeitaria.com.br"></asp:TextBox>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Email Camila</label>
+                                        <asp:TextBox ID="txtEmailCamila" runat="server" CssClass="form-control" TextMode="Email" placeholder="camila@kingdomconfeitaria.com.br"></asp:TextBox>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-12 mb-3">
+                                        <h6 class="border-bottom pb-2 mt-4"><i class="fab fa-whatsapp"></i> Configurações WhatsApp (Opcional)</h6>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">URL da API WhatsApp</label>
+                                        <asp:TextBox ID="txtWhatsAppApiUrl" runat="server" CssClass="form-control" placeholder="https://api.whatsapp.com"></asp:TextBox>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Chave da API WhatsApp</label>
+                                        <asp:TextBox ID="txtWhatsAppApiKey" runat="server" CssClass="form-control" TextMode="Password" placeholder="Sua chave da API"></asp:TextBox>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label class="form-label">Número WhatsApp</label>
+                                        <asp:TextBox ID="txtWhatsAppPhoneNumber" runat="server" CssClass="form-control" placeholder="5511999999999"></asp:TextBox>
+                                        <small class="text-muted">Formato: 5511999999999 (código do país + DDD + número)</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt-4">
+                                    <div class="col-md-12">
+                                        <asp:Button ID="btnSalvarConfiguracoes" runat="server" Text="Salvar Configurações" CssClass="btn btn-primary btn-lg" OnClick="btnSalvarConfiguracoes_Click" />
+                                        <button type="button" class="btn btn-secondary btn-lg" onclick="alert('Funcionalidade de teste de email será implementada em breve.');">Testar Email</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-info-circle"></i> <strong>Nota:</strong> As configurações são salvas no arquivo web.config. 
+                                    Para alterações em produção, edite o arquivo Web.Release.config ou o web.config diretamente no servidor.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -377,9 +588,14 @@
                             <small class="text-muted">O tamanho (Pequeno/Grande) deve ser incluído no nome do produto</small>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">URL da Imagem *</label>
+                            <label class="form-label">Upload de Imagem</label>
+                            <asp:FileUpload ID="fileUploadImagem" runat="server" CssClass="form-control" accept="image/*" />
+                            <small class="text-muted">Formatos aceitos: JPG, PNG, GIF, WEBP. Tamanho mínimo: 200x200px. Tamanho máximo: 5MB. A imagem será redimensionada automaticamente.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">OU URL da Imagem</label>
                             <asp:TextBox ID="txtImagemUrl" runat="server" CssClass="form-control"></asp:TextBox>
-                            <small class="text-muted">Cole aqui a URL da imagem (pode ser do Google Drive, Imgur, etc)</small>
+                            <small class="text-muted">Cole aqui a URL da imagem (pode ser do Google Drive, Imgur, etc) se preferir não fazer upload</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Ordem de Exibição</label>
@@ -465,9 +681,14 @@
                             <small class="text-muted">O tamanho (Pequeno/Grande) deve ser incluído no nome do produto</small>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">URL da Imagem *</label>
+                            <label class="form-label">Upload de Imagem</label>
+                            <asp:FileUpload ID="fileUploadNovaImagem" runat="server" CssClass="form-control" accept="image/*" />
+                            <small class="text-muted">Formatos aceitos: JPG, PNG, GIF, WEBP. Tamanho mínimo: 200x200px. Tamanho máximo: 5MB. A imagem será redimensionada automaticamente.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">OU URL da Imagem</label>
                             <asp:TextBox ID="txtNovaImagemUrl" runat="server" CssClass="form-control"></asp:TextBox>
-                            <small class="text-muted">Cole aqui a URL da imagem</small>
+                            <small class="text-muted">Cole aqui a URL da imagem (pode ser do Google Drive, Imgur, etc) se preferir não fazer upload</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Ordem de Exibição</label>
@@ -921,6 +1142,128 @@
                 init();
             }
         })();
+        
+        function voltarPagina() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = 'Default.aspx';
+            }
+        }
+        
+        function navegarParaAba(tabId) {
+            var tabElement = document.getElementById(tabId);
+            if (tabElement) {
+                var tab = new bootstrap.Tab(tabElement);
+                tab.show();
+            }
+        }
     </script>
+    
+    <style>
+        /* Estilos para os modais de detalhes */
+        .detalhe-item {
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #1a4d2e;
+        }
+        .detalhe-item strong {
+            color: #1a4d2e;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .detalhe-item-valor {
+            color: #333;
+            font-size: 15px;
+        }
+    </style>
+    
+    <script>
+        // Função para mostrar detalhes da reserva (Admin)
+        function mostrarDetalhesReservaAdmin(reservaId) {
+            // Fazer requisição para obter detalhes da reserva
+            __doPostBack('obterDetalhesReserva', reservaId.toString());
+        }
+        
+        // Função para mostrar detalhes do cliente
+        function mostrarDetalhesCliente(clienteId) {
+            // Fazer requisição para obter detalhes do cliente
+            __doPostBack('obterDetalhesCliente', clienteId.toString());
+        }
+        
+        // Função para mostrar detalhes do produto
+        function mostrarDetalhesProduto(produtoId) {
+            // Fazer requisição para obter detalhes do produto
+            __doPostBack('obterDetalhesProduto', produtoId.toString());
+        }
+    </script>
+    
+    <!-- Modal de Detalhes da Reserva (Admin) -->
+    <div class="modal fade" id="modalDetalhesReservaAdmin" tabindex="-1" aria-labelledby="modalDetalhesReservaAdminLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalDetalhesReservaAdminLabel">
+                        <i class="fas fa-info-circle"></i> Detalhes da Reserva
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" id="modalDetalhesReservaAdminBody">
+                    <!-- Conteúdo será preenchido via JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Detalhes do Cliente -->
+    <div class="modal fade" id="modalDetalhesCliente" tabindex="-1" aria-labelledby="modalDetalhesClienteLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalDetalhesClienteLabel">
+                        <i class="fas fa-user"></i> Detalhes do Cliente
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" id="modalDetalhesClienteBody">
+                    <!-- Conteúdo será preenchido via JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Detalhes do Produto -->
+    <div class="modal fade" id="modalDetalhesProduto" tabindex="-1" aria-labelledby="modalDetalhesProdutoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalDetalhesProdutoLabel">
+                        <i class="fas fa-cookie-bite"></i> Detalhes do Produto
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body" id="modalDetalhesProdutoBody">
+                    <!-- Conteúdo será preenchido via JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

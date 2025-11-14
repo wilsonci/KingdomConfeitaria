@@ -64,7 +64,8 @@ namespace KingdomConfeitaria
             Response.ContentEncoding = System.Text.Encoding.UTF8;
             Response.Charset = "UTF-8";
             
-            _databaseService = new DatabaseService();
+            // Criar DatabaseService apenas quando necessário (lazy loading)
+            // Não criar aqui para evitar inicialização desnecessária
 
             // Verificar status de login e definir variável JavaScript
             bool estaLogado = Session["ClienteId"] != null && !Session.IsNewSession;
@@ -76,6 +77,12 @@ namespace KingdomConfeitaria
             
             if (!IsPostBack)
             {
+                // Inicializar DatabaseService apenas quando necessário
+                if (_databaseService == null)
+                {
+                    _databaseService = new DatabaseService();
+                }
+                
                 CarregarProdutos();
                 CarregarDatasRetirada();
                 AtualizarCarrinho(); // Atualizar carrinho na primeira carga
@@ -146,17 +153,23 @@ namespace KingdomConfeitaria
 
             if (!string.IsNullOrEmpty(eventTarget))
             {
+                // Inicializar DatabaseService apenas quando necessário
+                if (_databaseService == null)
+                {
+                    _databaseService = new DatabaseService();
+                }
+                
                 if (eventTarget == "AdicionarAoCarrinho")
                 {
                     ProcessarAdicionarAoCarrinho(eventArgument);
                     AtualizarCarrinho();
-                    CarregarProdutos(); // Recarregar para manter estado
+                    // Não recarregar produtos - não é necessário após adicionar ao carrinho
                 }
                 else if (eventTarget == "AdicionarSacoAoCarrinho")
                 {
                     ProcessarAdicionarSacoAoCarrinho(eventArgument);
                     AtualizarCarrinho();
-                    CarregarProdutos(); // Recarregar para manter estado
+                    // Não recarregar produtos - não é necessário após adicionar ao carrinho
                 }
                 else if (eventTarget == "AtualizarQuantidade")
                 {
@@ -179,6 +192,12 @@ namespace KingdomConfeitaria
         {
             try
             {
+                // Garantir que DatabaseService está inicializado
+                if (_databaseService == null)
+                {
+                    _databaseService = new DatabaseService();
+                }
+                
                 var produtos = _databaseService.ObterProdutos();
                 
                 produtosContainer.InnerHtml = "";
@@ -186,13 +205,14 @@ namespace KingdomConfeitaria
                 // Se não houver produtos, mostrar mensagem
                 if (produtos.Count == 0)
                 {
-                    produtosContainer.InnerHtml = "<div class='alert alert-warning'><i class='fas fa-exclamation-triangle'></i> Nenhum produto cadastrado no momento. Por favor, cadastre produtos na área administrativa.</div>";
+                    produtosContainer.InnerHtml = "<div class='alert alert-warning' style='margin: 20px;'><i class='fas fa-exclamation-triangle'></i> Nenhum produto cadastrado no momento. Por favor, cadastre produtos na área administrativa.</div>";
                     return;
                 }
 
                 foreach (var produto in produtos)
                 {
                     string nomeEscapado = produto.Nome.Replace("\"", "\\\"").Replace("'", "\\'");
+                    string descricaoEscapada = (!string.IsNullOrEmpty(produto.Descricao) ? produto.Descricao : "").Replace("\"", "\\\"").Replace("'", "\\'");
                     string precoStr = produto.Preco.ToString("F2").Replace(",", ".");
                     
                     // Extrair tamanho do nome do produto (Pequeno ou Grande)
@@ -206,117 +226,77 @@ namespace KingdomConfeitaria
                         tamanho = "Grande";
                     }
                     
-                    // Campo hidden com tamanho (extraído do nome)
-                    string tamanhosHtml = string.Format(@"<input type='hidden' id='tamanho_{0}' value='{1}' data-preco='{2}' />", produto.Id, tamanho, precoStr);
-
-                    // Se for saco promocional, mostrar seletor de produtos
-                    string seletorProdutosHtml = "";
-                    string onclickSaco = "";
-                    if (produto.EhSacoPromocional && produto.QuantidadeSaco > 0 && !string.IsNullOrEmpty(produto.Produtos))
-                    {
-                        // Parsear JSON de IDs dos produtos permitidos
-                        List<int> produtosIds = new List<int>();
-                        try
-                        {
-                            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
-                            produtosIds = serializer.Deserialize<List<int>>(produto.Produtos);
-                        }
-                        catch
-                        {
-                            // Se falhar ao parsear, tentar como string separada por vírgula
-                            if (!string.IsNullOrEmpty(produto.Produtos))
-                            {
-                                produtosIds = produto.Produtos.Split(',').Select(id => int.Parse(id.Trim())).ToList();
-                            }
-                        }
-                        
-                        if (produtosIds.Count > 0)
-                        {
-                            var produtosDisponiveis = _databaseService.ObterProdutosPorIds(produtosIds);
-                            string opcoesProdutos = "";
-                            foreach (var prod in produtosDisponiveis)
-                            {
-                                string nomeProdEscapado = prod.Nome.Replace("\"", "\\\"").Replace("'", "\\'");
-                                opcoesProdutos += string.Format("<option value='{0}'>{1}</option>", prod.Id, prod.Nome);
-                            }
-                            
-                            seletorProdutosHtml = string.Format(@"
-                                <div class='mb-3 p-3 bg-light rounded'>
-                                    <label class='form-label'><strong>Escolha os {0} biscoitos:</strong></label>
-                                    <div id='seletorProdutos_{1}'>
-                                        {2}
-                                    </div>
-                                    <small class='text-muted'>Total selecionado: <span id='totalSelecionado_{1}'>0</span> de {0}</small>
-                                </div>", 
-                                produto.QuantidadeSaco, 
-                                produto.Id,
-                                GerarSeletoresProdutos(produto.Id, produtosDisponiveis, produto.QuantidadeSaco));
-                            
-                            onclickSaco = string.Format("adicionarSacoAoCarrinho({0}, \"{1}\", {2})", 
-                                produto.Id, nomeEscapado, produto.QuantidadeSaco);
-                        }
-                    }
-
                     // Usar placeholder SVG inline se a imagem não existir
                     string placeholderSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' fill='%23999999' text-anchor='middle' dy='.3em'%3EImagem N%26atilde%3Bo Disponível%3C/text%3E%3C/svg%3E";
                     
                     // Determinar a URL da imagem - usar placeholder se vazio
                     string imagemSrc = !string.IsNullOrEmpty(produto.ImagemUrl) ? produto.ImagemUrl : placeholderSvg;
                     
+                    // Gerar JSON com dados do produto para o modal (usar JavaScriptSerializer para garantir JSON válido)
+                    var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                    
+                    // Se for saco promocional, buscar os produtos permitidos
+                    List<object> produtosPermitidosData = null;
+                    if (produto.EhSacoPromocional && !string.IsNullOrEmpty(produto.Produtos))
+                    {
+                        try
+                        {
+                            var produtosIds = serializer.Deserialize<List<int>>(produto.Produtos);
+                            var produtosPermitidos = _databaseService.ObterProdutosPorIds(produtosIds);
+                            produtosPermitidosData = produtosPermitidos.Select(p => new
+                            {
+                                id = p.Id,
+                                nome = p.Nome,
+                                preco = p.Preco.ToString("F2").Replace(",", ".")
+                            }).Cast<object>().ToList();
+                        }
+                        catch
+                        {
+                            // Se falhar ao parsear, deixar null
+                        }
+                    }
+                    
+                    var produtoData = new
+                    {
+                        id = produto.Id,
+                        nome = produto.Nome,
+                        descricao = produto.Descricao ?? "",
+                        preco = precoStr,
+                        tamanho = tamanho,
+                        imagem = imagemSrc,
+                        ehSaco = produto.EhSacoPromocional,
+                        quantidadeSaco = produto.QuantidadeSaco,
+                        produtos = produto.Produtos ?? "",
+                        produtosPermitidos = produtosPermitidosData
+                    };
+                    string produtoJson = serializer.Serialize(produtoData);
+                    
+                    // Escapar JSON para uso em data attribute (mais seguro que onclick)
+                    string produtoJsonEscapado = System.Web.HttpUtility.HtmlAttributeEncode(produtoJson);
+                    
+                    // HTML do card do carrossel - usar data attribute em vez de onclick com JSON
                     string html = string.Format(@"
-                        <div class='produto-card mb-3'>
-                            <div class='row'>
-                                <div class='col-md-3'>
-                                    <img src='{0}' alt='{1}' class='produto-imagem' data-original-src='{10}' loading='lazy' decoding='async' onerror='this.onerror=null; if(this.src !== ""{9}"") {{ this.src=""{9}""; }}' />
-                                </div>
-                                <div class='col-md-9'>
-                                    <h5>{1}</h5>
-                                    <p class='text-muted'>{2}</p>
-                                    {7}
-                                    {8}
-                                    <div class='row align-items-end'>
-                                        <div class='col-md-4'>
-                                            <label class='form-label'><strong>Quantidade:</strong></label>
-                                            <div class='input-group'>
-                                                <button class='btn btn-outline-secondary' type='button' onclick='diminuirQuantidade({3})'>-</button>
-                                                <input type='number' id='quantidade_{3}' value='1' min='1' class='form-control text-center' />
-                                                <button class='btn btn-outline-secondary' type='button' onclick='aumentarQuantidade({3})'>+</button>
-                                            </div>
-                                        </div>
-                                        <div class='col-md-4'>
-                                            <p class='mb-0'><strong>Preço Unitário:</strong></p>
-                                            <p class='h5 text-primary' id='precoUnitario_{3}'>R$ {6}</p>
-                                        </div>
-                                        <div class='col-md-4'>
-                                            <button class='btn btn-success w-100' type='button' 
-                                                onclick='{9}'>
-                                                <i class='fas fa-cart-plus'></i> Adicionar ao Pedido
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class='produto-card-carrossel' data-produto-id='{0}' data-produto-json='{9}' onclick='abrirModalProdutoFromCard(this)'>
+                            <img src='{5}' alt='{1}' class='produto-imagem-carrossel' loading='lazy' decoding='async' onerror='this.onerror=null; if(this.src !== ""{6}"") {{ this.src=""{6}""; }}' />
+                            <div class='produto-nome-carrossel'>{1}</div>
+                            <div class='produto-preco-carrossel'>R$ {7}</div>
                         </div>",
-                        imagemSrc,
-                        produto.Nome,
-                        produto.Descricao,
                         produto.Id,
-                        nomeEscapado,
+                        System.Web.HttpUtility.HtmlEncode(produto.Nome),
+                        System.Web.HttpUtility.HtmlEncode(produto.Descricao ?? ""),
                         precoStr,
-                        produto.Preco.ToString("F2"),
-                        tamanhosHtml,
-                        seletorProdutosHtml,
-                        !string.IsNullOrEmpty(onclickSaco) 
-                            ? onclickSaco
-                            : "adicionarAoCarrinho(" + produto.Id + ", \"" + nomeEscapado + "\", document.getElementById(\"tamanho_" + produto.Id + "\").value, document.getElementById(\"quantidade_" + produto.Id + "\").value)",
+                        tamanho,
+                        imagemSrc,
                         placeholderSvg,
-                        !string.IsNullOrEmpty(produto.ImagemUrl) ? produto.ImagemUrl : "");
+                        produto.Preco.ToString("F2"),
+                        produtoJson,
+                        produtoJsonEscapado);
                     produtosContainer.InnerHtml += html;
                 }
             }
             catch (Exception ex)
             {
-                produtosContainer.InnerHtml = string.Format("<div class='alert alert-danger'>Erro ao carregar produtos: {0}</div>", System.Web.HttpUtility.HtmlEncode(ex.Message));
+                produtosContainer.InnerHtml = string.Format("<div class='alert alert-danger' style='margin: 20px;'>Erro ao carregar produtos: {0}</div>", System.Web.HttpUtility.HtmlEncode(ex.Message));
             }
         }
 
@@ -348,10 +328,46 @@ namespace KingdomConfeitaria
             var ano = DateTime.Now.Year;
             var segundas = DateHelper.ObterSegundasAteNatal(ano);
             
-            ddlDataRetirada.Items.Clear();
-            foreach (var data in segundas)
+            var radioGroup = FindControl("radioGroupDatas") as System.Web.UI.HtmlControls.HtmlGenericControl;
+            if (radioGroup != null)
             {
-                ddlDataRetirada.Items.Add(new ListItem(data.ToString("dd/MM/yyyy - dddd"), data.ToString("yyyy-MM-dd")));
+                radioGroup.InnerHtml = "";
+                
+                foreach (var data in segundas)
+                {
+                    string dataFormatada = data.ToString("yyyy-MM-dd");
+                    string dataExibicao = data.ToString("dd/MM/yyyy");
+                    string diaSemana = data.ToString("dddd", new System.Globalization.CultureInfo("pt-BR"));
+                    string diaSemanaCapitalizado = char.ToUpper(diaSemana[0]) + diaSemana.Substring(1);
+                    
+                    // Ícone baseado no dia da semana
+                    string icone = "fa-calendar";
+                    if (data.Date == DateTime.Today)
+                    {
+                        icone = "fa-star";
+                    }
+                    else if (data.Date == DateTime.Today.AddDays(1))
+                    {
+                        icone = "fa-clock";
+                    }
+                    
+                    string radioHtml = string.Format(@"
+                        <div class='radio-item-data'>
+                            <input type='radio' id='radioData_{0}' name='dataRetirada' value='{1}' onchange='atualizarDataRetirada(this.value);' />
+                            <label for='radioData_{0}'>
+                                <i class='fas {2}'></i>
+                                <span><strong>{3}</strong> - {4}</span>
+                            </label>
+                        </div>",
+                        dataFormatada.Replace("-", ""),
+                        dataFormatada,
+                        icone,
+                        dataExibicao,
+                        diaSemanaCapitalizado
+                    );
+                    
+                    radioGroup.InnerHtml += radioHtml;
+                }
             }
         }
 
@@ -548,35 +564,59 @@ namespace KingdomConfeitaria
                 carrinhoContainer.InnerHtml = "<p class='text-muted'>Seu carrinho está vazio</p>";
                 totalContainer.Style["display"] = "none";
                 btnFazerReserva.Enabled = false;
+                
+                // Atualizar carrinho flutuante mobile e badge do header
+                string scriptVazio = @"
+                    var totalFlutuante = document.getElementById('totalFlutuante');
+                    var qtdItensFlutuante = document.getElementById('qtdItensFlutuante');
+                    var btnFazerReservaFlutuante = document.getElementById('btnFazerReservaFlutuante');
+                    var carrinhoHeader = document.getElementById('carrinhoHeader');
+                    var carrinhoBadge = document.getElementById('carrinhoBadge');
+                    if (totalFlutuante) totalFlutuante.style.display = 'none';
+                    if (qtdItensFlutuante) qtdItensFlutuante.textContent = '0';
+                    if (btnFazerReservaFlutuante) btnFazerReservaFlutuante.disabled = true;
+                    if (carrinhoHeader) carrinhoHeader.classList.remove('com-itens');
+                    if (carrinhoBadge) {
+                        carrinhoBadge.textContent = '0';
+                        carrinhoBadge.classList.add('oculto');
+                    }
+                ";
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "AtualizarCarrinhoFlutuanteVazio", scriptVazio, true);
                 return;
             }
 
             string html = "";
+            string htmlMobile = "";
             decimal total = 0;
+            int totalItens = 0;
 
             foreach (var item in Carrinho)
             {
                 total += item.Subtotal;
-                html += string.Format(@"
+                totalItens += item.Quantidade;
+                
+                // HTML para desktop e mobile (mesmo formato)
+                string itemHtml = string.Format(@"
                     <div class='item-carrinho'>
-                        <div class='d-flex justify-content-between align-items-center'>
-                            <div>
-                                <strong>{0}</strong><br />
-                                <small class='text-muted'>{1} - Qtd: {2}</small>
-                            </div>
-                            <div class='text-end'>
-                                <strong>R$ {3}</strong><br />
-                                <button class='btn btn-sm btn-danger' onclick='removerItem({4}, ""{1}"")'>
-                                    <i class='fas fa-trash'></i>
-                                </button>
-                            </div>
+                        <div class='item-carrinho-info'>
+                            <div class='item-carrinho-nome'>{0}</div>
+                            <div class='item-carrinho-detalhes'>{1} - Qtd: {2}</div>
+                        </div>
+                        <div class='item-carrinho-acoes'>
+                            <div class='item-carrinho-preco'>R$ {3}</div>
+                            <button class='btn-remover-item' onclick='removerItem({4}, ""{1}"")' title='Remover'>
+                                <i class='fas fa-trash'></i>
+                            </button>
                         </div>
                     </div>",
-                    item.NomeProduto,
-                    item.Tamanho,
+                    System.Web.HttpUtility.HtmlEncode(item.NomeProduto),
+                    System.Web.HttpUtility.HtmlEncode(item.Tamanho),
                     item.Quantidade,
                     item.Subtotal.ToString("F2"),
                     item.ProdutoId);
+                
+                html += itemHtml;
+                htmlMobile += itemHtml;
             }
 
             carrinhoContainer.InnerHtml = html;
@@ -587,13 +627,50 @@ namespace KingdomConfeitaria
             if (Carrinho.Count > 0)
             {
                 btnFazerReserva.Enabled = true;
-                // Adicionar data attribute para indicar que está habilitado
                 btnFazerReserva.Attributes["data-enabled"] = "true";
             }
             else
             {
                 btnFazerReserva.Enabled = false;
             }
+            
+            // Atualizar carrinho flutuante mobile e badge do header
+            string script = string.Format(@"
+                var totalFlutuante = document.getElementById('totalFlutuante');
+                var totalPedidoFlutuante = document.getElementById('totalPedidoFlutuante');
+                var qtdItensFlutuante = document.getElementById('qtdItensFlutuante');
+                var btnFazerReservaFlutuante = document.getElementById('btnFazerReservaFlutuante');
+                var modalCarrinhoBody = document.getElementById('modalCarrinhoBody');
+                var carrinhoHeader = document.getElementById('carrinhoHeader');
+                var carrinhoBadge = document.getElementById('carrinhoBadge');
+                
+                if (totalFlutuante) {{
+                    totalFlutuante.style.display = 'block';
+                }}
+                if (totalPedidoFlutuante) {{
+                    totalPedidoFlutuante.textContent = '{0}';
+                }}
+                if (qtdItensFlutuante) {{
+                    qtdItensFlutuante.textContent = '{1}';
+                }}
+                if (btnFazerReservaFlutuante) {{
+                    btnFazerReservaFlutuante.disabled = false;
+                }}
+                if (modalCarrinhoBody) {{
+                    modalCarrinhoBody.innerHTML = `{2}`;
+                }}
+                if (carrinhoHeader) {{
+                    carrinhoHeader.classList.add('com-itens');
+                }}
+                if (carrinhoBadge) {{
+                    carrinhoBadge.textContent = '{1}';
+                    carrinhoBadge.classList.remove('oculto');
+                }}
+            ",
+            total.ToString("F2"),
+            totalItens,
+            htmlMobile.Replace("`", "\\`").Replace("$", "\\$"));
+            Page.ClientScript.RegisterStartupScript(this.GetType(), "AtualizarCarrinhoFlutuante", script, true);
         }
 
         protected void btnFazerReserva_Click(object sender, EventArgs e)
@@ -793,7 +870,16 @@ namespace KingdomConfeitaria
                 return;
             }
 
-            if (ddlDataRetirada.SelectedValue == null || string.IsNullOrEmpty(ddlDataRetirada.SelectedValue))
+            // Obter data selecionada do radiobutton ou hidden field
+            var hdnDataRetiradaControl = FindControl("hdnDataRetirada") as HiddenField;
+            string dataRetiradaSelecionada = hdnDataRetiradaControl != null ? hdnDataRetiradaControl.Value : "";
+            if (string.IsNullOrEmpty(dataRetiradaSelecionada))
+            {
+                // Tentar obter do formulário
+                dataRetiradaSelecionada = Request.Form["dataRetirada"];
+            }
+            
+            if (string.IsNullOrEmpty(dataRetiradaSelecionada))
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "DataVazia", 
                     $"alert('{EscapeJavaScript("Por favor, selecione uma data de retirada.")}');", true);
@@ -832,6 +918,12 @@ namespace KingdomConfeitaria
             {
                 try
                 {
+                    // Garantir que DatabaseService está inicializado
+                    if (_databaseService == null)
+                    {
+                        _databaseService = new DatabaseService();
+                    }
+                    
                     // Buscar cliente por email ou telefone
                     cliente = _databaseService.ObterClientePorEmail(emailFormatado);
                     
@@ -879,6 +971,12 @@ namespace KingdomConfeitaria
                         // Buscar cliente atualizado para garantir que IsAdmin está correto
                         cliente = _databaseService.ObterClientePorId(cliente.Id);
                         
+                        // Validar se o cliente foi encontrado
+                        if (cliente == null)
+                        {
+                            throw new Exception("Falha ao buscar cliente após atualização. ID: " + clienteId);
+                        }
+                        
                         Session["ClienteId"] = cliente.Id;
                         Session["ClienteNome"] = cliente.Nome;
                         Session["ClienteEmail"] = cliente.Email;
@@ -899,55 +997,142 @@ namespace KingdomConfeitaria
                     else
                     {
                         // Cliente não existe - criar novo cliente e fazer login
-                        cliente = new Cliente
+                        // Mas antes, tentar buscar novamente (pode ter sido criado em outra thread)
+                        cliente = _databaseService.ObterClientePorEmail(emailFormatado);
+                        if (cliente == null && !string.IsNullOrEmpty(telefoneFormatado))
                         {
-                            Nome = nome.Trim(),
-                            Email = emailFormatado,
-                            Telefone = telefoneFormatado,
-                            TemWhatsApp = !string.IsNullOrEmpty(telefoneFormatado),
-                            Provider = "Email",
-                            EmailConfirmado = false,
-                            WhatsAppConfirmado = false,
-                            IsAdmin = false, // Será definido automaticamente pelo CriarOuAtualizarCliente se o email for de administrador
-                            DataCadastro = DateTime.Now
-                        };
-                        
-                        clienteId = _databaseService.CriarOuAtualizarCliente(cliente);
-                        
-                        // Registrar log de cadastro
-                        LogService.RegistrarInsercao(
-                            $"Cliente ID: {clienteId}",
-                            "Cliente",
-                            "Default.aspx",
-                            $"Cadastro automático durante reserva - Nome: {cliente.Nome}, Email: {cliente.Email}, Telefone: {cliente.Telefone ?? "N/A"}"
-                        );
-                        
-                        // Buscar cliente atualizado para obter IsAdmin correto
-                        cliente = _databaseService.ObterClientePorId(clienteId);
-                        
-                        // Fazer login automático
-                        Session["ClienteId"] = clienteId;
-                        Session["ClienteNome"] = cliente.Nome;
-                        Session["ClienteEmail"] = cliente.Email;
-                        Session["IsAdmin"] = cliente != null ? cliente.IsAdmin : false;
-                        if (!string.IsNullOrEmpty(cliente.Telefone))
-                        {
-                            Session["ClienteTelefone"] = cliente.Telefone;
+                            cliente = _databaseService.ObterClientePorTelefone(telefoneFormatado);
                         }
-                        Session["SessionStartTime"] = DateTime.Now;
                         
-                        // Registrar log de login após cadastro
-                        string usuarioLogCadastro = LogService.ObterUsuarioAtual(Session);
-                        LogService.RegistrarLogin(usuarioLogCadastro, "Default.aspx", $"Login automático após cadastro durante reserva - Email: {cliente.Email}");
-                        
-                        // Atualizar links do header após login automático
-                        VerificarLogin();
+                        if (cliente != null)
+                        {
+                            // Cliente foi encontrado na segunda tentativa - fazer login
+                            clienteId = cliente.Id;
+                            cliente.UltimoAcesso = DateTime.Now;
+                            _databaseService.CriarOuAtualizarCliente(cliente);
+                            
+                            // Buscar cliente atualizado
+                            cliente = _databaseService.ObterClientePorId(cliente.Id);
+                            if (cliente == null)
+                            {
+                                throw new Exception("Falha ao buscar cliente após atualização. ID: " + clienteId);
+                            }
+                            
+                            Session["ClienteId"] = cliente.Id;
+                            Session["ClienteNome"] = cliente.Nome;
+                            Session["ClienteEmail"] = cliente.Email;
+                            Session["IsAdmin"] = cliente.IsAdmin;
+                            if (!string.IsNullOrEmpty(cliente.Telefone))
+                            {
+                                Session["ClienteTelefone"] = cliente.Telefone;
+                            }
+                            Session["SessionStartTime"] = DateTime.Now;
+                            
+                            string usuarioLog = LogService.ObterUsuarioAtual(Session);
+                            LogService.RegistrarLogin(usuarioLog, "Default.aspx", $"Login automático durante reserva (cliente encontrado na segunda tentativa) - Email: {cliente.Email}");
+                            
+                            VerificarLogin();
+                        }
+                        else
+                        {
+                            // Cliente realmente não existe - criar novo
+                            cliente = new Cliente
+                            {
+                                Nome = nome.Trim(),
+                                Email = emailFormatado,
+                                Telefone = telefoneFormatado,
+                                TemWhatsApp = !string.IsNullOrEmpty(telefoneFormatado),
+                                Provider = "Email",
+                                EmailConfirmado = false,
+                                WhatsAppConfirmado = false,
+                                IsAdmin = false, // Será definido automaticamente pelo CriarOuAtualizarCliente se o email for de administrador
+                                DataCadastro = DateTime.Now
+                            };
+                            
+                            clienteId = _databaseService.CriarOuAtualizarCliente(cliente);
+                            
+                            // Validar se o clienteId foi retornado corretamente
+                            if (clienteId <= 0)
+                            {
+                                throw new Exception("Falha ao criar cliente. ID retornado foi inválido: " + clienteId);
+                            }
+                            
+                            // Registrar log de cadastro
+                            LogService.RegistrarInsercao(
+                                $"Cliente ID: {clienteId}",
+                                "Cliente",
+                                "Default.aspx",
+                                $"Cadastro automático durante reserva - Nome: {cliente.Nome}, Email: {cliente.Email}, Telefone: {cliente.Telefone ?? "N/A"}"
+                            );
+                            
+                            // Buscar cliente atualizado para obter IsAdmin correto
+                            cliente = _databaseService.ObterClientePorId(clienteId);
+                            
+                            // Validar se o cliente foi encontrado
+                            if (cliente == null)
+                            {
+                                throw new Exception("Falha ao buscar cliente após criação. ID: " + clienteId);
+                            }
+                            
+                            // Fazer login automático
+                            Session["ClienteId"] = clienteId;
+                            Session["ClienteNome"] = cliente.Nome;
+                            Session["ClienteEmail"] = cliente.Email;
+                            Session["IsAdmin"] = cliente.IsAdmin;
+                            if (!string.IsNullOrEmpty(cliente.Telefone))
+                            {
+                                Session["ClienteTelefone"] = cliente.Telefone;
+                            }
+                            Session["SessionStartTime"] = DateTime.Now;
+                            
+                            // Registrar log de login após cadastro
+                            string usuarioLogCadastro = LogService.ObterUsuarioAtual(Session);
+                            LogService.RegistrarLogin(usuarioLogCadastro, "Default.aspx", $"Login automático após cadastro durante reserva - Email: {cliente.Email}");
+                            
+                            // Atualizar links do header após login automático
+                            VerificarLogin();
+                        }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    // Logar o erro para debug
+                    try
+                    {
+                        string detalhesErro = ex != null ? ex.Message : "Erro desconhecido";
+                        if (ex != null && ex.InnerException != null)
+                        {
+                            detalhesErro += " | InnerException: " + ex.InnerException.Message;
+                        }
+                        LogService.Registrar("ERROR", "Sistema", "Login Automático", "Default.aspx", $"Erro: {detalhesErro} | StackTrace: {ex?.StackTrace ?? "N/A"}");
+                    }
+                    catch
+                    {
+                        // Se falhar ao logar, continuar
+                    }
+                    
+                    // Mostrar mensagem de erro mais informativa
+                    string mensagemErro = "Erro ao processar login automático. Por favor, tente novamente.";
+                    
+                    // Verificar se é um erro específico conhecido
+                    if (ex != null && !string.IsNullOrEmpty(ex.Message))
+                    {
+                        // Se for erro de email/telefone já cadastrado, mostrar mensagem mais amigável
+                        if (ex.Message.Contains("já está cadastrado") || ex.Message.Contains("já existe"))
+                        {
+                            mensagemErro = ex.Message + " Por favor, faça login com suas credenciais.";
+                        }
+                        else
+                        {
+                            // Em desenvolvimento, pode mostrar mais detalhes
+                            #if DEBUG
+                            mensagemErro += " Detalhes: " + ex.Message;
+                            #endif
+                        }
+                    }
+                    
                     Page.ClientScript.RegisterStartupScript(this.GetType(), "ErroLogin", 
-                        $"alert('{EscapeJavaScript("Erro ao processar login automático. Por favor, tente novamente.")}');", true);
+                        $"alert('{EscapeJavaScript(mensagemErro)}');", true);
                     return;
                 }
             }
@@ -1161,39 +1346,8 @@ namespace KingdomConfeitaria
                 // Atualizar menu após reserva
                 VerificarLogin();
                 
-                // Fechar modal de reserva e mostrar modal de sucesso
-                // Depois redirecionar para Minhas Reservas
-                string scriptFecharEAbrir = @"
-                    setTimeout(function() {
-                        if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
-                            KingdomConfeitaria.Modal.hide('modalReserva');
-                            setTimeout(function() {
-                                KingdomConfeitaria.Modal.show('modalSucesso');
-                                
-                                // Contador de redirecionamento
-                                var contador = 3;
-                                var contadorElement = document.getElementById('contadorRedirecionamento');
-                                var intervalo = setInterval(function() {
-                                    contador--;
-                                    if (contadorElement) {
-                                        contadorElement.textContent = contador;
-                                    }
-                                    if (contador <= 0) {
-                                        clearInterval(intervalo);
-                                        // Redirecionar para Minhas Reservas
-                                        window.location.href = 'MinhasReservas.aspx';
-                                    }
-                                }, 1000);
-                            }, 300);
-                        } else {
-                            // Fallback: redirecionar diretamente se modal não estiver disponível
-                            setTimeout(function() {
-                                window.location.href = 'MinhasReservas.aspx';
-                            }, 500);
-                        }
-                    }, 100);";
-                
-                Page.ClientScript.RegisterStartupScript(this.GetType(), "FecharEAbrirModal", scriptFecharEAbrir, true);
+                // Redirecionar diretamente para Minhas Reservas
+                Response.Redirect("MinhasReservas.aspx", false);
             }
             catch (Exception ex)
             {
@@ -1430,7 +1584,7 @@ namespace KingdomConfeitaria
                         // Usuário logado
                         string nomeCliente = Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "";
                         clienteNome.InnerText = "Olá, " + System.Web.HttpUtility.HtmlEncode(nomeCliente);
-                        clienteNome.Style["display"] = "inline";
+                        clienteNome.Style["display"] = "block";
                         
                         // Ocultar link de login, mostrar outros
                         linkLogin.Style["display"] = "none";

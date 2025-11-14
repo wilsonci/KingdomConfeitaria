@@ -55,7 +55,7 @@ namespace KingdomConfeitaria
                 if (clienteNome != null)
                 {
                     clienteNome.InnerText = "Olá, " + (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "");
-                    clienteNome.Style["display"] = "inline";
+                    clienteNome.Style["display"] = "block";
                 }
                 if (linkLogin != null) linkLogin.Style["display"] = "none";
                 if (linkMinhasReservas != null) linkMinhasReservas.Style["display"] = "inline";
@@ -92,11 +92,13 @@ namespace KingdomConfeitaria
             {
                 CarregarResumo();
                 CarregarProdutos();
+                CarregarClientes();
                 CarregarReservas();
                 CarregarListaProdutosPermitidos();
                 CarregarLogs();
                 CarregarStatusReserva();
                 CarregarDropdownStatus();
+                CarregarConfiguracoes();
             }
             
             // Verificar se é uma requisição para editar ou excluir status
@@ -275,7 +277,7 @@ namespace KingdomConfeitaria
                 string html = $@"
                     <div class='row mb-4'>
                         <div class='col-md-3'>
-                            <div class='card text-white bg-primary'>
+                            <div class='card text-white bg-primary' style='cursor: pointer;' onclick='navegarParaAba(""clientes-tab"")'>
                                 <div class='card-body'>
                                     <h5 class='card-title'><i class='fas fa-users'></i> Clientes</h5>
                                     <h2 class='mb-0'>{totalClientes}</h2>
@@ -284,7 +286,7 @@ namespace KingdomConfeitaria
                             </div>
                         </div>
                         <div class='col-md-3'>
-                            <div class='card text-white bg-info'>
+                            <div class='card text-white bg-info' style='cursor: pointer;' onclick='navegarParaAba(""clientes-tab"")'>
                                 <div class='card-body'>
                                     <h5 class='card-title'><i class='fas fa-user-shield'></i> Administradores</h5>
                                     <h2 class='mb-0'>{totalAdmins}</h2>
@@ -293,7 +295,7 @@ namespace KingdomConfeitaria
                             </div>
                         </div>
                         <div class='col-md-3'>
-                            <div class='card text-white bg-success'>
+                            <div class='card text-white bg-success' style='cursor: pointer;' onclick='navegarParaAba(""reservas-tab"")'>
                                 <div class='card-body'>
                                     <h5 class='card-title'><i class='fas fa-clipboard-list'></i> Reservas</h5>
                                     <h2 class='mb-0'>{totalReservas}</h2>
@@ -320,23 +322,23 @@ namespace KingdomConfeitaria
                                 </div>
                                 <div class='card-body'>
                                     <ul class='list-group list-group-flush'>
-                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center' style='cursor: pointer;' onclick='navegarParaAba(""reservas-tab"")'>
                                             <span class='status-badge status-aberta'>Aberta</span>
                                             <span class='badge bg-primary rounded-pill'>{reservasAbertas}</span>
                                         </li>
-                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center' style='cursor: pointer;' onclick='navegarParaAba(""reservas-tab"")'>
                                             <span class='status-badge status-em-produção'>Em Produção</span>
                                             <span class='badge bg-primary rounded-pill'>{reservasEmProducao}</span>
                                         </li>
-                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center' style='cursor: pointer;' onclick='navegarParaAba(""reservas-tab"")'>
                                             <span class='status-badge status-produção-pronta'>Produção Pronta</span>
                                             <span class='badge bg-primary rounded-pill'>{reservasProducaoPronta}</span>
                                         </li>
-                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center' style='cursor: pointer;' onclick='navegarParaAba(""reservas-tab"")'>
                                             <span class='status-badge status-entregue'>Entregue</span>
                                             <span class='badge bg-primary rounded-pill'>{reservasEntregues}</span>
                                         </li>
-                                        <li class='list-group-item d-flex justify-content-between align-items-center'>
+                                        <li class='list-group-item d-flex justify-content-between align-items-center' style='cursor: pointer;' onclick='navegarParaAba(""reservas-tab"")'>
                                             <span class='status-badge status-cancelado'>Cancelado</span>
                                             <span class='badge bg-primary rounded-pill'>{reservasCanceladas}</span>
                                         </li>
@@ -376,12 +378,12 @@ namespace KingdomConfeitaria
                         <div class='card-body'>
                             <div class='row'>
                                 <div class='col-md-6'>
-                                    <p><strong>Clientes Normais:</strong> {totalClientesNormais}</p>
-                                    <p><strong>Administradores:</strong> {totalAdmins}</p>
+                                    <p><strong>Clientes Normais:</strong> <span style='cursor: pointer; color: #007bff; text-decoration: underline;' onclick='navegarParaAba(""clientes-tab"")'>{totalClientesNormais}</span></p>
+                                    <p><strong>Administradores:</strong> <span style='cursor: pointer; color: #007bff; text-decoration: underline;' onclick='navegarParaAba(""clientes-tab"")'>{totalAdmins}</span></p>
                                 </div>
                                 <div class='col-md-6'>
-                                    <p><strong>Reservas Ativas:</strong> {totalReservas - reservasCanceladas}</p>
-                                    <p><strong>Reservas Canceladas:</strong> {reservasCanceladas}</p>
+                                    <p><strong>Reservas Ativas:</strong> <span style='cursor: pointer; color: #007bff; text-decoration: underline;' onclick='navegarParaAba(""reservas-tab"")'>{totalReservas - reservasCanceladas}</span></p>
+                                    <p><strong>Reservas Canceladas:</strong> <span style='cursor: pointer; color: #007bff; text-decoration: underline;' onclick='navegarParaAba(""reservas-tab"")'>{reservasCanceladas}</span></p>
                                 </div>
                             </div>
                         </div>
@@ -401,6 +403,59 @@ namespace KingdomConfeitaria
             catch (Exception ex)
             {
                 resumoContainer.InnerHtml = $"<div class='alert alert-danger'>Erro ao carregar resumo: {System.Web.HttpUtility.HtmlEncode(ex.Message)}</div>";
+            }
+        }
+
+        private void CarregarClientes()
+        {
+            try
+            {
+                var clientesContainer = FindControl("clientesContainer") as System.Web.UI.HtmlControls.HtmlGenericControl;
+                if (clientesContainer == null) return;
+
+                var clientes = _databaseService.ObterTodosClientes();
+                clientesContainer.InnerHtml = "";
+
+                if (clientes.Count == 0)
+                {
+                    clientesContainer.InnerHtml = "<div class='alert alert-info'>Nenhum cliente cadastrado ainda.</div>";
+                    return;
+                }
+
+                // Ordenar por nome
+                clientes = clientes.OrderBy(c => c.Nome).ToList();
+
+                string html = "<div class='table-responsive'><table class='table table-striped table-hover'><thead class='table-dark'><tr><th>ID</th><th>Nome</th><th>Email</th><th>Telefone</th><th>Tipo</th><th>Último Acesso</th><th>Data Cadastro</th><th>Ações</th></tr></thead><tbody>";
+
+                foreach (var cliente in clientes)
+                {
+                    string tipo = cliente.IsAdmin ? "<span class='badge bg-danger'>Administrador</span>" : "<span class='badge bg-primary'>Cliente</span>";
+                    string ultimoAcesso = cliente.UltimoAcesso.HasValue ? cliente.UltimoAcesso.Value.ToString("dd/MM/yyyy HH:mm") : "Nunca";
+                    string dataCadastro = cliente.DataCadastro.ToString("dd/MM/yyyy HH:mm");
+                    string telefone = !string.IsNullOrEmpty(cliente.Telefone) ? cliente.Telefone : "-";
+
+                    html += $@"
+                        <tr>
+                            <td>{cliente.Id}</td>
+                            <td>{System.Web.HttpUtility.HtmlEncode(cliente.Nome)}</td>
+                            <td>{System.Web.HttpUtility.HtmlEncode(cliente.Email ?? "-")}</td>
+                            <td>{System.Web.HttpUtility.HtmlEncode(telefone)}</td>
+                            <td>{tipo}</td>
+                            <td>{ultimoAcesso}</td>
+                            <td>{dataCadastro}</td>
+                        </tr>";
+                }
+
+                html += "</tbody></table></div>";
+                clientesContainer.InnerHtml = html;
+            }
+            catch (Exception ex)
+            {
+                var clientesContainer = FindControl("clientesContainer") as System.Web.UI.HtmlControls.HtmlGenericControl;
+                if (clientesContainer != null)
+                {
+                    clientesContainer.InnerHtml = string.Format("<div class='alert alert-danger'>Erro ao carregar clientes: {0}</div>", System.Web.HttpUtility.HtmlEncode(ex.Message));
+                }
             }
         }
 
@@ -445,6 +500,10 @@ namespace KingdomConfeitaria
                                     <p><small class='text-muted'>Ordem: {5}</small></p>
                                 </div>
                                 <div class='col-md-2 text-end'>
+                                    <button type='button' class='btn btn-info btn-sm mb-2' 
+                                        onclick='mostrarDetalhesProduto({6})' data-produto-id='{6}'>
+                                        <i class='fas fa-info-circle'></i> Detalhes
+                                    </button>
                                     <button type='button' class='btn btn-primary btn-sm mb-2' 
                                         onclick='editarProduto({6}, ""{7}"", ""{8}"", {9}, ""{0}"", {5}, {10}, ""{11}"", ""{12}"", {13}, {14}, ""{15}"")'>
                                         <i class='fas fa-edit'></i> Editar
@@ -506,11 +565,54 @@ namespace KingdomConfeitaria
                     return;
                 }
                 
-                if (string.IsNullOrWhiteSpace(txtImagemUrl.Text))
+                // Processar upload de imagem se houver
+                string imagemUrl = txtImagemUrl.Text.Trim();
+                
+                var fileUploadImagem = FindControl("fileUploadImagem") as FileUpload;
+                if (fileUploadImagem != null && fileUploadImagem.HasFile)
                 {
-                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
-                        "alert('Por favor, preencha a URL da imagem do produto.');", true);
-                    return;
+                    try
+                    {
+                        // Validar imagem
+                        if (!ImageService.ValidarImagem(fileUploadImagem.PostedFile))
+                        {
+                            Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                                "alert('Imagem inválida. Verifique o formato e tamanho (mínimo 200x200px, máximo 5MB).');", true);
+                            return;
+                        }
+                        
+                        // Processar upload
+                        imagemUrl = ImageService.ProcessarUploadImagem(fileUploadImagem.PostedFile, produtoId);
+                        
+                        if (string.IsNullOrEmpty(imagemUrl))
+                        {
+                            Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                                "alert('Erro ao fazer upload da imagem. Tente novamente.');", true);
+                            return;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                            $"alert('Erro ao processar imagem: {ex.Message}');", true);
+                        return;
+                    }
+                }
+                else if (string.IsNullOrWhiteSpace(imagemUrl))
+                {
+                    // Se não tem upload nem URL, manter a URL atual do produto
+                    var produtoAtual = _databaseService.ObterProdutoPorId(produtoId);
+                    if (produtoAtual != null)
+                    {
+                        imagemUrl = produtoAtual.ImagemUrl ?? "";
+                    }
+                    
+                    if (string.IsNullOrWhiteSpace(imagemUrl))
+                    {
+                        Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                            "alert('Por favor, faça upload de uma imagem ou informe a URL da imagem.');", true);
+                        return;
+                    }
                 }
                 
                 // Validar e parsear quantidade do saco
@@ -539,7 +641,7 @@ namespace KingdomConfeitaria
                     Nome = txtNomeProduto.Text.Trim(),
                     Descricao = txtDescricao.Text.Trim(),
                     Preco = preco,
-                    ImagemUrl = txtImagemUrl.Text.Trim(),
+                    ImagemUrl = imagemUrl,
                     Ordem = int.Parse(txtOrdem.Text ?? "0"),
                     Ativo = chkAtivo.Checked,
                     EhSacoPromocional = chkEhSacoPromocional.Checked,
@@ -617,49 +719,137 @@ namespace KingdomConfeitaria
                     return;
                 }
                 
-                if (string.IsNullOrWhiteSpace(txtNovaImagemUrl.Text))
+                // Processar upload de imagem se houver
+                string imagemUrl = txtNovaImagemUrl.Text.Trim();
+                Produto novoProduto = null;
+                bool produtoCriadoComUpload = false;
+                
+                var fileUploadNovaImagem = FindControl("fileUploadNovaImagem") as FileUpload;
+                if (fileUploadNovaImagem != null && fileUploadNovaImagem.HasFile)
+                {
+                    try
+                    {
+                        // Validar imagem
+                        if (!ImageService.ValidarImagem(fileUploadNovaImagem.PostedFile))
+                        {
+                            Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                                "alert('Imagem inválida. Verifique o formato e tamanho (mínimo 200x200px, máximo 5MB).');", true);
+                            return;
+                        }
+                        
+                        // Validar e parsear quantidade do saco
+                        int quantidadeSaco = 0;
+                        if (chkNovoEhSacoPromocional.Checked)
+                        {
+                            if (!string.IsNullOrEmpty(txtNovaQuantidadeSaco.Text))
+                            {
+                                if (!int.TryParse(txtNovaQuantidadeSaco.Text, out quantidadeSaco))
+                                {
+                                    quantidadeSaco = 0;
+                                }
+                            }
+                        }
+                        
+                        // Obter produtos permitidos apenas se for saco promocional
+                        string produtosPermitidos = null;
+                        if (chkNovoEhSacoPromocional.Checked)
+                        {
+                            produtosPermitidos = ObterProdutosPermitidosJson(lstNovosProdutosPermitidos);
+                        }
+                        
+                        // Criar produto temporário para obter ID (será atualizado depois)
+                        var produtoTemp = new Produto
+                        {
+                            Nome = txtNovoNome.Text.Trim(),
+                            Descricao = txtNovaDescricao.Text.Trim(),
+                            Preco = preco,
+                            ImagemUrl = "",
+                            Ativo = true,
+                            Ordem = int.Parse(txtNovaOrdem.Text ?? "0"),
+                            EhSacoPromocional = chkNovoEhSacoPromocional.Checked,
+                            QuantidadeSaco = quantidadeSaco,
+                            Produtos = produtosPermitidos,
+                            ReservavelAte = !string.IsNullOrEmpty(txtNovoReservavelAte.Text) ? DateTime.Parse(txtNovoReservavelAte.Text) : (DateTime?)null,
+                            VendivelAte = !string.IsNullOrEmpty(txtNovoVendivelAte.Text) ? DateTime.Parse(txtNovoVendivelAte.Text) : (DateTime?)null
+                        };
+                        
+                        int produtoIdTemp = _databaseService.AdicionarProduto(produtoTemp);
+                        
+                        // Processar upload com o ID do produto
+                        imagemUrl = ImageService.ProcessarUploadImagem(fileUploadNovaImagem.PostedFile, produtoIdTemp);
+                        
+                        if (string.IsNullOrEmpty(imagemUrl))
+                        {
+                            // Se falhar o upload, excluir produto temporário
+                            _databaseService.ExcluirProduto(produtoIdTemp);
+                            Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                                "alert('Erro ao fazer upload da imagem. Tente novamente.');", true);
+                            return;
+                        }
+                        
+                        // Atualizar produto com a URL da imagem
+                        produtoTemp.Id = produtoIdTemp;
+                        produtoTemp.ImagemUrl = imagemUrl;
+                        _databaseService.AtualizarProduto(produtoTemp);
+                        
+                        novoProduto = produtoTemp;
+                        produtoCriadoComUpload = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                            $"alert('Erro ao processar imagem: {ex.Message}');", true);
+                        return;
+                    }
+                }
+                else if (string.IsNullOrWhiteSpace(imagemUrl))
                 {
                     Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
-                        "alert('Por favor, preencha a URL da imagem do produto.');", true);
+                        "alert('Por favor, faça upload de uma imagem ou informe a URL da imagem.');", true);
                     return;
                 }
                 
-                // Validar e parsear quantidade do saco
-                int quantidadeSaco = 0;
-                if (chkNovoEhSacoPromocional.Checked)
+                // Se o produto não foi criado com upload, criar normalmente
+                if (!produtoCriadoComUpload)
                 {
-                    if (!string.IsNullOrEmpty(txtNovaQuantidadeSaco.Text))
+                    // Validar e parsear quantidade do saco
+                    int quantidadeSaco = 0;
+                    if (chkNovoEhSacoPromocional.Checked)
                     {
-                        if (!int.TryParse(txtNovaQuantidadeSaco.Text, out quantidadeSaco))
+                        if (!string.IsNullOrEmpty(txtNovaQuantidadeSaco.Text))
                         {
-                            quantidadeSaco = 0;
+                            if (!int.TryParse(txtNovaQuantidadeSaco.Text, out quantidadeSaco))
+                            {
+                                quantidadeSaco = 0;
+                            }
                         }
                     }
-                }
-                
-                // Obter produtos permitidos apenas se for saco promocional
-                string produtosPermitidos = null;
-                if (chkNovoEhSacoPromocional.Checked)
-                {
-                    produtosPermitidos = ObterProdutosPermitidosJson(lstNovosProdutosPermitidos);
-                }
-                
-                var novoProduto = new Produto
-                {
-                    Nome = txtNovoNome.Text.Trim(),
-                    Descricao = txtNovaDescricao.Text.Trim(),
-                    Preco = preco,
-                    ImagemUrl = txtNovaImagemUrl.Text.Trim(),
-                    Ativo = true,
-                    Ordem = int.Parse(txtNovaOrdem.Text ?? "0"),
-                    EhSacoPromocional = chkNovoEhSacoPromocional.Checked,
-                    QuantidadeSaco = quantidadeSaco,
-                    Produtos = produtosPermitidos,
-                    ReservavelAte = !string.IsNullOrEmpty(txtNovoReservavelAte.Text) ? DateTime.Parse(txtNovoReservavelAte.Text) : (DateTime?)null,
-                    VendivelAte = !string.IsNullOrEmpty(txtNovoVendivelAte.Text) ? DateTime.Parse(txtNovoVendivelAte.Text) : (DateTime?)null
-                };
+                    
+                    // Obter produtos permitidos apenas se for saco promocional
+                    string produtosPermitidos = null;
+                    if (chkNovoEhSacoPromocional.Checked)
+                    {
+                        produtosPermitidos = ObterProdutosPermitidosJson(lstNovosProdutosPermitidos);
+                    }
+                    
+                    // Criar novo produto normalmente
+                    novoProduto = new Produto
+                    {
+                        Nome = txtNovoNome.Text.Trim(),
+                        Descricao = txtNovaDescricao.Text.Trim(),
+                        Preco = preco,
+                        ImagemUrl = imagemUrl,
+                        Ativo = true,
+                        Ordem = int.Parse(txtNovaOrdem.Text ?? "0"),
+                        EhSacoPromocional = chkNovoEhSacoPromocional.Checked,
+                        QuantidadeSaco = quantidadeSaco,
+                        Produtos = produtosPermitidos,
+                        ReservavelAte = !string.IsNullOrEmpty(txtNovoReservavelAte.Text) ? DateTime.Parse(txtNovoReservavelAte.Text) : (DateTime?)null,
+                        VendivelAte = !string.IsNullOrEmpty(txtNovoVendivelAte.Text) ? DateTime.Parse(txtNovoVendivelAte.Text) : (DateTime?)null
+                    };
 
-                _databaseService.AdicionarProduto(novoProduto);
+                    _databaseService.AdicionarProduto(novoProduto);
+                }
 
                 // Limpar campos
                 txtNovoNome.Text = "";
@@ -809,6 +999,10 @@ namespace KingdomConfeitaria
                                 </ul>
                             </div>
                             <div class='text-end'>
+                                <button type='button' class='btn btn-info btn-sm me-2' 
+                                    onclick='mostrarDetalhesReservaAdmin({12})' data-reserva-id='{12}'>
+                                    <i class='fas fa-info-circle'></i> Detalhes
+                                </button>
                                 <button type='button' class='btn btn-primary btn-sm' 
                                     onclick='carregarDadosReserva({12})'>
                                     <i class='fas fa-edit'></i> Editar Reserva
@@ -1512,6 +1706,451 @@ namespace KingdomConfeitaria
             {
                 Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
                     string.Format("alert('Erro ao excluir reserva: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void CarregarConfiguracoes()
+        {
+            try
+            {
+                var configuracoes = System.Configuration.ConfigurationManager.AppSettings;
+                
+                // Preencher campos com valores atuais usando FindControl
+                var txtBaseUrl = FindControl("txtBaseUrl") as TextBox;
+                var ddlEnvironment = FindControl("ddlEnvironment") as DropDownList;
+                var txtSmtpServer = FindControl("txtSmtpServer") as TextBox;
+                var txtSmtpPort = FindControl("txtSmtpPort") as TextBox;
+                var txtSmtpUsername = FindControl("txtSmtpUsername") as TextBox;
+                var txtSmtpPassword = FindControl("txtSmtpPassword") as TextBox;
+                var txtEmailFrom = FindControl("txtEmailFrom") as TextBox;
+                var txtEmailIsabela = FindControl("txtEmailIsabela") as TextBox;
+                var txtEmailCamila = FindControl("txtEmailCamila") as TextBox;
+                var txtWhatsAppApiUrl = FindControl("txtWhatsAppApiUrl") as TextBox;
+                var txtWhatsAppApiKey = FindControl("txtWhatsAppApiKey") as TextBox;
+                var txtWhatsAppPhoneNumber = FindControl("txtWhatsAppPhoneNumber") as TextBox;
+                
+                if (txtBaseUrl != null) txtBaseUrl.Text = configuracoes["BaseUrl"] ?? "";
+                if (ddlEnvironment != null) ddlEnvironment.SelectedValue = configuracoes["Environment"] ?? "Development";
+                if (txtSmtpServer != null) txtSmtpServer.Text = configuracoes["SmtpServer"] ?? "";
+                if (txtSmtpPort != null) txtSmtpPort.Text = configuracoes["SmtpPort"] ?? "";
+                if (txtSmtpUsername != null) txtSmtpUsername.Text = configuracoes["SmtpUsername"] ?? "";
+                if (txtSmtpPassword != null) txtSmtpPassword.Text = configuracoes["SmtpPassword"] ?? "";
+                if (txtEmailFrom != null) txtEmailFrom.Text = configuracoes["EmailFrom"] ?? "";
+                if (txtEmailIsabela != null) txtEmailIsabela.Text = configuracoes["EmailIsabela"] ?? "";
+                if (txtEmailCamila != null) txtEmailCamila.Text = configuracoes["EmailCamila"] ?? "";
+                if (txtWhatsAppApiUrl != null) txtWhatsAppApiUrl.Text = configuracoes["WhatsAppApiUrl"] ?? "";
+                if (txtWhatsAppApiKey != null) txtWhatsAppApiKey.Text = configuracoes["WhatsAppApiKey"] ?? "";
+                if (txtWhatsAppPhoneNumber != null) txtWhatsAppPhoneNumber.Text = configuracoes["WhatsAppPhoneNumber"] ?? "";
+            }
+            catch (Exception ex)
+            {
+                // Log do erro
+                LogService.Registrar("ERROR", "Sistema", "Carregar Configurações", "Admin.aspx.cs", $"Erro: {ex.Message}");
+            }
+        }
+
+        protected void btnSalvarConfiguracoes_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Nota: Alterar web.config em runtime requer permissões especiais
+                // Por enquanto, vamos apenas mostrar uma mensagem informativa
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Info", 
+                    "alert('Para alterar as configurações, edite o arquivo web.config manualmente ou use transformações de configuração (Web.Release.config).');", true);
+                
+                // TODO: Implementar salvamento em banco de dados ou arquivo de configuração alternativo
+            }
+            catch (Exception ex)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao salvar configurações: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void MostrarDetalhesReserva(int reservaId)
+        {
+            try
+            {
+                var reserva = _databaseService.ObterReservaPorId(reservaId);
+                if (reserva == null)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Reserva não encontrada.');", true);
+                    return;
+                }
+                
+                // Buscar dados do cliente
+                var cliente = reserva.ClienteId.HasValue ? _databaseService.ObterClientePorId(reserva.ClienteId.Value) : null;
+                
+                // Preparar HTML dos detalhes
+                string html = "<div class='container-fluid'>";
+                
+                // Informações principais
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-hashtag'></i> Número da Reserva</strong>";
+                html += "<div class='detalhe-item-valor'>#" + reserva.Id + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-tag'></i> Status</strong>";
+                html += "<div class='detalhe-item-valor'><span class='status-badge status-" + reserva.Status.ToLower().Replace(" ", "-") + "'>" + System.Web.HttpUtility.HtmlEncode(reserva.Status) + "</span></div></div></div>";
+                html += "</div>";
+                
+                // Cliente
+                if (cliente != null)
+                {
+                    html += "<div class='row mb-3'>";
+                    html += "<div class='col-md-6'><div class='detalhe-item'>";
+                    html += "<strong><i class='fas fa-user'></i> Cliente</strong>";
+                    html += "<div class='detalhe-item-valor'>" + System.Web.HttpUtility.HtmlEncode(cliente.Nome) + "</div></div></div>";
+                    html += "<div class='col-md-6'><div class='detalhe-item'>";
+                    html += "<strong><i class='fas fa-envelope'></i> Email</strong>";
+                    html += "<div class='detalhe-item-valor'>" + System.Web.HttpUtility.HtmlEncode(cliente.Email ?? "Não informado") + "</div></div></div>";
+                    html += "</div>";
+                    html += "<div class='row mb-3'>";
+                    html += "<div class='col-md-6'><div class='detalhe-item'>";
+                    html += "<strong><i class='fas fa-phone'></i> Telefone</strong>";
+                    html += "<div class='detalhe-item-valor'>" + System.Web.HttpUtility.HtmlEncode(cliente.Telefone ?? "Não informado") + "</div></div></div>";
+                    html += "<div class='col-md-6'><div class='detalhe-item'>";
+                    html += "<strong><i class='fas fa-shield-alt'></i> Tipo</strong>";
+                    html += "<div class='detalhe-item-valor'>" + (cliente.IsAdmin ? "<span class='badge bg-danger'>Administrador</span>" : "<span class='badge bg-primary'>Cliente</span>") + "</div></div></div>";
+                    html += "</div>";
+                }
+                
+                // Datas
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-calendar-plus'></i> Data da Reserva</strong>";
+                html += "<div class='detalhe-item-valor'>" + reserva.DataReserva.ToString("dd/MM/yyyy HH:mm") + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-calendar-check'></i> Data de Retirada</strong>";
+                html += "<div class='detalhe-item-valor'>" + reserva.DataRetirada.ToString("dd/MM/yyyy") + "</div></div></div>";
+                html += "</div>";
+                
+                // Valor e Previsão
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-dollar-sign'></i> Valor Total</strong>";
+                html += "<div class='detalhe-item-valor' style='font-size: 20px; font-weight: 700; color: #28a745;'>R$ " + reserva.ValorTotal.ToString("F2") + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-truck'></i> Previsão de Entrega</strong>";
+                html += "<div class='detalhe-item-valor'>" + (reserva.PrevisaoEntrega.HasValue ? reserva.PrevisaoEntrega.Value.ToString("dd/MM/yyyy HH:mm") : "Não definida") + "</div></div></div>";
+                html += "</div>";
+                
+                // Itens
+                html += "<div class='detalhe-itens' style='background: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; margin-top: 12px;'>";
+                html += "<h6 class='mb-3'><i class='fas fa-shopping-bag'></i> Itens da Reserva</h6>";
+                if (reserva.Itens != null && reserva.Itens.Count > 0)
+                {
+                    foreach (var item in reserva.Itens)
+                    {
+                        html += "<div class='detalhe-item-produto' style='padding: 10px; margin-bottom: 8px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #28a745;'>";
+                        html += "<div class='d-flex justify-content-between align-items-start'>";
+                        html += "<div>";
+                        html += "<strong>" + System.Web.HttpUtility.HtmlEncode(item.NomeProduto) + "</strong>";
+                        html += "<div class='text-muted small'>Tamanho: " + System.Web.HttpUtility.HtmlEncode(item.Tamanho) + " | Quantidade: " + item.Quantidade + "</div>";
+                        html += "</div>";
+                        html += "<div class='text-end'>";
+                        html += "<strong class='text-success'>R$ " + item.Subtotal.ToString("F2") + "</strong>";
+                        html += "</div>";
+                        html += "</div>";
+                        html += "</div>";
+                    }
+                }
+                else
+                {
+                    html += "<p class='text-muted'>Nenhum item encontrado.</p>";
+                }
+                html += "</div>";
+                
+                // Observações
+                html += "<div class='detalhe-item mt-3'>";
+                html += "<strong><i class='fas fa-comment-alt'></i> Observações</strong>";
+                html += "<div class='detalhe-item-valor'>" + System.Web.HttpUtility.HtmlEncode(!string.IsNullOrEmpty(reserva.Observacoes) ? reserva.Observacoes : "Nenhuma observação") + "</div>";
+                html += "</div>";
+                
+                // Status adicional
+                html += "<div class='row mb-3 mt-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-check-circle'></i> Convertido em Pedido</strong>";
+                html += "<div class='detalhe-item-valor'>" + (reserva.ConvertidoEmPedido ? "<span class='badge bg-success'>Sim</span>" : "<span class='badge bg-secondary'>Não</span>") + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-times-circle'></i> Cancelado</strong>";
+                html += "<div class='detalhe-item-valor'>" + (reserva.Cancelado ? "<span class='badge bg-danger'>Sim</span>" : "<span class='badge bg-success'>Não</span>") + "</div></div></div>";
+                html += "</div>";
+                
+                html += "</div>";
+                
+                // Script para abrir modal e preencher
+                string script = string.Format(@"
+                    var modalBody = document.getElementById('modalDetalhesReservaAdminBody');
+                    if (modalBody) {{
+                        modalBody.innerHTML = {0};
+                        var modalElement = document.getElementById('modalDetalhesReservaAdmin');
+                        if (modalElement) {{
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {{
+                                var modal = new bootstrap.Modal(modalElement);
+                                modal.show();
+                            }}
+                        }}
+                    }}", 
+                    System.Web.HttpUtility.JavaScriptStringEncode(html));
+                
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "MostrarDetalhesReserva", script, true);
+            }
+            catch (Exception ex)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao carregar detalhes: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void MostrarDetalhesCliente(int clienteId)
+        {
+            try
+            {
+                var cliente = _databaseService.ObterClientePorId(clienteId);
+                if (cliente == null)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Cliente não encontrado.');", true);
+                    return;
+                }
+                
+                // Buscar reservas do cliente
+                var reservas = _databaseService.ObterReservasPorCliente(clienteId);
+                
+                // Preparar HTML dos detalhes
+                string html = "<div class='container-fluid'>";
+                
+                // Informações principais
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-hashtag'></i> ID do Cliente</strong>";
+                html += "<div class='detalhe-item-valor'>#" + cliente.Id + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-shield-alt'></i> Tipo</strong>";
+                html += "<div class='detalhe-item-valor'>" + (cliente.IsAdmin ? "<span class='badge bg-danger'>Administrador</span>" : "<span class='badge bg-primary'>Cliente</span>") + "</div></div></div>";
+                html += "</div>";
+                
+                // Dados pessoais
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-user'></i> Nome</strong>";
+                html += "<div class='detalhe-item-valor'>" + System.Web.HttpUtility.HtmlEncode(cliente.Nome) + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-envelope'></i> Email</strong>";
+                html += "<div class='detalhe-item-valor'>" + System.Web.HttpUtility.HtmlEncode(cliente.Email ?? "Não informado") + "</div></div></div>";
+                html += "</div>";
+                
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-phone'></i> Telefone</strong>";
+                html += "<div class='detalhe-item-valor'>" + System.Web.HttpUtility.HtmlEncode(cliente.Telefone ?? "Não informado") + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fab fa-whatsapp'></i> Tem WhatsApp</strong>";
+                html += "<div class='detalhe-item-valor'>" + (cliente.TemWhatsApp ? "<span class='badge bg-success'>Sim</span>" : "<span class='badge bg-secondary'>Não</span>") + "</div></div></div>";
+                html += "</div>";
+                
+                // Datas
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-calendar-plus'></i> Data de Cadastro</strong>";
+                html += "<div class='detalhe-item-valor'>" + cliente.DataCadastro.ToString("dd/MM/yyyy HH:mm") + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-clock'></i> Último Acesso</strong>";
+                html += "<div class='detalhe-item-valor'>" + (cliente.UltimoAcesso.HasValue ? cliente.UltimoAcesso.Value.ToString("dd/MM/yyyy HH:mm") : "Nunca") + "</div></div></div>";
+                html += "</div>";
+                
+                // Status de confirmação
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-envelope-check'></i> Email Confirmado</strong>";
+                html += "<div class='detalhe-item-valor'>" + (cliente.EmailConfirmado ? "<span class='badge bg-success'>Sim</span>" : "<span class='badge bg-warning'>Não</span>") + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fab fa-whatsapp'></i> WhatsApp Confirmado</strong>";
+                html += "<div class='detalhe-item-valor'>" + (cliente.WhatsAppConfirmado ? "<span class='badge bg-success'>Sim</span>" : "<span class='badge bg-warning'>Não</span>") + "</div></div></div>";
+                html += "</div>";
+                
+                // Reservas
+                html += "<div class='detalhe-itens' style='background: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; margin-top: 12px;'>";
+                html += "<h6 class='mb-3'><i class='fas fa-clipboard-list'></i> Reservas do Cliente</h6>";
+                if (reservas != null && reservas.Count > 0)
+                {
+                    html += "<p class='text-muted'>Total de reservas: <strong>" + reservas.Count + "</strong></p>";
+                    html += "<ul class='list-group'>";
+                    foreach (var reserva in reservas.OrderByDescending(r => r.DataReserva).Take(10))
+                    {
+                        html += "<li class='list-group-item'>";
+                        html += "<strong>Reserva #" + reserva.Id + "</strong> - ";
+                        html += reserva.DataReserva.ToString("dd/MM/yyyy") + " - ";
+                        html += "R$ " + reserva.ValorTotal.ToString("F2") + " - ";
+                        html += "<span class='badge bg-" + (reserva.Cancelado ? "danger" : "success") + "'>" + System.Web.HttpUtility.HtmlEncode(reserva.Status) + "</span>";
+                        html += "</li>";
+                    }
+                    if (reservas.Count > 10)
+                    {
+                        html += "<li class='list-group-item text-muted'>... e mais " + (reservas.Count - 10) + " reserva(s)</li>";
+                    }
+                    html += "</ul>";
+                }
+                else
+                {
+                    html += "<p class='text-muted'>Nenhuma reserva encontrada.</p>";
+                }
+                html += "</div>";
+                
+                html += "</div>";
+                
+                // Script para abrir modal e preencher
+                string script = string.Format(@"
+                    var modalBody = document.getElementById('modalDetalhesClienteBody');
+                    if (modalBody) {{
+                        modalBody.innerHTML = {0};
+                        var modalElement = document.getElementById('modalDetalhesCliente');
+                        if (modalElement) {{
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {{
+                                var modal = new bootstrap.Modal(modalElement);
+                                modal.show();
+                            }}
+                        }}
+                    }}", 
+                    System.Web.HttpUtility.JavaScriptStringEncode(html));
+                
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "MostrarDetalhesCliente", script, true);
+            }
+            catch (Exception ex)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao carregar detalhes: {0}');", EscapeJavaScript(ex.Message)), true);
+            }
+        }
+
+        private void MostrarDetalhesProduto(int produtoId)
+        {
+            try
+            {
+                var produto = _databaseService.ObterProdutoPorId(produtoId);
+                if (produto == null)
+                {
+                    Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                        "alert('Produto não encontrado.');", true);
+                    return;
+                }
+                
+                // Preparar HTML dos detalhes
+                string html = "<div class='container-fluid'>";
+                
+                // Imagem e informações principais
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-4 text-center'>";
+                html += "<img src='" + System.Web.HttpUtility.HtmlAttributeEncode(produto.ImagemUrl ?? "") + "' alt='" + System.Web.HttpUtility.HtmlAttributeEncode(produto.Nome) + "' class='img-fluid rounded' style='max-width: 200px;' onerror='this.src=\"https://via.placeholder.com/200x200?text=" + System.Web.HttpUtility.UrlEncode(produto.Nome) + "\"' />";
+                html += "</div>";
+                html += "<div class='col-md-8'>";
+                html += "<div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-hashtag'></i> ID do Produto</strong>";
+                html += "<div class='detalhe-item-valor'>#" + produto.Id + "</div>";
+                html += "</div>";
+                html += "<div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-cookie-bite'></i> Nome</strong>";
+                html += "<div class='detalhe-item-valor' style='font-size: 18px; font-weight: 700;'>" + System.Web.HttpUtility.HtmlEncode(produto.Nome) + "</div>";
+                html += "</div>";
+                html += "<div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-tag'></i> Status</strong>";
+                html += "<div class='detalhe-item-valor'>" + (produto.Ativo ? "<span class='badge bg-success'>Ativo</span>" : "<span class='badge bg-secondary'>Inativo</span>") + "</div>";
+                html += "</div>";
+                html += "</div>";
+                html += "</div>";
+                
+                // Descrição
+                if (!string.IsNullOrEmpty(produto.Descricao))
+                {
+                    html += "<div class='detalhe-item'>";
+                    html += "<strong><i class='fas fa-align-left'></i> Descrição</strong>";
+                    html += "<div class='detalhe-item-valor'>" + System.Web.HttpUtility.HtmlEncode(produto.Descricao) + "</div>";
+                    html += "</div>";
+                }
+                
+                // Preço e Ordem
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-dollar-sign'></i> Preço</strong>";
+                html += "<div class='detalhe-item-valor' style='font-size: 20px; font-weight: 700; color: #28a745;'>R$ " + produto.Preco.ToString("F2") + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-sort-numeric-down'></i> Ordem de Exibição</strong>";
+                html += "<div class='detalhe-item-valor'>" + produto.Ordem + "</div></div></div>";
+                html += "</div>";
+                
+                // Datas
+                html += "<div class='row mb-3'>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-calendar-check'></i> Reservável até</strong>";
+                html += "<div class='detalhe-item-valor'>" + (produto.ReservavelAte.HasValue ? produto.ReservavelAte.Value.ToString("dd/MM/yyyy") : "Sem limite") + "</div></div></div>";
+                html += "<div class='col-md-6'><div class='detalhe-item'>";
+                html += "<strong><i class='fas fa-calendar-times'></i> Vendível até</strong>";
+                html += "<div class='detalhe-item-valor'>" + (produto.VendivelAte.HasValue ? produto.VendivelAte.Value.ToString("dd/MM/yyyy") : "Sem limite") + "</div></div></div>";
+                html += "</div>";
+                
+                // Saco Promocional
+                if (produto.EhSacoPromocional)
+                {
+                    html += "<div class='detalhe-item' style='border-left-color: #ffc107;'>";
+                    html += "<strong><i class='fas fa-gift'></i> Saco Promocional</strong>";
+                    html += "<div class='detalhe-item-valor'><span class='badge bg-warning'>Sim</span></div>";
+                    html += "</div>";
+                    html += "<div class='detalhe-item'>";
+                    html += "<strong><i class='fas fa-shopping-bag'></i> Quantidade de Produtos no Saco</strong>";
+                    html += "<div class='detalhe-item-valor'>" + produto.QuantidadeSaco + " produtos</div>";
+                    html += "</div>";
+                    
+                    // Produtos permitidos
+                    if (!string.IsNullOrEmpty(produto.Produtos))
+                    {
+                        try
+                        {
+                            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+                            var produtosIds = serializer.Deserialize<List<int>>(produto.Produtos);
+                            var produtosPermitidos = _databaseService.ObterProdutosPorIds(produtosIds);
+                            
+                            html += "<div class='detalhe-itens' style='background: white; border: 1px solid #dee2e6; border-radius: 8px; padding: 16px; margin-top: 12px;'>";
+                            html += "<h6 class='mb-3'><i class='fas fa-list'></i> Produtos Permitidos no Saco</h6>";
+                            html += "<ul class='list-group'>";
+                            foreach (var prod in produtosPermitidos)
+                            {
+                                html += "<li class='list-group-item'>" + System.Web.HttpUtility.HtmlEncode(prod.Nome) + " - R$ " + prod.Preco.ToString("F2") + "</li>";
+                            }
+                            html += "</ul>";
+                            html += "</div>";
+                        }
+                        catch
+                        {
+                            // Se falhar ao parsear, ignorar
+                        }
+                    }
+                }
+                
+                html += "</div>";
+                
+                // Script para abrir modal e preencher
+                string script = string.Format(@"
+                    var modalBody = document.getElementById('modalDetalhesProdutoBody');
+                    if (modalBody) {{
+                        modalBody.innerHTML = {0};
+                        var modalElement = document.getElementById('modalDetalhesProduto');
+                        if (modalElement) {{
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {{
+                                var modal = new bootstrap.Modal(modalElement);
+                                modal.show();
+                            }}
+                        }}
+                    }}", 
+                    System.Web.HttpUtility.JavaScriptStringEncode(html));
+                
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "MostrarDetalhesProduto", script, true);
+            }
+            catch (Exception ex)
+            {
+                Page.ClientScript.RegisterStartupScript(this.GetType(), "Erro", 
+                    string.Format("alert('Erro ao carregar detalhes: {0}');", EscapeJavaScript(ex.Message)), true);
             }
         }
 

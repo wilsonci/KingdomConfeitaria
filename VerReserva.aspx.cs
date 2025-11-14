@@ -83,7 +83,7 @@ namespace KingdomConfeitaria
             if (Session["ClienteId"] != null)
             {
                 clienteNome.InnerText = "Olá, " + (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "");
-                clienteNome.Style["display"] = "inline";
+                clienteNome.Style["display"] = "block";
                 linkLogin.Visible = false;
                 linkMinhasReservas.Visible = true;
                 if (linkMeusDados != null) linkMeusDados.Visible = true;

@@ -33,12 +33,20 @@ DefaultPage.Carrinho = {
 
     /**
      * Adicionar produto ao carrinho
+     * @param {number} produtoId - ID do produto
+     * @param {string} nome - Nome do produto
+     * @param {string} tamanho - Tamanho do produto
+     * @param {number} quantidade - Quantidade
+     * @param {string|number} precoFornecido - Preço opcional (se fornecido, não tenta obter do DOM)
      */
-    adicionar: function(produtoId, nome, tamanho, quantidade) {
+    adicionar: function(produtoId, nome, tamanho, quantidade, precoFornecido) {
         quantidade = quantidade || 1;
 
-        // Obter o preço do elemento
-        var preco = this.obterPrecoDoProduto(produtoId);
+        // Obter o preço - usar o fornecido ou tentar obter do DOM
+        var preco = precoFornecido;
+        if (!preco || preco === '' || preco === 'undefined' || preco === 'null') {
+            preco = this.obterPrecoDoProduto(produtoId);
+        }
 
         // Validar e normalizar o preço
         if (!preco || preco === '' || preco === 'undefined' || preco === 'null') {

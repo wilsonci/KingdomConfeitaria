@@ -30,7 +30,7 @@ namespace KingdomConfeitaria
             
             // Atualizar menu
             clienteNome.InnerText = "Olá, " + (Session["ClienteNome"] != null ? Session["ClienteNome"].ToString() : "");
-            clienteNome.Style["display"] = "inline";
+            clienteNome.Style["display"] = "block";
             
             // Atualizar visibilidade dos links do menu
             var linkLogin = FindControl("linkLogin") as System.Web.UI.HtmlControls.HtmlAnchor;
@@ -213,6 +213,33 @@ namespace KingdomConfeitaria
                                 textoCompartilhar.Replace("\"", "&quot;"));
                     }
 
+                    // Preparar dados para o modal de detalhes (JSON)
+                    var reservaDetalhes = new
+                    {
+                        id = reserva.Id,
+                        dataReserva = reserva.DataReserva.ToString("dd/MM/yyyy HH:mm"),
+                        dataRetirada = reserva.DataRetirada.ToString("dd/MM/yyyy"),
+                        status = reserva.Status,
+                        statusClass = statusClass,
+                        valorTotal = reserva.ValorTotal.ToString("F2"),
+                        email = !string.IsNullOrEmpty(reserva.Email) ? reserva.Email : "Não informado",
+                        telefone = !string.IsNullOrEmpty(reserva.Telefone) ? reserva.Telefone : "Não informado",
+                        observacoes = !string.IsNullOrEmpty(reserva.Observacoes) ? reserva.Observacoes : "Nenhuma observação",
+                        previsaoEntrega = reserva.PrevisaoEntrega.HasValue ? reserva.PrevisaoEntrega.Value.ToString("dd/MM/yyyy HH:mm") : "Não definida",
+                        itens = reserva.Itens.Select(i => new
+                        {
+                            nome = i.NomeProduto,
+                            tamanho = i.Tamanho,
+                            quantidade = i.Quantidade,
+                            subtotal = i.Subtotal.ToString("F2"),
+                            produtos = i.Produtos
+                        }).ToList(),
+                        linkReserva = linkReserva,
+                        linkReservaCompleto = linkReservaCompleto
+                    };
+                    var reservaDetalhesJson = new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(reservaDetalhes);
+                    string reservaDetalhesJsonEscapado = System.Web.HttpUtility.HtmlAttributeEncode(reservaDetalhesJson);
+                    
                     html += string.Format(@"
                         <div class='reserva-card'>
                             <div class='d-flex justify-content-between align-items-start mb-3'>
@@ -248,9 +275,9 @@ namespace KingdomConfeitaria
                             
                             <div class='d-flex justify-content-between align-items-center mt-3'>
                                 <div>
-                                    <a href='{10}' class='btn btn-primary btn-sm'>
-                                        <i class='fas fa-eye'></i> Ver Detalhes
-                                    </a>
+                                    <button type='button' class='btn btn-primary btn-sm' onclick='mostrarDetalhesReserva({17})' data-reserva-json='{18}'>
+                                        <i class='fas fa-info-circle'></i> Detalhes
+                                    </button>
                                     {14}
                                     {15}
                                 </div>
@@ -273,7 +300,9 @@ namespace KingdomConfeitaria
                         linkReservaCompleto, // {13} - URL completa para compartilhamento
                         botaoCancelar, // {14} - Botão de cancelar
                         botaoExcluir, // {15} - Botão de excluir
-                        botoesCompartilharHtml // {16} - Botões de compartilhamento (vazio se cancelada)
+                        botoesCompartilharHtml, // {16} - Botões de compartilhamento (vazio se cancelada)
+                        reserva.Id, // {17} - ID da reserva
+                        reservaDetalhesJsonEscapado // {18} - JSON com detalhes
                     );
                 }
 

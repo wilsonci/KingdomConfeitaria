@@ -17,10 +17,7 @@
         }
         .header-logo {
             background: #1a4d2e;
-            padding: 10px 20px;
-            text-align: center;
-            border-radius: 0;
-            margin-bottom: 0;
+            padding: 12px 16px;
             position: fixed;
             top: 0;
             left: 0;
@@ -29,29 +26,49 @@
             z-index: 1000;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
         }
-        .header-actions {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-        }
-        .header-actions a {
-            color: white;
-            text-decoration: none;
-            margin-left: 15px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        .header-actions a:hover {
-            text-decoration: underline;
-            color: #d4af37;
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
         }
         .header-logo img {
-            max-width: 20%;
-            width: auto;
+            max-width: 120px;
             height: auto;
-            max-height: 80px;
             display: block;
-            margin: 0 auto;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .header-actions::-webkit-scrollbar {
+            display: none;
+        }
+        .header-actions a {
+            color: #1a4d2e;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .header-actions a:hover {
+            background: #1a4d2e;
+            color: #fff;
         }
         .confirm-container {
             background: white;
@@ -73,16 +90,78 @@
             color: #dc3545;
             margin-bottom: 20px;
         }
+        /* Botão de voltar na lateral esquerda */
+        .btn-voltar {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 999;
+            background: #1a4d2e;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+        .btn-voltar:hover {
+            background: #2d5a3d;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+            color: white;
+            text-decoration: none;
+        }
+        .btn-voltar i {
+            margin-right: 0;
+        }
+        @media (max-width: 768px) {
+            .header-logo {
+                padding: 10px 12px;
+            }
+            .header-logo img {
+                max-width: 100px;
+            }
+            .header-actions {
+                gap: 4px;
+                padding: 6px 8px;
+                overflow-x: auto;
+            }
+            .header-actions a {
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+            .header-actions a i {
+                display: none;
+            }
+            .btn-voltar {
+                left: 10px;
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+        }
     </style>
 </head>
 <body>
     <form id="form1" runat="server">
+        <!-- Botão de voltar na lateral esquerda -->
+        <a href="javascript:void(0);" class="btn-voltar" title="Voltar" onclick="voltarPagina(); return false;">
+            <i class="fas fa-arrow-left"></i>
+        </a>
         <div class="header-logo">
+            <div class="header-top">
+                <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" />
+            </div>
             <div class="header-actions">
                 <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
             </div>
-            <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" />
-            <h1 style="display:none; color: #1a4d2e;">Kingdom Confeitaria</h1>
         </div>
         
         <div class="confirm-container">
@@ -91,6 +170,16 @@
             </div>
         </div>
     </form>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function voltarPagina() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = 'Default.aspx';
+            }
+        }
+    </script>
 </body>
 </html>
 

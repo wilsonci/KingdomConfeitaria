@@ -7,136 +7,671 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kingdom Confeitaria - Reserva de Ginger Breads</title>
+    <link rel="icon" type="image/svg+xml" href="Images/logo-kingdom-confeitaria.svg" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
+    <!-- Preconnect para acelerar carregamento de recursos externos -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
-            background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 100%);
+            background: #f5f5f5;
             min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            padding-bottom: 80px; /* Espaço para carrinho flutuante */
         }
         .header-logo {
-            background: #1a4d2e;
-            padding: 10px 20px;
-            text-align: center;
-            border-radius: 0;
-            margin-bottom: 0;
+            background: #fff;
+            padding: 12px 16px;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             width: 100%;
             z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-bottom: 1px solid #e0e0e0;
         }
-        .header-actions {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-        }
-        .header-actions a {
-            color: white;
-            text-decoration: none;
-            margin-left: 15px;
-            font-size: 14px;
-            font-weight: 500;
-        }
-        .header-actions a:hover {
-            text-decoration: underline;
-            color: #d4af37;
-        }
-        .header-actions span {
-            color: white;
-            font-weight: 500;
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
         }
         .header-logo img {
-            max-width: 20%;
-            width: auto;
+            max-width: 120px;
             height: auto;
-            max-height: 80px;
             display: block;
-            margin: 0 auto;
+        }
+        .header-user-name {
+            color: #1a4d2e;
+            font-weight: 600;
+            font-size: 14px;
+            text-align: right;
+        }
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .header-actions::-webkit-scrollbar {
+            display: none;
+        }
+        .header-actions a {
+            color: #1a4d2e;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .header-actions a:hover {
+            background: #1a4d2e;
+            color: #fff;
+        }
+        /* Ícone do carrinho com badge */
+        .carrinho-header {
+            position: relative;
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .carrinho-header:hover {
+            background: #1a4d2e;
+        }
+        .carrinho-header:hover i {
+            color: #fff;
+        }
+        .carrinho-header i {
+            font-size: 20px;
+            color: #1a4d2e;
+            transition: color 0.3s;
+        }
+        .carrinho-header.com-itens i {
+            color: #dc3545;
+        }
+        .carrinho-header.com-itens:hover i {
+            color: #fff;
+        }
+        .carrinho-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            min-width: 18px;
+            height: 18px;
+            font-size: 10px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            padding: 0 4px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .carrinho-badge.oculto {
+            display: none;
+        }
+        /* Ajustar badge para números maiores */
+        .carrinho-badge:not(.oculto) {
+            min-width: 18px;
+            padding: 0 4px;
+        }
+        @media (max-width: 768px) {
+            .header-logo {
+                padding: 10px 12px;
+            }
+            .header-logo img {
+                max-width: 100px;
+            }
+            .header-user-name {
+                font-size: 12px;
+            }
+            .header-actions {
+                gap: 4px;
+                padding: 6px 8px;
+                overflow-x: auto;
+            }
+            .header-actions a {
+                font-size: 11px;
+                padding: 4px 8px;
+            }
+            .header-actions a i {
+                display: none;
+            }
+            .carrinho-header i {
+                font-size: 18px;
+                display: inline-block !important;
+            }
+            .carrinho-badge {
+                min-width: 16px;
+                height: 16px;
+                font-size: 9px;
+                top: 1px;
+                right: 1px;
+            }
         }
         .container-main {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            margin: 90px auto 20px auto;
-            padding: 30px;
-        }
-        .produto-card {
-            border: 2px solid #e9ecef;
-            border-radius: 15px;
-            padding: 20px;
+            background: transparent;
+            margin-top: 0;
             margin-bottom: 20px;
-            transition: transform 0.3s, box-shadow 0.3s;
+            padding: 0;
+            transition: margin-top 0.3s ease;
         }
-        .produto-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        }
-        .produto-imagem {
+        
+        /* Espaçador dinâmico para o header fixo */
+        .header-spacer {
+            height: auto;
+            min-height: 80px;
+            transition: min-height 0.3s ease;
             width: 100%;
-            max-width: 150px;
-            height: 67px;
-            object-fit: cover;
-            border-radius: 10px;
-            margin-bottom: 15px;
         }
-        .btn-tamanho {
-            margin: 5px;
-            min-width: 100px;
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 100%);
+            color: white;
+            padding: 40px 16px;
+            text-align: center;
+            margin-bottom: 30px;
         }
-        .btn-tamanho.active {
-            background-color: #1a4d2e;
+        .hero-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+        .hero-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 0;
+            line-height: 1.5;
+        }
+        /* Seção de Produtos */
+        .produtos-section {
+            padding: 0 16px 20px 16px;
+            flex: 1;
+        }
+        .produtos-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title i {
+            color: #1a4d2e;
+        }
+        /* Carrossel de Produtos */
+        .produtos-carrossel {
+            position: relative;
+            margin-bottom: 20px;
+            background: #000000;
+            border-radius: 16px;
+            padding: 16px;
+        }
+        .carrossel-container {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            gap: 12px;
+            padding: 0 0 12px 0;
+        }
+        .carrossel-container::-webkit-scrollbar {
+            display: none;
+        }
+        .produto-card-carrossel {
+            flex: 0 0 140px;
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            scroll-snap-align: start;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, border 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            border: 2px solid #ffffff;
+        }
+        .produto-card-carrossel:hover {
             border-color: #1a4d2e;
+            box-shadow: 0 4px 12px rgba(26, 77, 46, 0.3);
+            transform: translateY(-2px);
+        }
+        .produto-card-carrossel:active {
+            transform: scale(0.98);
+        }
+        /* Animação da mãozinha clicando */
+        .maozinha-clique {
+            position: absolute;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .maozinha-clique.visivel {
+            opacity: 1;
+        }
+        .maozinha-clique i {
+            font-size: 40px;
+            color: #ffffff;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            animation: cliqueAnimacao 1.5s ease-in-out infinite;
+        }
+        @keyframes cliqueAnimacao {
+            0%, 100% {
+                transform: translateY(0) scale(1);
+            }
+            50% {
+                transform: translateY(10px) scale(0.9);
+            }
+        }
+        .produto-imagem-carrossel {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: #f0f0f0;
+        }
+        .produto-nome-carrossel {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .produto-preco-carrossel {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1a4d2e;
+            margin-top: 4px;
+        }
+        /* Modal de Detalhe do Produto */
+        .modal-produto-detalhe .modal-dialog {
+            margin: 0;
+            max-width: 100%;
+            height: 100vh;
+        }
+        .modal-produto-detalhe .modal-content {
+            border-radius: 0;
+            border: none;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-produto-detalhe .modal-header {
+            border-bottom: 1px solid #e0e0e0;
+            padding: 16px;
+            background: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .modal-produto-detalhe .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: white;
+        }
+        .produto-imagem-detalhe {
+            width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            background: #f8f8f8;
+        }
+        .produto-nome-detalhe {
+            font-size: 22px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 12px;
+        }
+        .produto-descricao-detalhe {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .produto-preco-detalhe {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a4d2e;
+            margin-bottom: 24px;
+        }
+        .quantidade-selector {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f8f8f8;
+            border-radius: 12px;
+        }
+        .quantidade-selector label {
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+        .quantidade-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+        .btn-quantidade {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #1a4d2e;
+            background: white;
+            color: #1a4d2e;
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-quantidade:active {
+            background: #1a4d2e;
             color: white;
         }
-        .carrinho-fixo {
-            position: sticky;
-            top: 20px;
-            background: #f8f9fa;
-            border-radius: 15px;
-            padding: 20px;
-            max-height: 80vh;
+        .quantidade-value {
+            font-size: 18px;
+            font-weight: 600;
+            min-width: 30px;
+            text-align: center;
+        }
+        .modal-produto-detalhe .modal-footer {
+            border-top: 1px solid #e0e0e0;
+            padding: 16px;
+            background: white;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        .btn-adicionar-pedido {
+            width: 45px;
+            height: 45px;
+            padding: 0;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .btn-adicionar-pedido:hover {
+            background: #218838;
+            transform: scale(1.1);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+        .btn-adicionar-pedido:active {
+            background: #1e7e34;
+            transform: scale(0.95);
+        }
+        .btn-adicionar-pedido i {
+            margin: 0;
+        }
+        .btn-cancelar-pedido {
+            width: 45px;
+            height: 45px;
+            padding: 0;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .btn-cancelar-pedido:hover {
+            background: #c82333;
+            transform: scale(1.1);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+        }
+        .btn-cancelar-pedido:active {
+            background: #bd2130;
+            transform: scale(0.95);
+        }
+        .btn-cancelar-pedido i {
+            margin: 0;
+        }
+        .preco-total-modal {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a4d2e;
+            text-align: center;
+            margin-top: 16px;
+            padding: 12px;
+            background: #f8f8f8;
+            border-radius: 8px;
+        }
+        /* Carrinho Flutuante Mobile */
+        .carrinho-flutuante {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 999;
+            padding: 12px 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+        .carrinho-flutuante-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .carrinho-flutuante-total {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+        }
+        .carrinho-flutuante-itens {
+            font-size: 13px;
+            color: #666;
+        }
+        .btn-fazer-reserva {
+            width: 100%;
+            padding: 14px;
+            background: #1a4d2e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-fazer-reserva:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-fazer-reserva:active:not(:disabled) {
+            background: #2d5a3d;
+        }
+        /* Modal de Carrinho */
+        .modal-carrinho .modal-dialog {
+            margin: 0;
+            max-width: 100%;
+            height: 80vh;
+            margin-top: 20vh;
+        }
+        .modal-carrinho .modal-content {
+            border-radius: 20px 20px 0 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-carrinho .modal-body {
+            flex: 1;
             overflow-y: auto;
+            padding: 20px;
         }
         .item-carrinho {
             background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            border-left: 4px solid #1a4d2e;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .total-carrinho {
-            font-size: 1.5em;
-            font-weight: bold;
+        .item-carrinho-info {
+            flex: 1;
+        }
+        .item-carrinho-nome {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .item-carrinho-detalhes {
+            font-size: 13px;
+            color: #666;
+        }
+        .item-carrinho-preco {
+            font-weight: 700;
             color: #1a4d2e;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #dee2e6;
+            margin-right: 12px;
         }
-        .btn-reservar {
-            background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 100%);
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.2em;
-            border-radius: 10px;
+        .item-carrinho-acoes {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-remover-item {
+            background: #ff4444;
             color: white;
-            width: 100%;
-            margin-top: 20px;
-            transition: all 0.3s;
+            border: none;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
         }
-        .btn-reservar:hover:not(:disabled) {
-            transform: scale(1.05);
-            box-shadow: 0 5px 20px rgba(26, 77, 46, 0.4);
-            background: linear-gradient(135deg, #2d5a3d 0%, #1a4d2e 100%);
-        }
-        .btn-reservar:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            background: #6c757d;
+        /* Desktop */
+        @media (min-width: 992px) {
+            .container-main {
+                max-width: 1200px;
+                margin: 0 auto 20px auto;
+                padding: 0 20px;
+            }
+            .hero-section {
+                border-radius: 16px;
+                margin: 0 0 40px 0;
+                padding: 60px 40px;
+            }
+            .hero-title {
+                font-size: 36px;
+            }
+            .hero-subtitle {
+                font-size: 18px;
+            }
+            .produtos-wrapper {
+                display: flex;
+                gap: 20px;
+                align-items: flex-start;
+            }
+            .produtos-section {
+                padding: 0 0 20px 0;
+                flex: 1;
+                min-width: 0;
+            }
+            .section-title {
+                font-size: 26px;
+                margin-bottom: 24px;
+            }
+            .carrinho-flutuante {
+                display: none;
+            }
+            .carrinho-fixo {
+                position: sticky;
+                top: 90px;
+                background: white;
+                border-radius: 12px;
+                padding: 20px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                max-height: calc(100vh - 120px);
+                overflow-y: auto;
+                width: 320px;
+                flex-shrink: 0;
+                transition: all 0.3s ease;
+            }
+            .produtos-carrossel {
+                padding: 20px;
+            }
+            .maozinha-clique i {
+                font-size: 50px;
+            }
+            .carrossel-container {
+                flex-wrap: wrap;
+                gap: 16px;
+            }
+            .produto-card-carrossel {
+                flex: 0 0 calc(25% - 12px);
+                max-width: 200px;
+            }
+            .info-section {
+                margin: 30px 0;
+                padding: 30px !important;
+            }
         }
         .is-valid {
             border-color: #28a745 !important;
@@ -158,35 +693,127 @@
             font-size: 0.875em;
             color: #28a745;
         }
-        .header-title {
-            text-align: center;
-            color: #1a4d2e;
-            margin-bottom: 30px;
-            font-size: 1.8em;
-            font-weight: 600;
-        }
-        .subtitle {
-            color: #6c757d;
-            font-size: 0.9em;
-            margin-top: 10px;
-        }
-        .quantidade-input {
-            width: 80px;
-            text-align: center;
-        }
         /* Estilos para o modal de reserva - aumentar tamanho */
         #modalReserva .modal-dialog {
-            max-width: 650px;
-            min-height: 450px;
+            max-width: 750px;
+            min-height: 550px;
         }
         #modalReserva .modal-body {
-            min-height: 350px;
-            max-height: 70vh;
+            min-height: 450px;
+            max-height: 75vh;
             padding: 2rem;
             overflow-y: auto;
         }
         #modalReserva .modal-content {
-            min-height: 450px;
+            min-height: 550px;
+        }
+        /* Estilos para seção de data de retirada */
+        .secao-data-retirada {
+            background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(26, 77, 46, 0.3);
+        }
+        .secao-data-retirada .form-label {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .secao-data-retirada .form-label i {
+            font-size: 20px;
+        }
+        /* Estilos para radiobuttons de data */
+        .radio-group-datas {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .radio-item-data {
+            background: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .radio-item-data:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateX(4px);
+        }
+        .radio-item-data input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #1a4d2e;
+        }
+        .radio-item-data input[type="radio"]:checked + label {
+            font-weight: 700;
+            color: #1a4d2e;
+        }
+        .radio-item-data label {
+            flex: 1;
+            margin: 0;
+            cursor: pointer;
+            color: #333;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .radio-item-data input[type="radio"]:checked ~ .radio-item-data {
+            border-color: #1a4d2e;
+        }
+        .radio-item-data:has(input[type="radio"]:checked) {
+            background: #f0f7f3;
+            border-color: #1a4d2e;
+            box-shadow: 0 2px 8px rgba(26, 77, 46, 0.2);
+        }
+        /* Estilos para seção de observações */
+        .secao-observacoes {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #e9ecef;
+        }
+        .secao-observacoes .form-label {
+            color: #1a4d2e;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .secao-observacoes .form-label i {
+            font-size: 20px;
+        }
+        .secao-observacoes textarea {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+        .secao-observacoes textarea:focus {
+            border-color: #1a4d2e;
+            box-shadow: 0 0 0 3px rgba(26, 77, 46, 0.1);
+            outline: none;
+        }
+        /* Animação de shake para validação */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
         }
         /* Garantir que o campo de senha tenha espaço e seja visível */
         #divSenhaReserva {
@@ -227,49 +854,163 @@
         <asp:ScriptManager ID="ScriptManager1" runat="server" EnablePageMethods="true"></asp:ScriptManager>
         <div class="container-fluid">
             <div class="header-logo">
+                <div class="header-top">
+                    <a href="Default.aspx" style="text-decoration: none; display: inline-block;">
+                        <img id="logoImg" src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" loading="eager" decoding="async" style="cursor: pointer;" />
+                    </a>
+                    <h1 id="logoFallback" class="header-title" style="display: none; color: #1a4d2e; margin: 0; font-size: 20px;">
+                        <a href="Default.aspx" style="text-decoration: none; color: inherit;"><i class="fas fa-crown"></i> Kingdom Confeitaria</a>
+                    </h1>
+                    <div class="header-user-name" id="clienteNome" runat="server" style="display: none;"></div>
+                </div>
                 <div class="header-actions">
-                    <span id="clienteNome" runat="server" style="color: white; margin-right: 15px; display: none;"></span>
                     <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
                     <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;"><i class="fas fa-sign-in-alt"></i> Entrar</a>
                     <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;"><i class="fas fa-clipboard-list"></i> Minhas Reservas</a>
                     <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;"><i class="fas fa-user"></i> Meus Dados</a>
                     <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;"><i class="fas fa-cog"></i> Painel Gestor</a>
                     <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
+                    <a href="#" class="carrinho-header" id="carrinhoHeader" onclick="abrirModalCarrinho(); return false;" title="Ver carrinho">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="carrinho-badge oculto" id="carrinhoBadge">0</span>
+                    </a>
                 </div>
-                <img id="logoImg" src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 100%; height: auto;" loading="eager" decoding="async" />
-                <h1 id="logoFallback" class="header-title" style="display: none; color: #d4af37; margin: 0;">
-                    <i class="fas fa-crown"></i> Kingdom Confeitaria
-                </h1>
             </div>
+            <!-- Espaçador dinâmico para o header fixo -->
+            <div class="header-spacer" id="headerSpacer"></div>
+            
             <div class="container-main">
-                <h2 class="header-title">
-                    Reserve seus Ginger Breads
-                </h2>
+                <!-- Hero Section -->
+                <div class="hero-section">
+                    <h1 class="hero-title">
+                        <i class="fas fa-cookie-bite"></i> Kingdom Confeitaria
+                    </h1>
+                    <p class="hero-subtitle">
+                        Reserve seus Ginger Breads artesanais com sabor único
+                    </p>
+                </div>
 
-                <div class="row">
-                    <div class="col-lg-7">
-                        <h3 class="mb-3"><i class="fas fa-cookie-bite"></i> Produtos Disponíveis</h3>
-                        <div id="produtosContainer" runat="server">
-                            <!-- Produtos serão carregados aqui -->
+                <div class="produtos-wrapper">
+                    <!-- Seção de Produtos -->
+                    <div class="produtos-section">
+                        <h2 class="section-title">
+                            <i class="fas fa-birthday-cake"></i>
+                            Nossos Produtos
+                        </h2>
+                        <div class="produtos-carrossel">
+                            <div class="carrossel-container" id="produtosContainer" runat="server">
+                                <!-- Produtos serão carregados aqui -->
+                            </div>
+                            <!-- Animação da mãozinha clicando -->
+                            <div class="maozinha-clique" id="maozinhaClique">
+                                <i class="fas fa-hand-pointer"></i>
+                            </div>
+                        </div>
+
+                        <!-- Seção Informativa -->
+                        <div class="info-section" style="padding: 20px 16px; background: #f8f9fa; margin: 20px 0; border-radius: 12px;">
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <div style="display: flex; align-items: start; gap: 12px;">
+                                    <div style="width: 40px; height: 40px; background: #1a4d2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <i class="fas fa-calendar-check" style="color: white; font-size: 18px;"></i>
+                                    </div>
+                                    <div>
+                                        <h3 style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 4px;">Reserve com Antecedência</h3>
+                                        <p style="font-size: 14px; color: #666; margin: 0; line-height: 1.5;">Faça sua reserva e retire nas segundas-feiras disponíveis</p>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: start; gap: 12px;">
+                                    <div style="width: 40px; height: 40px; background: #1a4d2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <i class="fas fa-heart" style="color: white; font-size: 18px;"></i>
+                                    </div>
+                                    <div>
+                                        <h3 style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 4px;">Feito com Amor</h3>
+                                        <p style="font-size: 14px; color: #666; margin: 0; line-height: 1.5;">Produtos artesanais preparados com ingredientes selecionados</p>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: start; gap: 12px;">
+                                    <div style="width: 40px; height: 40px; background: #1a4d2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <i class="fas fa-truck" style="color: white; font-size: 18px;"></i>
+                                    </div>
+                                    <div>
+                                        <h3 style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 4px;">Retirada Disponível</h3>
+                                        <p style="font-size: 14px; color: #666; margin: 0; line-height: 1.5;">Retire seu pedido no dia agendado</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="col-lg-5">
-                        <div class="carrinho-fixo">
-                            <h3><i class="fas fa-shopping-cart"></i> Seu Pedido</h3>
-                            <div id="carrinhoContainer" runat="server">
-                                <p class="text-muted">Seu carrinho está vazio</p>
-                            </div>
-                            <div class="total-carrinho" id="totalContainer" runat="server" style="display: none;">
-                                Total: R$ <span id="totalPedido" runat="server">0,00</span>
-                            </div>
-                            <asp:Button ID="btnFazerReserva" runat="server" 
-                                Text="Fazer Reserva" 
-                                CssClass="btn btn-reservar" 
-                                OnClick="btnFazerReserva_Click" 
-                                Enabled="false" 
-                                UseSubmitBehavior="true"
-                                CausesValidation="false" />
+                    <div class="carrinho-fixo d-none d-lg-block" id="carrinhoFixo">
+                        <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #333;">
+                            <i class="fas fa-shopping-cart"></i> Seu Pedido
+                        </h3>
+                        <div id="carrinhoContainer" runat="server">
+                            <p class="text-muted" style="text-align: center; padding: 20px;">Seu carrinho está vazio</p>
+                        </div>
+                        <div class="total-carrinho" id="totalContainer" runat="server" style="display: none; font-size: 20px; font-weight: 700; color: #1a4d2e; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e0e0e0;">
+                            Total: R$ <span id="totalPedido" runat="server">0,00</span>
+                        </div>
+                        <asp:Button ID="btnFazerReserva" runat="server" 
+                            Text="Fazer Reserva" 
+                            CssClass="btn btn-reservar" 
+                            OnClick="btnFazerReserva_Click" 
+                            Enabled="false" 
+                            UseSubmitBehavior="true"
+                            CausesValidation="false"
+                            Style="background: #1a4d2e; color: white; border: none; padding: 12px; border-radius: 8px; width: 100%; margin-top: 16px; font-weight: 600; transition: background 0.2s;" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carrinho Flutuante Mobile -->
+            <div class="carrinho-flutuante d-lg-none">
+                <div class="carrinho-flutuante-header">
+                    <div>
+                        <div class="carrinho-flutuante-total" id="totalFlutuante" style="display: none;">
+                            Total: R$ <span id="totalPedidoFlutuante">0,00</span>
+                        </div>
+                        <div class="carrinho-flutuante-itens" id="itensFlutuante">
+                            <span id="qtdItensFlutuante">0</span> item(s)
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm" onclick="abrirModalCarrinho()" style="background: #f0f0f0; border: none; padding: 8px 12px; border-radius: 6px;">
+                        <i class="fas fa-shopping-cart"></i> Ver
+                    </button>
+                </div>
+                <button type="button" class="btn-fazer-reserva" id="btnFazerReservaFlutuante" onclick="document.getElementById('<%= btnFazerReserva.ClientID %>').click();" disabled>
+                    Fazer Reserva
+                </button>
+            </div>
+
+            <!-- Modal de Detalhe do Produto -->
+            <div class="modal fade modal-produto-detalhe" id="modalProdutoDetalhe" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Detalhes do Produto</h5>
+                            <button type="button" class="btn-close" onclick="fecharModalProduto()" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body" id="modalProdutoDetalheBody">
+                            <!-- Conteúdo será preenchido via JavaScript -->
+                        </div>
+                        <div class="modal-footer" id="modalProdutoDetalheFooter">
+                            <!-- Botões serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal de Carrinho Mobile -->
+            <div class="modal fade modal-carrinho" id="modalCarrinho" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Seu Pedido</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                        </div>
+                        <div class="modal-body" id="modalCarrinhoBody">
+                            <!-- Conteúdo será preenchido via JavaScript -->
                         </div>
                     </div>
                 </div>
@@ -312,9 +1053,13 @@
                             </div>
                             
                             <!-- Botões da área de login (aparecem quando senha é solicitada) -->
-                            <div id="divBotoesLoginStandalone" class="d-flex gap-2 mb-3" style="display: none;">
-                                <button type="button" class="btn btn-secondary flex-fill" onclick="fecharModalLogin();">Cancelar</button>
-                                <button type="button" class="btn btn-primary flex-fill" id="btnConfirmarLoginStandalone">Confirmar</button>
+                            <div id="divBotoesLoginStandalone" class="d-flex gap-2 mb-3 justify-content-center" style="display: none;">
+                                <button type="button" class="btn-cancelar-pedido" onclick="fecharModalLogin();" title="Cancelar">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <button type="button" class="btn-adicionar-pedido" id="btnConfirmarLoginStandalone" title="Confirmar">
+                                    <i class="fas fa-check"></i>
+                                </button>
                             </div>
                             
                             <!-- Mensagens aparecem abaixo dos botões -->
@@ -370,9 +1115,13 @@
                             </div>
                             
                             <!-- Botões da área de login (aparecem quando senha é solicitada) -->
-                            <div id="divBotoesLogin" class="d-flex gap-2 mb-3" style="display: none;">
-                                <button type="button" class="btn btn-secondary flex-fill" id="btnCancelarLogin">Cancelar</button>
-                                <button type="button" class="btn btn-primary flex-fill" id="btnConfirmarLogin">Confirmar</button>
+                            <div id="divBotoesLogin" class="d-flex gap-2 mb-3 justify-content-center" style="display: none;">
+                                <button type="button" class="btn-cancelar-pedido" id="btnCancelarLogin" title="Cancelar">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <button type="button" class="btn-adicionar-pedido" id="btnConfirmarLogin" title="Confirmar">
+                                    <i class="fas fa-check"></i>
+                                </button>
                             </div>
                             
                             <!-- Mensagens aparecem abaixo dos botões -->
@@ -412,24 +1161,41 @@
                                 <asp:TextBox ID="txtTelefone" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" aria-label="Telefone/WhatsApp"></asp:TextBox>
                                 <asp:HiddenField ID="hdnTelefone" runat="server" />
                             </div>
-                            <div class="mb-3">
-                                <asp:Label ID="lblDataRetirada" runat="server" AssociatedControlID="ddlDataRetirada" CssClass="form-label">Data de Retirada *</asp:Label>
-                                <asp:DropDownList ID="ddlDataRetirada" runat="server" CssClass="form-select" aria-label="Data de Retirada"></asp:DropDownList>
+                            <!-- Seção de Data de Retirada com destaque -->
+                            <div class="secao-data-retirada">
+                                <asp:Label ID="lblDataRetirada" runat="server" CssClass="form-label">
+                                    <i class="fas fa-calendar-alt"></i> Data de Retirada *
+                                </asp:Label>
+                                <div class="radio-group-datas" id="radioGroupDatas" runat="server">
+                                    <!-- Os radiobuttons serão gerados dinamicamente no code-behind -->
+                                </div>
+                                <asp:HiddenField ID="hdnDataRetirada" runat="server" />
                             </div>
-                            <div class="mb-3">
-                                <asp:Label ID="lblObservacoes" runat="server" AssociatedControlID="txtObservacoes" CssClass="form-label">Observações</asp:Label>
-                                <asp:TextBox ID="txtObservacoes" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="3" aria-label="Observações"></asp:TextBox>
+                            
+                            <!-- Seção de Observações com destaque -->
+                            <div class="secao-observacoes">
+                                <asp:Label ID="lblObservacoes" runat="server" AssociatedControlID="txtObservacoes" CssClass="form-label">
+                                    <i class="fas fa-comment-alt"></i> Observações
+                                </asp:Label>
+                                <asp:TextBox ID="txtObservacoes" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="4" 
+                                    placeholder="Adicione observações sobre sua reserva (opcional)" aria-label="Observações"></asp:TextBox>
+                                <small class="text-muted mt-2 d-block">
+                                    <i class="fas fa-info-circle"></i> Informe qualquer detalhe importante sobre sua reserva
+                                </small>
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer" id="divBotoesReserva">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <div class="modal-footer" id="divBotoesReserva" style="justify-content: center; gap: 12px;">
+                        <button type="button" class="btn-cancelar-pedido" data-bs-dismiss="modal" title="Cancelar">
+                            <i class="fas fa-times"></i>
+                        </button>
                         <asp:Button ID="btnConfirmarReserva" runat="server" 
-                            Text="Confirmar Reserva" 
-                            CssClass="btn btn-primary" 
+                            CssClass="btn-adicionar-pedido" 
                             OnClick="btnConfirmarReserva_Click"
                             OnClientClick="return validarFormularioReserva();"
-                            Style="display: none;" />
+                            Style="display: none;"
+                            title="Confirmar Reserva"
+                            Text="" />
                     </div>
                 </div>
             </div>
@@ -457,7 +1223,7 @@
         </div>
     </form>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer crossorigin="anonymous" async></script>
     <!-- Garantir que __doPostBack esteja disponível antes de carregar os scripts -->
     <script type="text/javascript">
         // Função __doPostBack será gerada pelo ASP.NET automaticamente
@@ -1285,7 +2051,9 @@
                     var nome = document.getElementById('<%= txtNome.ClientID %>');
                     var email = document.getElementById('<%= txtEmail.ClientID %>');
                     var telefone = document.getElementById('<%= txtTelefone.ClientID %>');
-                    var dataRetirada = document.getElementById('<%= ddlDataRetirada.ClientID %>');
+                    // Verificar data de retirada selecionada
+                    var dataRetirada = document.querySelector('input[name="dataRetirada"]:checked');
+                    var hdnDataRetirada = document.getElementById('<%= hdnDataRetirada.ClientID %>');
                     
                     // Verificar também os hidden fields (caso os campos readonly estejam vazios)
                     var hdnNome = document.getElementById('<%= hdnNome.ClientID %>');
@@ -1306,7 +2074,15 @@
                     var telefoneValido = telefoneValorLimpo.length >= 10 && telefoneValorLimpo.length <= 11;
                     if (!telefoneValido && !primeiroInvalido) primeiroInvalido = telefone || hdnTelefone;
                     var dataValida = dataRetirada && dataRetirada.value && dataRetirada.value !== '';
-                    if (!dataValida && !primeiroInvalido) primeiroInvalido = dataRetirada;
+                    if (!dataValida && !primeiroInvalido) {
+                        primeiroInvalido = dataRetirada;
+                        // Destacar a seção de data de retirada
+                        var secaoData = document.querySelector('.secao-data-retirada');
+                        if (secaoData) {
+                            secaoData.style.animation = 'shake 0.5s';
+                            setTimeout(function() { secaoData.style.animation = ''; }, 500);
+                        }
+                    }
 
                     if (!nomeValido || !emailValido || !telefoneValido || !dataValida) {
                         if (primeiroInvalido) {
@@ -1606,6 +2382,493 @@
             }
             initLoginStandalone();
         })();
+    </script>
+    
+    <!-- Funções para Modal de Produto e Carrinho -->
+    <script>
+        var produtoAtual = null;
+        var quantidadeAtual = 1;
+        
+        // Função para abrir modal a partir do card (usa data attribute)
+        function abrirModalProdutoFromCard(cardElement) {
+            var produtoJson = cardElement.getAttribute('data-produto-json');
+            if (produtoJson) {
+                abrirModalProduto(produtoJson);
+            }
+        }
+        
+        function abrirModalProduto(produtoJson) {
+            try {
+                var produto;
+                if (typeof produtoJson === 'string') {
+                    // Decodificar HTML entities e fazer parse do JSON
+                    var jsonStr = produtoJson
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                        .replace(/&amp;/g, '&')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>');
+                    produto = JSON.parse(jsonStr);
+                } else {
+                    produto = produtoJson;
+                }
+                produtoAtual = produto;
+                quantidadeAtual = 1;
+                
+                var modalBody = document.getElementById('modalProdutoDetalheBody');
+                var modalFooter = document.getElementById('modalProdutoDetalheFooter');
+                if (!modalBody || !modalFooter) return;
+                
+                var html = '';
+                
+                // Função helper para escapar HTML
+                function escapeHtml(text) {
+                    if (!text) return '';
+                    var div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
+                
+                // Função helper para escapar atributos HTML
+                function escapeAttr(text) {
+                    if (!text) return '';
+                    return String(text)
+                        .replace(/&/g, '&amp;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;');
+                }
+                
+                // Imagem
+                html += '<img src="' + escapeAttr(produto.imagem) + '" alt="' + escapeAttr(produto.nome) + '" class="produto-imagem-detalhe" />';
+                
+                // Nome
+                html += '<h2 class="produto-nome-detalhe">' + escapeHtml(produto.nome) + '</h2>';
+                
+                // Descrição
+                if (produto.descricao && produto.descricao !== '') {
+                    html += '<p class="produto-descricao-detalhe">' + escapeHtml(produto.descricao) + '</p>';
+                }
+                
+                // Preço unitário
+                html += '<div class="produto-preco-detalhe">Preço Unitário: R$ ' + parseFloat(produto.preco).toFixed(2).replace('.', ',') + '</div>';
+                
+                // Se for saco promocional, mostrar seletores de produtos
+                if (produto.ehSaco && produto.produtosPermitidos && produto.produtosPermitidos.length > 0) {
+                    html += '<div class="saco-produtos-selector" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">';
+                    html += '<h4 style="font-size: 16px; margin-bottom: 15px; color: #1a4d2e;">Selecione os produtos do saco:</h4>';
+                    html += '<p style="font-size: 13px; color: #666; margin-bottom: 15px;">Selecione ' + produto.quantidadeSaco + ' produto(s) para incluir no saco promocional.</p>';
+                    
+                    for (var i = 0; i < produto.quantidadeSaco; i++) {
+                        html += '<div class="mb-3" style="margin-bottom: 12px;">';
+                        html += '<label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Produto ' + (i + 1) + ':</label>';
+                        html += '<select class="form-control seletor-produto-saco-modal" data-saco-id="' + produto.id + '" data-indice="' + i + '" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">';
+                        html += '<option value="">Selecione um produto...</option>';
+                        
+                        for (var j = 0; j < produto.produtosPermitidos.length; j++) {
+                            var prodPermitido = produto.produtosPermitidos[j];
+                            html += '<option value="' + escapeAttr(prodPermitido.id) + '">' + escapeHtml(prodPermitido.nome) + ' - R$ ' + parseFloat(prodPermitido.preco).toFixed(2).replace('.', ',') + '</option>';
+                        }
+                        
+                        html += '</select>';
+                        html += '</div>';
+                    }
+                    
+                    html += '</div>';
+                }
+                
+                // Seletor de quantidade
+                html += '<div class="quantidade-selector" style="margin-top: 20px;">';
+                html += '<label style="display: block; margin-bottom: 8px; font-weight: 600;">Quantidade de sacos:</label>';
+                html += '<div class="quantidade-controls" style="display: flex; align-items: center; gap: 10px;">';
+                html += '<button type="button" class="btn-quantidade" onclick="diminuirQuantidadeModal()" style="width: 35px; height: 35px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>';
+                html += '<span class="quantidade-value" id="quantidadeModal" style="font-size: 18px; font-weight: 600; min-width: 30px; text-align: center;">' + quantidadeAtual + '</span>';
+                html += '<button type="button" class="btn-quantidade" onclick="aumentarQuantidadeModal()" style="width: 35px; height: 35px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>';
+                html += '</div>';
+                html += '</div>';
+                
+                // Preço total
+                html += '<div class="preco-total-modal" id="precoTotalModal" style="margin-top: 20px; padding: 15px; background: #1a4d2e; color: white; border-radius: 8px; font-size: 18px; font-weight: 700; text-align: center;">';
+                html += 'Total: R$ <span id="valorTotalModal">' + parseFloat(produto.preco).toFixed(2).replace('.', ',') + '</span>';
+                html += '</div>';
+                
+                modalBody.innerHTML = html;
+                
+                // Footer com botões
+                var footerHtml = '';
+                footerHtml += '<div style="display: flex; gap: 12px; justify-content: center; align-items: center;">';
+                footerHtml += '<button type="button" class="btn-cancelar-pedido" onclick="fecharModalProduto()" title="Cancelar">';
+                footerHtml += '<i class="fas fa-times"></i>';
+                footerHtml += '</button>';
+                footerHtml += '<button type="button" class="btn-adicionar-pedido" onclick="adicionarProdutoAoCarrinho()" title="Confirmar">';
+                footerHtml += '<i class="fas fa-check"></i>';
+                footerHtml += '</button>';
+                footerHtml += '</div>';
+                
+                modalFooter.innerHTML = footerHtml;
+                
+                // Abrir modal
+                if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
+                    KingdomConfeitaria.Modal.show('modalProdutoDetalhe');
+                } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    var modalElement = document.getElementById('modalProdutoDetalhe');
+                    var modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                }
+            } catch (e) {
+                console.error('Erro ao abrir modal de produto:', e);
+                alert('Erro ao abrir detalhes do produto. Tente novamente.');
+            }
+        }
+        
+        function fecharModalProduto() {
+            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
+                KingdomConfeitaria.Modal.hide('modalProdutoDetalhe');
+            } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var modalElement = document.getElementById('modalProdutoDetalhe');
+                var modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                } else {
+                    // Se não houver instância, criar e fechar
+                    var newModal = new bootstrap.Modal(modalElement);
+                    newModal.hide();
+                }
+            }
+            // Resetar variáveis
+            produtoAtual = null;
+            quantidadeAtual = 1;
+        }
+        
+        function aumentarQuantidadeModal() {
+            if (!produtoAtual) return;
+            quantidadeAtual++;
+            atualizarQuantidadeModal();
+        }
+        
+        function diminuirQuantidadeModal() {
+            if (!produtoAtual) return;
+            if (quantidadeAtual > 1) {
+                quantidadeAtual--;
+                atualizarQuantidadeModal();
+            }
+        }
+        
+        function atualizarQuantidadeModal() {
+            if (!produtoAtual) return;
+            
+            var qtdElement = document.getElementById('quantidadeModal');
+            var valorTotalElement = document.getElementById('valorTotalModal');
+            
+            if (qtdElement) {
+                qtdElement.textContent = quantidadeAtual;
+            }
+            
+            if (valorTotalElement) {
+                var precoUnitario = parseFloat(produtoAtual.preco);
+                var total = precoUnitario * quantidadeAtual;
+                valorTotalElement.textContent = total.toFixed(2).replace('.', ',');
+            }
+        }
+        
+        function adicionarProdutoAoCarrinho() {
+            if (!produtoAtual) return;
+            
+            // Se for saco promocional, usar lógica específica
+            if (produtoAtual.ehSaco && produtoAtual.produtosPermitidos && produtoAtual.produtosPermitidos.length > 0) {
+                adicionarSacoAoCarrinhoDoModal();
+                return;
+            }
+            
+            var tamanho = produtoAtual.tamanho || '';
+            var nome = produtoAtual.nome;
+            var preco = produtoAtual.preco;
+            var quantidade = quantidadeAtual;
+            
+            // Validar preço
+            if (!preco || preco === '' || preco === 'undefined' || preco === 'null') {
+                alert('Erro: Preço inválido. Por favor, verifique os dados do produto.');
+                return;
+            }
+            
+            // Normalizar preço (garantir que use ponto como separador decimal)
+            var precoNormalizado = String(preco).replace(',', '.').trim();
+            
+            // Validar se é um número válido
+            if (isNaN(parseFloat(precoNormalizado))) {
+                alert('Erro: Preço inválido: ' + preco);
+                return;
+            }
+            
+            // Adicionar ao carrinho usando postBack diretamente com o preço
+            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Utils && KingdomConfeitaria.Utils.postBack) {
+                KingdomConfeitaria.Utils.postBack('AdicionarAoCarrinho', produtoAtual.id + '|' + nome + '|' + tamanho + '|' + precoNormalizado + '|' + quantidade);
+            } else if (typeof adicionarAoCarrinho === 'function') {
+                adicionarAoCarrinho(produtoAtual.id, nome, tamanho, quantidade);
+            } else if (typeof DefaultPage !== 'undefined' && DefaultPage.Carrinho) {
+                // Se não conseguir usar postBack diretamente, tentar usar a função do carrinho
+                // mas passar o preço como parâmetro adicional
+                DefaultPage.Carrinho.adicionar(produtoAtual.id, nome, tamanho, quantidade, precoNormalizado);
+            }
+            
+            // Fechar modal
+            fecharModalProduto();
+        }
+        
+        function adicionarSacoAoCarrinhoDoModal() {
+            if (!produtoAtual) return;
+            
+            var seletores = document.querySelectorAll('.seletor-produto-saco-modal[data-saco-id="' + produtoAtual.id + '"]');
+            var produtosSelecionados = [];
+            var todosPreenchidos = true;
+            var seletoresVazios = [];
+            
+            seletores.forEach(function(select, index) {
+                if (select.value && select.value !== '') {
+                    produtosSelecionados.push(select.value);
+                } else {
+                    todosPreenchidos = false;
+                    seletoresVazios.push(index + 1);
+                }
+            });
+            
+            if (!todosPreenchidos || produtosSelecionados.length !== produtoAtual.quantidadeSaco) {
+                var mensagem = 'Por favor, selecione todos os ' + produtoAtual.quantidadeSaco + ' produtos para o saco promocional.';
+                if (seletoresVazios.length > 0) {
+                    mensagem += ' Faltam selecionar: ' + seletoresVazios.join(', ');
+                }
+                alert(mensagem);
+                // Destacar os seletores vazios
+                seletores.forEach(function(select, index) {
+                    if (!select.value || select.value === '') {
+                        select.style.borderColor = '#dc3545';
+                        select.style.borderWidth = '2px';
+                        select.focus();
+                    } else {
+                        select.style.borderColor = '#ddd';
+                        select.style.borderWidth = '1px';
+                    }
+                });
+                return;
+            }
+            
+            // Validar preço
+            var preco = produtoAtual.preco;
+            if (!preco || preco === '' || preco === 'undefined' || preco === 'null') {
+                alert('Erro: Preço inválido. Por favor, verifique os dados do produto.');
+                return;
+            }
+            
+            // Normalizar preço
+            var precoNormalizado = String(preco).replace(',', '.').trim();
+            
+            if (isNaN(parseFloat(precoNormalizado))) {
+                alert('Erro: Preço inválido: ' + preco);
+                return;
+            }
+            
+            // Enviar os dados: sacoId|nomeSaco|preco|quantidade|produtosSelecionados
+            var dados = produtoAtual.id + '|' + produtoAtual.nome + '|' + precoNormalizado + '|' + quantidadeAtual + '|' + produtosSelecionados.join(',');
+            
+            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Utils && KingdomConfeitaria.Utils.postBack) {
+                KingdomConfeitaria.Utils.postBack('AdicionarSacoAoCarrinho', dados);
+            }
+            
+            // Fechar modal
+            fecharModalProduto();
+        }
+        
+        function abrirModalCarrinho() {
+            // Verificar se está em mobile (largura menor que 992px)
+            if (window.innerWidth < 992) {
+                // Mobile: abrir modal
+                if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
+                    KingdomConfeitaria.Modal.show('modalCarrinho');
+                } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    var modalElement = document.getElementById('modalCarrinho');
+                    var modal = new bootstrap.Modal(modalElement);
+                    modal.show();
+                }
+            } else {
+                // Desktop: rolar até o carrinho e destacá-lo
+                var carrinhoFixo = document.getElementById('carrinhoFixo');
+                if (carrinhoFixo) {
+                    // Adicionar classe de destaque
+                    carrinhoFixo.style.transition = 'all 0.3s ease';
+                    carrinhoFixo.style.boxShadow = '0 0 20px rgba(26, 77, 46, 0.5)';
+                    carrinhoFixo.style.transform = 'scale(1.02)';
+                    
+                    // Rolar até o carrinho
+                    carrinhoFixo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    // Remover destaque após 2 segundos
+                    setTimeout(function() {
+                        carrinhoFixo.style.boxShadow = '';
+                        carrinhoFixo.style.transform = '';
+                    }, 2000);
+                }
+            }
+        }
+        
+        // Função para ajustar o espaçamento do header dinamicamente
+        function ajustarEspacamentoHeader() {
+            var header = document.querySelector('.header-logo');
+            var spacer = document.getElementById('headerSpacer');
+            
+            if (header && spacer) {
+                // Obter a altura real do header
+                var headerHeight = header.offsetHeight;
+                
+                // Ajustar a altura do espaçador
+                spacer.style.height = headerHeight + 'px';
+                spacer.style.minHeight = headerHeight + 'px';
+            }
+        }
+        
+        // Ajustar quando a página carregar
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', ajustarEspacamentoHeader);
+        } else {
+            ajustarEspacamentoHeader();
+        }
+        
+        // Ajustar quando a janela redimensionar
+        window.addEventListener('resize', ajustarEspacamentoHeader);
+        
+        // Observar mudanças no header usando MutationObserver
+        var headerObserver = new MutationObserver(function(mutations) {
+            ajustarEspacamentoHeader();
+        });
+        
+        var headerElement = document.querySelector('.header-logo');
+        if (headerElement) {
+            headerObserver.observe(headerElement, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['style', 'class']
+            });
+        }
+        
+        // Ajustar após um pequeno delay para garantir que o DOM esteja totalmente renderizado
+        setTimeout(ajustarEspacamentoHeader, 100);
+        setTimeout(ajustarEspacamentoHeader, 500);
+        setTimeout(ajustarEspacamentoHeader, 1000);
+        
+        // Adicionar ícone ao botão ASP.NET de confirmar reserva
+        function adicionarIconeBotaoReserva() {
+            var btnConfirmarReserva = document.getElementById('<%= btnConfirmarReserva.ClientID %>');
+            if (btnConfirmarReserva && !btnConfirmarReserva.querySelector('i')) {
+                // Limpar texto e adicionar ícone
+                btnConfirmarReserva.innerHTML = '<i class="fas fa-check"></i>';
+            }
+        }
+        
+        // Executar quando a página carregar
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', adicionarIconeBotaoReserva);
+        } else {
+            adicionarIconeBotaoReserva();
+        }
+        
+        // Executar após delays para garantir que o botão esteja renderizado
+        setTimeout(adicionarIconeBotaoReserva, 100);
+        setTimeout(adicionarIconeBotaoReserva, 500);
+        setTimeout(adicionarIconeBotaoReserva, 1000);
+        
+        // Observar mudanças no botão
+        var btnObserver = new MutationObserver(function(mutations) {
+            adicionarIconeBotaoReserva();
+        });
+        
+        var btnElement = document.getElementById('<%= btnConfirmarReserva.ClientID %>');
+        if (btnElement) {
+            btnObserver.observe(btnElement, {
+                childList: true,
+                subtree: true,
+                attributes: true
+            });
+        }
+        
+        // Animação da mãozinha clicando
+        function iniciarAnimacaoMao() {
+            var maozinha = document.getElementById('maozinhaClique');
+            var produtosContainer = document.getElementById('<%= produtosContainer.ClientID %>');
+            
+            if (!maozinha || !produtosContainer) return;
+            
+            // Verificar se já foi mostrada antes (usando sessionStorage)
+            if (sessionStorage.getItem('maozinhaMostrada') === 'true') {
+                return;
+            }
+            
+            // Aguardar produtos carregarem
+            var produtos = produtosContainer.querySelectorAll('.produto-card-carrossel');
+            if (produtos.length === 0) {
+                // Tentar novamente após um delay
+                setTimeout(iniciarAnimacaoMao, 500);
+                return;
+            }
+            
+            // Pegar o primeiro produto
+            var primeiroProduto = produtos[0];
+            if (!primeiroProduto) return;
+            
+            // Calcular posição do primeiro produto
+            var produtoRect = primeiroProduto.getBoundingClientRect();
+            var carrosselRect = produtosContainer.parentElement.getBoundingClientRect();
+            
+            // Posicionar a mãozinha no centro do primeiro produto
+            var left = produtoRect.left - carrosselRect.left + (produtoRect.width / 2) - 20;
+            var top = produtoRect.top - carrosselRect.top + (produtoRect.height / 2) - 20;
+            
+            maozinha.style.left = left + 'px';
+            maozinha.style.top = top + 'px';
+            
+            // Mostrar a mãozinha
+            setTimeout(function() {
+                maozinha.classList.add('visivel');
+            }, 1000); // Aparecer após 1 segundo
+            
+            // Esconder após 5 segundos
+            setTimeout(function() {
+                maozinha.classList.remove('visivel');
+                sessionStorage.setItem('maozinhaMostrada', 'true');
+            }, 6000);
+            
+            // Esconder se o usuário clicar em qualquer produto
+            produtos.forEach(function(produto) {
+                produto.addEventListener('click', function() {
+                    maozinha.classList.remove('visivel');
+                    sessionStorage.setItem('maozinhaMostrada', 'true');
+                }, { once: true });
+            });
+        }
+        
+        // Iniciar animação quando a página carregar
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(iniciarAnimacaoMao, 500);
+            });
+        } else {
+            setTimeout(iniciarAnimacaoMao, 500);
+        }
+        
+        // Ajustar posição quando a janela redimensionar
+        window.addEventListener('resize', function() {
+            var maozinha = document.getElementById('maozinhaClique');
+            if (maozinha && maozinha.classList.contains('visivel')) {
+                iniciarAnimacaoMao();
+            }
+        });
+        // Função JavaScript para atualizar hidden field
+        function atualizarDataRetirada(valor) {
+            var hdnDataRetirada = document.getElementById('<%= hdnDataRetirada.ClientID %>');
+            if (hdnDataRetirada) {
+                hdnDataRetirada.value = valor;
+            }
+        }
     </script>
 </body>
 </html>

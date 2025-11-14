@@ -128,24 +128,13 @@ namespace KingdomConfeitaria.Services
                     "(localdb)\\ProjectsV12"
                 };
                 
-                // Tentar cada instância até encontrar uma que funcione
-                foreach (string instance in localDbInstances)
+                // Tentar apenas a primeira instância (a original) para não demorar
+                // Se não funcionar, retornar a original e deixar a conexão real tentar
+                if (!string.IsNullOrEmpty(originalDataSource))
                 {
-                    if (string.IsNullOrEmpty(instance)) continue;
-                    
-                    // Criar connection string de teste
+                    // Se a instância original já é válida, usar ela
                     string testConnectionString = connectionString;
-                    if (testConnectionString.Contains("Data Source="))
-                    {
-                        int start = testConnectionString.IndexOf("Data Source=");
-                        int end = testConnectionString.IndexOf(";", start);
-                        if (end == -1) end = testConnectionString.Length;
-                        testConnectionString = testConnectionString.Remove(start, end - start);
-                    }
-                    testConnectionString = "Data Source=" + instance + ";" + testConnectionString.TrimStart(';');
-                    
-                    // Testar conexão (usar master para teste)
-                    string testMasterConnection = testConnectionString;
+                    string testMasterConnection = connectionString;
                     if (testMasterConnection.Contains("Initial Catalog="))
                     {
                         int catStart = testMasterConnection.IndexOf("Initial Catalog=");
@@ -155,45 +144,36 @@ namespace KingdomConfeitaria.Services
                     }
                     testMasterConnection = testMasterConnection.TrimEnd(';') + ";Initial Catalog=master";
                     
-                    if (TestarConexaoLocalDB(testMasterConnection))
+                    // Testar apenas com timeout muito curto (1 segundo)
+                    try
                     {
-                        // Instância válida encontrada - atualizar connection string
-                        return testConnectionString;
+                        if (!testMasterConnection.Contains("Connect Timeout="))
+                        {
+                            testMasterConnection = testMasterConnection.TrimEnd(';') + ";Connect Timeout=1";
+                        }
+                        using (var testConnection = new SqlConnection(testMasterConnection))
+                        {
+                            testConnection.Open();
+                            // Se funcionou, retornar a connection string original
+                            return connectionString;
+                        }
+                    }
+                    catch
+                    {
+                        // Se não funcionou, continuar e retornar original mesmo assim
+                        // A conexão real tentará e dará erro mais claro se necessário
                     }
                 }
                 
                 // Se não encontrou nenhuma instância LocalDB válida, tentar iniciar o LocalDB uma última vez
+                // Mas apenas se realmente necessário (não bloquear o carregamento)
                 try
                 {
-                    TentarIniciarLocalDB();
-                    // Aguardar um pouco para o LocalDB iniciar
-                    System.Threading.Thread.Sleep(2000);
+                    // Tentar iniciar em background sem bloquear
+                    System.Threading.Tasks.Task.Run(() => TentarIniciarLocalDB());
                     
-                    // Tentar novamente com a instância padrão após iniciar
-                    string testConnectionString = connectionString;
-                    if (testConnectionString.Contains("Data Source="))
-                    {
-                        int start = testConnectionString.IndexOf("Data Source=");
-                        int end = testConnectionString.IndexOf(";", start);
-                        if (end == -1) end = testConnectionString.Length;
-                        testConnectionString = testConnectionString.Remove(start, end - start);
-                    }
-                    testConnectionString = "Data Source=(localdb)\\MSSQLLocalDB;" + testConnectionString.TrimStart(';');
-                    
-                    string testMasterConnection = testConnectionString;
-                    if (testMasterConnection.Contains("Initial Catalog="))
-                    {
-                        int catStart = testMasterConnection.IndexOf("Initial Catalog=");
-                        int catEnd = testMasterConnection.IndexOf(";", catStart);
-                        if (catEnd == -1) catEnd = testMasterConnection.Length;
-                        testMasterConnection = testMasterConnection.Remove(catStart, catEnd - catStart);
-                    }
-                    testMasterConnection = testMasterConnection.TrimEnd(';') + ";Initial Catalog=master";
-                    
-                    if (TestarConexaoLocalDB(testMasterConnection))
-                    {
-                        return testConnectionString;
-                    }
+                    // Não aguardar - retornar a connection string original e deixar a conexão real tentar
+                    // Se o LocalDB não estiver rodando, a conexão real falhará com mensagem clara
                 }
                 catch
                 {
@@ -1060,7 +1040,7 @@ namespace KingdomConfeitaria.Services
 
         public List<Produto> ObterProdutos()
         {
-            // Cache de 5 minutos para lista de produtos ativos
+            // Cache de 10 minutos para lista de produtos ativos (aumentado para melhor performance)
             string cacheKey = "Produtos_Ativos";
             List<Produto> cached = null;
             
@@ -1078,8 +1058,15 @@ namespace KingdomConfeitaria.Services
             
             using (var connection = new SqlConnection(_connectionString))
             {
+                // Adicionar timeout curto na connection string se não tiver
+                if (!_connectionString.Contains("Connect Timeout="))
+                {
+                    connection.ConnectionString = _connectionString.TrimEnd(';') + ";Connect Timeout=5";
+                }
                 connection.Open();
+                // Query otimizada - apenas campos necessários
                 var command = new SqlCommand("SELECT Id, Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, ISNULL(EhSacoPromocional, 0), ISNULL(QuantidadeSaco, 0), ISNULL(Produtos, ''), ReservavelAte, VendivelAte FROM Produtos WHERE Ativo = 1 ORDER BY Ordem", connection);
+                command.CommandTimeout = 5; // Timeout curto para não bloquear
                 
                 using (var reader = command.ExecuteReader())
                 {
@@ -1104,10 +1091,10 @@ namespace KingdomConfeitaria.Services
                 }
             }
             
-            // Armazenar no cache por 5 minutos (se disponível)
+            // Armazenar no cache por 10 minutos (se disponível) - aumentado para melhor performance
             if (HttpRuntime.Cache != null)
             {
-                HttpRuntime.Cache.Insert(cacheKey, produtos, null, DateTime.Now.AddMinutes(5), System.Web.Caching.Cache.NoSlidingExpiration);
+                HttpRuntime.Cache.Insert(cacheKey, produtos, null, DateTime.Now.AddMinutes(10), System.Web.Caching.Cache.NoSlidingExpiration);
             }
             
             return produtos;
@@ -1544,11 +1531,11 @@ namespace KingdomConfeitaria.Services
         {
             try
             {
-                // Adicionar timeout curto para teste rápido
+                // Adicionar timeout muito curto para teste rápido (1 segundo)
                 string testConnectionString = connectionString;
                 if (!testConnectionString.Contains("Connect Timeout="))
                 {
-                    testConnectionString = testConnectionString.TrimEnd(';') + ";Connect Timeout=5";
+                    testConnectionString = testConnectionString.TrimEnd(';') + ";Connect Timeout=1";
                 }
                 else
                 {
@@ -1556,7 +1543,7 @@ namespace KingdomConfeitaria.Services
                     testConnectionString = System.Text.RegularExpressions.Regex.Replace(
                         testConnectionString, 
                         @"Connect Timeout=\d+", 
-                        "Connect Timeout=5");
+                        "Connect Timeout=1");
                 }
                 
                 using (var testConnection = new SqlConnection(testConnectionString))
@@ -1565,43 +1552,10 @@ namespace KingdomConfeitaria.Services
                     return true;
                 }
             }
-            catch (SqlException sqlEx)
+            catch (SqlException)
             {
-                // Se o erro for específico de LocalDB não encontrado, tentar iniciar o LocalDB
-                if (sqlEx.Message.Contains("Unable to locate a Local Database Runtime installation") ||
-                    sqlEx.Message.Contains("error: 52") ||
-                    sqlEx.Message.Contains("Local Database Runtime"))
-                {
-                    // Tentar iniciar o LocalDB automaticamente
-                    try
-                    {
-                        TentarIniciarLocalDB();
-                        // Tentar novamente após iniciar (usar a connection string original)
-                        string retryConnectionString = connectionString;
-                        if (!retryConnectionString.Contains("Connect Timeout="))
-                        {
-                            retryConnectionString = retryConnectionString.TrimEnd(';') + ";Connect Timeout=5";
-                        }
-                        else
-                        {
-                            retryConnectionString = System.Text.RegularExpressions.Regex.Replace(
-                                retryConnectionString, 
-                                @"Connect Timeout=\d+", 
-                                "Connect Timeout=5");
-                        }
-                        
-                        using (var testConnection = new SqlConnection(retryConnectionString))
-                        {
-                            testConnection.Open();
-                            return true;
-                        }
-                    }
-                    catch
-                    {
-                        return false;
-                    }
-                }
-                // Outros erros também retornam false
+                // Não tentar iniciar LocalDB durante teste - isso causa lentidão
+                // A conexão real tentará e dará erro mais claro se necessário
                 return false;
             }
             catch
@@ -1855,13 +1809,14 @@ namespace KingdomConfeitaria.Services
             }
         }
 
-        public void AdicionarProduto(Produto produto)
+        public int AdicionarProduto(Produto produto)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
                 var command = new SqlCommand(@"
                     INSERT INTO Produtos (Nome, Descricao, Preco, ImagemUrl, Ativo, Ordem, EhSacoPromocional, QuantidadeSaco, Produtos, ReservavelAte, VendivelAte)
+                    OUTPUT INSERTED.Id
                     VALUES (@Nome, @Descricao, @Preco, @ImagemUrl, @Ativo, @Ordem, @EhSacoPromocional, @QuantidadeSaco, @Produtos, @ReservavelAte, @VendivelAte)", connection);
                 
                 command.Parameters.AddWithValue("@Nome", produto.Nome);
@@ -1876,7 +1831,7 @@ namespace KingdomConfeitaria.Services
                 command.Parameters.AddWithValue("@ReservavelAte", produto.ReservavelAte.HasValue ? (object)produto.ReservavelAte.Value : DBNull.Value);
                 command.Parameters.AddWithValue("@VendivelAte", produto.VendivelAte.HasValue ? (object)produto.VendivelAte.Value : DBNull.Value);
                 
-                command.ExecuteNonQuery();
+                int produtoId = (int)command.ExecuteScalar();
                 
                 // Limpar cache de produtos após adicionar
                 LimparCacheProdutos();
@@ -1885,6 +1840,8 @@ namespace KingdomConfeitaria.Services
                 string usuarioLog = LogService.ObterUsuarioAtual(HttpContext.Current?.Session);
                 string detalhes = $"Nome: {produto.Nome}, Preco: R$ {produto.Preco:F2}, Ativo: {produto.Ativo}";
                 LogService.RegistrarInsercao(usuarioLog, "Produto", "DatabaseService.AdicionarProduto", detalhes);
+                
+                return produtoId;
             }
         }
 
