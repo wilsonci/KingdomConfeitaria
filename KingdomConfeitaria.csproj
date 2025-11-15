@@ -68,22 +68,30 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Default.aspx" />
-    <Content Include="Admin.aspx" />
-    <Content Include="Login.aspx" />
-    <Content Include="Cadastro.aspx" />
-    <Content Include="MeusDados.aspx" />
-    <Content Include="Logout.aspx" />
-    <Content Include="MinhasReservas.aspx" />
-    <Content Include="ConfirmarCadastro.aspx" />
-    <Content Include="RecuperarSenha.aspx" />
-    <Content Include="RedefinirSenha.aspx" />
-    <Content Include="VerReserva.aspx" />
+    <Content Include="paginas\Admin.aspx" />
+    <Content Include="paginas\Login.aspx" />
+    <Content Include="paginas\Cadastro.aspx" />
+    <Content Include="paginas\MeusDados.aspx" />
+    <Content Include="paginas\Logout.aspx" />
+    <Content Include="paginas\MinhasReservas.aspx" />
+    <Content Include="paginas\ConfirmarCadastro.aspx" />
+    <Content Include="paginas\RecuperarSenha.aspx" />
+    <Content Include="paginas\RedefinirSenha.aspx" />
+    <Content Include="paginas\VerReserva.aspx" />
+    <Content Include="paginas\Carrinho.aspx" />
+    <Content Include="paginas\Produto.aspx" />
+    <Content Include="paginas\Reserva.aspx" />
+    <Content Include="UserControls\Header.ascx" />
+    <Content Include="UserControls\Footer.ascx" />
+    <Content Include="Content\layout.css" />
     <Content Include="Global.asax" />
     <Content Include="Scripts\site.js" />
     <Content Include="Scripts\app.js" />
     <Content Include="Scripts\default.js" />
     <Content Include="Scripts\admin.js" />
     <Content Include="Scripts\minhasreservas.js" />
+    <Content Include="Scripts\navigation.js" />
+    <Content Include="Scripts\ajax-helper.js" />
     <Content Include="web.config" />
     <Content Include="Images\logo-kingdom-confeitaria.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -142,6 +150,7 @@
     <Content Include="Utils\EncryptPassword.aspx" Condition="'$(Configuration)' == 'Debug'">
       <SubType>ASPXCodeBehind</SubType>
     </Content>
+    <Content Include="Handlers\CallbackHandler.ashx" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Default.aspx.cs">
@@ -151,75 +160,110 @@
     <Compile Include="Default.aspx.designer.cs">
       <DependentUpon>Default.aspx</DependentUpon>
     </Compile>
-    <Compile Include="Admin.aspx.cs">
-      <DependentUpon>Admin.aspx</DependentUpon>
+    <Compile Include="paginas\Admin.aspx.cs">
+      <DependentUpon>paginas\Admin.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="Admin.aspx.designer.cs">
-      <DependentUpon>Admin.aspx</DependentUpon>
+    <Compile Include="paginas\Admin.aspx.designer.cs">
+      <DependentUpon>paginas\Admin.aspx</DependentUpon>
     </Compile>
-    <Compile Include="Login.aspx.cs">
-      <DependentUpon>Login.aspx</DependentUpon>
+    <Compile Include="paginas\Login.aspx.cs">
+      <DependentUpon>paginas\Login.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="Login.aspx.designer.cs">
-      <DependentUpon>Login.aspx</DependentUpon>
+    <Compile Include="paginas\Login.aspx.designer.cs">
+      <DependentUpon>paginas\Login.aspx</DependentUpon>
     </Compile>
-    <Compile Include="Cadastro.aspx.cs">
-      <DependentUpon>Cadastro.aspx</DependentUpon>
+    <Compile Include="paginas\Cadastro.aspx.cs">
+      <DependentUpon>paginas\Cadastro.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="Cadastro.aspx.designer.cs">
-      <DependentUpon>Cadastro.aspx</DependentUpon>
+    <Compile Include="paginas\Cadastro.aspx.designer.cs">
+      <DependentUpon>paginas\Cadastro.aspx</DependentUpon>
     </Compile>
-    <Compile Include="MeusDados.aspx.cs">
-      <DependentUpon>MeusDados.aspx</DependentUpon>
+    <Compile Include="paginas\MeusDados.aspx.cs">
+      <DependentUpon>paginas\MeusDados.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="MeusDados.aspx.designer.cs">
-      <DependentUpon>MeusDados.aspx</DependentUpon>
+    <Compile Include="paginas\MeusDados.aspx.designer.cs">
+      <DependentUpon>paginas\MeusDados.aspx</DependentUpon>
     </Compile>
-    <Compile Include="Logout.aspx.cs">
-      <DependentUpon>Logout.aspx</DependentUpon>
+    <Compile Include="paginas\Logout.aspx.cs">
+      <DependentUpon>paginas\Logout.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="Logout.aspx.designer.cs">
-      <DependentUpon>Logout.aspx</DependentUpon>
+    <Compile Include="paginas\Logout.aspx.designer.cs">
+      <DependentUpon>paginas\Logout.aspx</DependentUpon>
     </Compile>
-    <Compile Include="MinhasReservas.aspx.cs">
-      <DependentUpon>MinhasReservas.aspx</DependentUpon>
+    <Compile Include="paginas\MinhasReservas.aspx.cs">
+      <DependentUpon>paginas\MinhasReservas.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="MinhasReservas.aspx.designer.cs">
-      <DependentUpon>MinhasReservas.aspx</DependentUpon>
+    <Compile Include="paginas\MinhasReservas.aspx.designer.cs">
+      <DependentUpon>paginas\MinhasReservas.aspx</DependentUpon>
     </Compile>
-    <Compile Include="ConfirmarCadastro.aspx.cs">
-      <DependentUpon>ConfirmarCadastro.aspx</DependentUpon>
+    <Compile Include="paginas\ConfirmarCadastro.aspx.cs">
+      <DependentUpon>paginas\ConfirmarCadastro.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="ConfirmarCadastro.aspx.designer.cs">
-      <DependentUpon>ConfirmarCadastro.aspx</DependentUpon>
+    <Compile Include="paginas\ConfirmarCadastro.aspx.designer.cs">
+      <DependentUpon>paginas\ConfirmarCadastro.aspx</DependentUpon>
     </Compile>
-    <Compile Include="VerReserva.aspx.cs">
-      <DependentUpon>VerReserva.aspx</DependentUpon>
+    <Compile Include="paginas\VerReserva.aspx.cs">
+      <DependentUpon>paginas\VerReserva.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="VerReserva.aspx.designer.cs">
-      <DependentUpon>VerReserva.aspx</DependentUpon>
+    <Compile Include="paginas\VerReserva.aspx.designer.cs">
+      <DependentUpon>paginas\VerReserva.aspx</DependentUpon>
     </Compile>
-    <Compile Include="RecuperarSenha.aspx.cs">
-      <DependentUpon>RecuperarSenha.aspx</DependentUpon>
+    <Compile Include="paginas\RecuperarSenha.aspx.cs">
+      <DependentUpon>paginas\RecuperarSenha.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="RecuperarSenha.aspx.designer.cs">
-      <DependentUpon>RecuperarSenha.aspx</DependentUpon>
+    <Compile Include="paginas\RecuperarSenha.aspx.designer.cs">
+      <DependentUpon>paginas\RecuperarSenha.aspx</DependentUpon>
     </Compile>
-    <Compile Include="RedefinirSenha.aspx.cs">
-      <DependentUpon>RedefinirSenha.aspx</DependentUpon>
+    <Compile Include="paginas\RedefinirSenha.aspx.cs">
+      <DependentUpon>paginas\RedefinirSenha.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
-    <Compile Include="RedefinirSenha.aspx.designer.cs">
-      <DependentUpon>RedefinirSenha.aspx</DependentUpon>
+    <Compile Include="paginas\RedefinirSenha.aspx.designer.cs">
+      <DependentUpon>paginas\RedefinirSenha.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="paginas\Carrinho.aspx.cs">
+      <DependentUpon>paginas\Carrinho.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="paginas\Carrinho.aspx.designer.cs">
+      <DependentUpon>paginas\Carrinho.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="paginas\Produto.aspx.cs">
+      <DependentUpon>paginas\Produto.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="paginas\Produto.aspx.designer.cs">
+      <DependentUpon>paginas\Produto.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="paginas\Reserva.aspx.cs">
+      <DependentUpon>paginas\Reserva.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="paginas\Reserva.aspx.designer.cs">
+      <DependentUpon>paginas\Reserva.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="UserControls\Header.ascx.cs">
+      <DependentUpon>UserControls\Header.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="UserControls\Header.ascx.designer.cs">
+      <DependentUpon>UserControls\Header.ascx</DependentUpon>
+    </Compile>
+    <Compile Include="UserControls\Footer.ascx.cs">
+      <DependentUpon>UserControls\Footer.ascx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="UserControls\Footer.ascx.designer.cs">
+      <DependentUpon>UserControls\Footer.ascx</DependentUpon>
     </Compile>
     <Compile Include="Utils\EncryptPassword.aspx.cs" Condition="'$(Configuration)' == 'Debug'">
       <DependentUpon>Utils\EncryptPassword.aspx</DependentUpon>
@@ -232,6 +276,11 @@
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Helpers\DateHelper.cs" />
+    <Compile Include="Helpers\NavigationHelper.cs" />
+    <Compile Include="Helpers\BasePage.cs">
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Helpers\SessionStateHelper.cs" />
     <Compile Include="Models\Cliente.cs" />
     <Compile Include="Models\ItemPedido.cs" />
     <Compile Include="Models\Produto.cs" />
@@ -244,6 +293,9 @@
     <Compile Include="Services\DatabaseService.cs" />
     <Compile Include="Services\ImageService.cs" />
     <Compile Include="Services\LogService.cs" />
+    <Compile Include="Handlers\CallbackHandler.ashx.cs">
+      <DependentUpon>Handlers\CallbackHandler.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -270,7 +322,6 @@
     <Copy SourceFiles="@(ImagesFiles)" DestinationFolder="$(PublishUrl)Images\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'$(PublishUrl)' != '' And '$(PackageLocation)' == ''" />
     <Copy SourceFiles="@(ImagesFiles)" DestinationFolder="$(WPPAllFilesInSingleFolder)Images\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'$(WPPAllFilesInSingleFolder)' != '' And '$(PackageLocation)' == '' And '$(PublishUrl)' == ''" />
   </Target>
-  
   <!-- Target para copiar imagens durante o build normal (para desenvolvimento) -->
   <Target Name="CopyImagesToOutput" AfterTargets="Build">
     <ItemGroup>

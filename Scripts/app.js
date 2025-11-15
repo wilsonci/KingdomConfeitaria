@@ -175,8 +175,13 @@ function abrirModalLogin() {
     window.location.href = 'Login.aspx';
 }
 
-// Inicialização quando a página carregar
+// Inicialização quando a página carregar - com flag para evitar múltiplas execuções
+var appInicializado = false;
+
 KingdomConfeitaria.Utils.ready(function() {
+    if (appInicializado) return;
+    appInicializado = true;
+    
     // Inicializar todos os modais encontrados
     var modals = document.querySelectorAll('.modal');
     modals.forEach(function(modal) {
@@ -185,13 +190,17 @@ KingdomConfeitaria.Utils.ready(function() {
         }
     });
 
-    // Re-inicializar após postback usando eventos modernos
-    window.addEventListener('pageshow', function(event) {
-        modals.forEach(function(modal) {
-            if (modal.id) {
-                KingdomConfeitaria.Modal.initCloseButtons(modal.id);
-            }
+    // Re-inicializar após postback usando eventos modernos - apenas uma vez
+    if (!window.appPageshowHandlerAdicionado) {
+        window.appPageshowHandlerAdicionado = true;
+        window.addEventListener('pageshow', function(event) {
+            var modals = document.querySelectorAll('.modal');
+            modals.forEach(function(modal) {
+                if (modal.id) {
+                    KingdomConfeitaria.Modal.initCloseButtons(modal.id);
+                }
+            });
         });
-    });
+    }
 });
 

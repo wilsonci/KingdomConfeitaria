@@ -47,51 +47,66 @@ namespace KingdomConfeitaria
             
             // Bloquear acesso direto a Cadastro.aspx se não vier de um link válido
             // Permitir apenas se vier de query string ou referrer válido
-            if (path.Contains("/cadastro.aspx") && Request.HttpMethod == "GET")
+            if (path.Contains("/paginas/cadastro.aspx") && Request.HttpMethod == "GET")
             {
                 string referrer = Request.UrlReferrer != null ? Request.UrlReferrer.ToString().ToLower() : "";
                 bool temQueryString = !string.IsNullOrEmpty(Request.QueryString["email"]) || !string.IsNullOrEmpty(Request.QueryString["telefone"]);
                 
                 // Se não tem query string e não veio de uma página válida, redirecionar para Default
-                if (!temQueryString && (string.IsNullOrEmpty(referrer) || (!referrer.Contains("/default.aspx") && !referrer.Contains("/login.aspx"))))
+                if (!temQueryString && (string.IsNullOrEmpty(referrer) || (!referrer.Contains("/default.aspx") && !referrer.Contains("/paginas/login.aspx"))))
                 {
                     Response.Redirect("~/Default.aspx", true);
                     return;
                 }
             }
             
-            // Configurar encoding UTF-8 para todas as requisições
-            Response.ContentEncoding = System.Text.Encoding.UTF8;
-            Response.Charset = "UTF-8";
-            
-            // Só definir ContentType se ainda não foi definido
-            if (string.IsNullOrEmpty(Response.ContentType) || Response.ContentType == "text/html")
+            // IMPORTANTE: Não interferir com handlers (.ashx) ou Web Services (.asmx)
+            // Eles gerenciam seu próprio ContentType
+            if (!path.Contains(".ashx") && !path.Contains(".asmx"))
             {
-                Response.ContentType = "text/html; charset=utf-8";
-            }
-            
-            // Garantir que o Request também está em UTF-8
-            Request.ContentEncoding = System.Text.Encoding.UTF8;
-            
-            // Otimizações de cabeçalhos HTTP
-            Response.Headers.Remove("X-Powered-By");
-            Response.Headers.Remove("Server");
-            
-            // Adicionar cabeçalhos de performance
-            if (Array.IndexOf(Response.Headers.AllKeys, "X-Content-Type-Options") < 0)
-            {
-                Response.Headers.Add("X-Content-Type-Options", "nosniff");
-            }
-            
-            // Proteção CSRF - Validar ViewState
-            if (Request.HttpMethod == "POST" && !Request.Path.Contains(".asmx"))
-            {
-                // Verificar se é um postback válido
-                if (Request.Form["__VIEWSTATE"] != null || Request.Form["__EVENTVALIDATION"] != null)
+                // Configurar encoding UTF-8 para todas as requisições (exceto handlers)
+                Response.ContentEncoding = System.Text.Encoding.UTF8;
+                Response.Charset = "UTF-8";
+                
+                // Só definir ContentType se ainda não foi definido
+                if (string.IsNullOrEmpty(Response.ContentType) || Response.ContentType == "text/html")
                 {
-                    // ViewState será validado automaticamente pelo ASP.NET
-                    // Mas podemos adicionar validações adicionais aqui se necessário
+                    Response.ContentType = "text/html; charset=utf-8";
                 }
+                
+                // Garantir que o Request também está em UTF-8
+                Request.ContentEncoding = System.Text.Encoding.UTF8;
+            }
+            
+            // Otimizações de cabeçalhos HTTP (não interferir com handlers)
+            if (!path.Contains(".ashx") && !path.Contains(".asmx"))
+            {
+                Response.Headers.Remove("X-Powered-By");
+                Response.Headers.Remove("Server");
+                
+                // Adicionar cabeçalhos de performance
+                if (Array.IndexOf(Response.Headers.AllKeys, "X-Content-Type-Options") < 0)
+                {
+                    Response.Headers.Add("X-Content-Type-Options", "nosniff");
+                }
+            }
+            
+            // Proteção CSRF - Validar postback
+            // NOTA: ViewState está desabilitado, então não validamos __VIEWSTATE
+            // Validamos apenas se é um postback válido através de __EVENTTARGET ou __EVENTARGUMENT
+            // IMPORTANTE: Handlers (.ashx) não devem ser validados aqui
+            if (Request.HttpMethod == "POST" && !Request.Path.Contains(".asmx") && !Request.Path.Contains(".ashx"))
+            {
+                // Verificar se é um postback válido (tem __EVENTTARGET ou é um botão de submit)
+                // Não validamos ViewState pois está desabilitado
+                // Validações adicionais podem ser adicionadas aqui se necessário
+            }
+            
+            // Permitir handlers AJAX sem validação adicional
+            if (Request.Path.Contains(".ashx"))
+            {
+                // Handlers AJAX não precisam de validação de postback
+                // Eles gerenciam suas próprias validações
             }
             
             // Verificar se a sessão expirou e limpar dados de autenticação se necessário

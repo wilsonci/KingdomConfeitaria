@@ -1,4 +1,4 @@
-﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="Default.aspx.cs" Inherits="KingdomConfeitaria.Default" EnableEventValidation="false" EnableViewState="true" %>
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="Default.aspx.cs" Inherits="KingdomConfeitaria.Default" EnableEventValidation="false" EnableViewState="false" ViewStateMode="Disabled" %>
 <%@ Register Assembly="System.Web.Extensions, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31BF3856AD364E35" Namespace="System.Web.UI" TagPrefix="asp" %>
 
 <!DOCTYPE html>
@@ -8,17 +8,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kingdom Confeitaria - Reserva de Ginger Breads</title>
     <link rel="icon" type="image/svg+xml" href="Images/logo-kingdom-confeitaria.svg" />
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" crossorigin="anonymous" />
-    <!-- Preconnect para acelerar carregamento de recursos externos -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+    <link href="Content/bootstrap/bootstrap.min.css" rel="stylesheet" />
+    <link href="Content/fontawesome/all.min.css?v=2.0" rel="stylesheet" />
+    <link href="Content/app.css" rel="stylesheet" />
     <style>
         * {
             box-sizing: border-box;
         }
         body {
-            background: #f5f5f5;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
             min-height: 100vh;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             margin: 0;
@@ -26,8 +24,8 @@
             padding-bottom: 80px; /* Espaço para carrinho flutuante */
         }
         .header-logo {
-            background: #fff;
-            padding: 12px 16px;
+            background: #ffffff;
+            padding: 16px 20px;
             position: fixed;
             top: 0;
             left: 0;
@@ -41,7 +39,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            width: 100%;
+            gap: 12px;
+            flex-wrap: wrap;
         }
         .header-logo img {
             max-width: 200px;
@@ -140,29 +140,8 @@
             min-width: 18px;
             padding: 0 4px;
         }
-        @media (max-width: 768px) {
-            .header-logo {
-                padding: 10px 12px;
-            }
-            .header-logo img {
-                max-width: 180px;
-                width: 100%;
-            }
-            .header-user-name {
-                font-size: 12px;
-            }
-            .header-actions {
-                gap: 4px;
-                padding: 6px 8px;
-                overflow-x: auto;
-            }
-            .header-actions a {
-                font-size: 11px;
-                padding: 4px 8px;
-            }
-            .header-actions a i {
-                display: none;
-            }
+        /* Estilos específicos do carrinho - responsivos */
+        @media (max-width: 575.98px) {
             .carrinho-header i {
                 font-size: 18px;
                 display: inline-block !important;
@@ -175,20 +154,21 @@
                 right: 1px;
             }
         }
+        /* Estilos específicos da página Default */
         .container-main {
             background: transparent;
-            margin-top: 0;
-            margin-bottom: 20px;
-            padding: 0;
-            transition: margin-top 0.3s ease;
         }
         
-        /* Espaçador dinâmico para o header fixo */
         .header-spacer {
             height: auto;
-            min-height: 80px;
-            transition: min-height 0.3s ease;
+            min-height: 60px;
             width: 100%;
+        }
+        
+        @media (min-width: 992px) {
+            .header-spacer {
+                min-height: 80px;
+            }
         }
         /* Hero Section */
         .hero-section {
@@ -435,6 +415,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 20px;
+            padding-bottom: 100px;
             background: white;
         }
         .produto-imagem-detalhe {
@@ -515,22 +496,27 @@
             display: flex;
             gap: 12px;
             justify-content: center;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+            flex-shrink: 0;
         }
         .btn-adicionar-pedido {
-            width: 45px;
+            min-width: 120px;
             height: 45px;
-            padding: 0;
+            padding: 8px 16px;
             background: #28a745;
             color: white;
             border: none;
-            border-radius: 50%;
-            font-size: 20px;
+            border-radius: 8px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 8px;
             flex-shrink: 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
@@ -543,24 +529,27 @@
             background: #1e7e34;
             transform: scale(0.95);
         }
-        .btn-adicionar-pedido i {
+        .btn-adicionar-pedido i,
+        .btn-cancelar-pedido i {
             margin: 0;
+            font-size: 16px;
         }
         .btn-cancelar-pedido {
-            width: 45px;
+            min-width: 120px;
             height: 45px;
-            padding: 0;
+            padding: 8px 16px;
             background: #dc3545;
             color: white;
             border: none;
-            border-radius: 50%;
-            font-size: 20px;
+            border-radius: 8px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 8px;
             flex-shrink: 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
@@ -649,6 +638,23 @@
             flex: 1;
             overflow-y: auto;
             padding: 20px;
+        }
+        /* Modal de Carrinho - Desktop */
+        @media (min-width: 992px) {
+            .modal-carrinho .modal-dialog {
+                max-width: 800px;
+                margin: 1.75rem auto;
+                height: auto;
+                max-height: 85vh;
+            }
+            .modal-carrinho .modal-content {
+                border-radius: 12px;
+                max-height: 85vh;
+                height: auto;
+            }
+            .modal-carrinho .modal-body {
+                max-height: calc(85vh - 120px);
+            }
         }
         .item-carrinho {
             background: white;
@@ -867,20 +873,6 @@
             font-size: 0.875em;
             color: #28a745;
         }
-        /* Estilos para o modal de reserva - aumentar tamanho */
-        #modalReserva .modal-dialog {
-            max-width: 750px;
-            min-height: 550px;
-        }
-        #modalReserva .modal-body {
-            min-height: 450px;
-            max-height: 75vh;
-            padding: 2rem;
-            overflow-y: auto;
-        }
-        #modalReserva .modal-content {
-            min-height: 550px;
-        }
         /* Estilos para seção de data de retirada */
         .secao-data-retirada {
             background: linear-gradient(135deg, #1a4d2e 0%, #2d5a3d 100%);
@@ -1025,7 +1017,6 @@
 </head>
 <body>
     <form id="form1" runat="server" novalidate>
-        <asp:ScriptManager ID="ScriptManager1" runat="server" EnablePageMethods="true"></asp:ScriptManager>
         <div class="container-fluid">
             <div class="header-logo">
                 <div class="header-top">
@@ -1036,18 +1027,18 @@
                         <a href="Default.aspx" style="text-decoration: none; color: inherit;"><i class="fas fa-crown"></i> Kingdom Confeitaria</a>
                     </h1>
                     <div class="header-user-name" id="clienteNome" runat="server" style="display: none;"></div>
-                </div>
-                <div class="header-actions">
-                    <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
-                    <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;"><i class="fas fa-sign-in-alt"></i> Entrar</a>
-                    <a href="MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;"><i class="fas fa-clipboard-list"></i> Minhas Reservas</a>
-                    <a href="MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;"><i class="fas fa-user"></i> Meus Dados</a>
-                    <a href="Admin.aspx" id="linkAdmin" runat="server" style="display: none;"><i class="fas fa-cog"></i> Painel Gestor</a>
-                    <a href="Logout.aspx" id="linkLogout" runat="server" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
-                    <a href="#" class="carrinho-header" id="carrinhoHeader" onclick="abrirModalCarrinho(); return false;" title="Ver carrinho">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span class="carrinho-badge oculto" id="carrinhoBadge">0</span>
-                    </a>
+                    <div class="header-actions">
+                        <a href="Default.aspx"><i class="fas fa-home"></i> Home</a>
+                        <a href="#" id="linkLogin" runat="server" style="display: inline;" onclick="abrirModalLogin(); return false;"><i class="fas fa-sign-in-alt"></i> Entrar</a>
+                        <a href="paginas/MinhasReservas.aspx" id="linkMinhasReservas" runat="server" style="display: none;"><i class="fas fa-clipboard-list"></i> Minhas Reservas</a>
+                        <a href="paginas/MeusDados.aspx" id="linkMeusDados" runat="server" style="display: none;"><i class="fas fa-user"></i> Meus Dados</a>
+                        <a href="paginas/Admin.aspx" id="linkAdmin" runat="server" style="display: none;"><i class="fas fa-cog"></i> Painel Gestor</a>
+                        <a href="paginas/Logout.aspx" id="linkLogout" runat="server" style="display: none;"><i class="fas fa-sign-out-alt"></i> Sair</a>
+                        <a href="#" class="carrinho-header" id="carrinhoHeader" onclick="abrirModalCarrinho(); return false;" title="Ver carrinho">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="carrinho-badge oculto" id="carrinhoBadge">0</span>
+                        </a>
+                    </div>
                 </div>
             </div>
             <!-- Espaçador dinâmico para o header fixo -->
@@ -1157,314 +1148,45 @@
                         <i class="fas fa-shopping-cart"></i> Ver
                     </button>
                 </div>
-                <button type="button" class="btn-fazer-reserva" id="btnFazerReservaFlutuante" onclick="document.getElementById('<%= btnFazerReserva.ClientID %>').click();" disabled>
+                <button type="button" class="btn-fazer-reserva" id="btnFazerReservaFlutuante" disabled>
                     Fazer Reserva
                 </button>
-            </div>
-
-            <!-- Modal de Detalhe do Produto -->
-            <div class="modal fade modal-produto-detalhe" id="modalProdutoDetalhe" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Detalhes do Produto</h5>
-                            <button type="button" class="btn-close" onclick="fecharModalProduto()" aria-label="Fechar"></button>
-                        </div>
-                        <div class="modal-body" id="modalProdutoDetalheBody">
-                            <!-- Conteúdo será preenchido via JavaScript -->
-                        </div>
-                        <div class="modal-footer" id="modalProdutoDetalheFooter">
-                            <!-- Botões serão preenchidos via JavaScript -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal de Carrinho Mobile -->
-            <div class="modal fade modal-carrinho" id="modalCarrinho" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Seu Pedido</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                        </div>
-                        <div class="modal-body" id="modalCarrinhoBody">
-                            <!-- Conteúdo será preenchido via JavaScript -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de Login Dinâmico (Componente Reutilizável) -->
-        <div class="modal fade" id="modalLoginDinamico" tabindex="-1" aria-labelledby="modalLoginDinamicoLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <div class="text-center w-100">
-                            <img src="Images/logo-kingdom-confeitaria.svg" alt="Kingdom Confeitaria" style="max-width: 250px; width: 100%; height: auto; margin-bottom: 10px;" loading="lazy" decoding="async" />
-                            <h5 class="modal-title mt-2" id="modalLoginDinamicoLabel">Login</h5>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- Área de Login Dinâmico -->
-                        <div id="divLoginDinamicoStandalone">
-                            <div class="mb-3">
-                                <label for="txtLoginDinamicoStandalone" class="form-label">Email ou Telefone *</label>
-                                <input type="text" class="form-control" id="txtLoginDinamicoStandalone" name="txtLoginDinamicoStandalone" placeholder="exemplo@email.com ou (11) 99999-9999" aria-label="Email ou Telefone" />
-                            </div>
-                            <div class="mb-3" id="divSenhaStandalone" style="display: none;">
-                                <label for="txtSenhaStandalone" class="form-label">Senha *</label>
-                                <input type="password" class="form-control" id="txtSenhaStandalone" name="txtSenhaStandalone" aria-label="Senha" />
-                            </div>
-                            
-                            <!-- Mensagens aparecem aqui, abaixo dos campos mas antes dos botões -->
-                            <div id="divMensagemLoginStandalone" class="mb-3" style="display: none;"></div>
-                            
-                            <div id="divOpcaoCadastroStandalone" class="mb-3" style="display: none;">
-                                <div class="alert alert-info mb-3">
-                                    <i class="fas fa-info-circle"></i> Cliente não encontrado. Deseja se cadastrar?
-                                </div>
-                                <a id="linkIrCadastroStandalone" href="#" class="btn btn-success btn-sm w-100">
-                                    <i class="fas fa-user-plus"></i> Ir para Cadastro
-                                </a>
-                            </div>
-                            
-                            <!-- Botões da área de login (aparecem quando senha é solicitada) -->
-                            <div id="divBotoesLoginStandalone" class="d-flex gap-2 mb-3 justify-content-center" style="display: none;">
-                                <button type="button" class="btn-cancelar-pedido" onclick="fecharModalLogin();" title="Cancelar">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                <button type="button" class="btn-adicionar-pedido" id="btnConfirmarLoginStandalone" title="Confirmar">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Mensagens aparecem abaixo dos botões -->
-                            <div id="divMensagensAbaixoBotoesStandalone" class="mb-3" style="display: none;"></div>
-                            
-                            <!-- Opções de ajuda sempre visíveis, abaixo de tudo -->
-                            <div class="mt-3 pt-3 border-top">
-                                <div class="d-flex flex-column gap-2">
-                                    <a href="RecuperarSenha.aspx" class="text-decoration-none small text-center" target="_blank">
-                                        <i class="fas fa-key"></i> Recuperar Senha
-                                    </a>
-                                    <a href="Cadastro.aspx" class="text-decoration-none small text-center" target="_blank">
-                                        <i class="fas fa-user-plus"></i> Cadastrar Novo Usuário
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal de Reserva -->
-        <div class="modal fade" id="modalReserva" tabindex="-1" aria-labelledby="modalReservaLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="modalReservaLabel">Login</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                    </div>
-                    <div class="modal-body">
-                        <!-- ETAPA 1: Área de Login (só aparece se não estiver logado) -->
-                        <div id="divLoginDinamico" runat="server">
-                            <div class="mb-3">
-                                <asp:Label ID="lblLoginDinamico" runat="server" AssociatedControlID="txtLoginDinamico" CssClass="form-label">Email ou Telefone *</asp:Label>
-                                <asp:TextBox ID="txtLoginDinamico" runat="server" CssClass="form-control" placeholder="exemplo@email.com ou (11) 99999-9999" aria-label="Email ou Telefone"></asp:TextBox>
-                            </div>
-                            <div class="mb-3" id="divSenhaReserva" runat="server" style="display: none;">
-                                <asp:Label ID="lblSenhaReserva" runat="server" AssociatedControlID="txtSenhaReserva" CssClass="form-label">Senha *</asp:Label>
-                                <asp:TextBox ID="txtSenhaReserva" runat="server" CssClass="form-control" TextMode="Password" aria-label="Senha"></asp:TextBox>
-                            </div>
-                            
-                            <!-- Mensagens aparecem aqui, abaixo dos campos mas antes dos botões -->
-                            <div id="divMensagemLogin" class="mb-3" style="display: none;"></div>
-                            
-                            <div id="divOpcaoCadastro" class="mb-3" style="display: none;">
-                                <div class="alert alert-info mb-3">
-                                    <i class="fas fa-info-circle"></i> Cliente não encontrado. Deseja se cadastrar?
-                                </div>
-                                <a id="linkIrCadastro" href="#" class="btn btn-success btn-sm w-100">
-                                    <i class="fas fa-user-plus"></i> Ir para Cadastro
-                                </a>
-                            </div>
-                            
-                            <!-- Botões da área de login (aparecem quando senha é solicitada) -->
-                            <div id="divBotoesLogin" class="d-flex gap-2 mb-3 justify-content-center" style="display: none;">
-                                <button type="button" class="btn-cancelar-pedido" id="btnCancelarLogin" title="Cancelar">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                <button type="button" class="btn-adicionar-pedido" id="btnConfirmarLogin" title="Confirmar">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Mensagens aparecem abaixo dos botões -->
-                            <div id="divMensagensAbaixoBotoes" class="mb-3" style="display: none;"></div>
-                            
-                            <!-- Opções de ajuda sempre visíveis, abaixo de tudo -->
-                            <div class="mt-3 pt-3 border-top">
-                                <div class="d-flex flex-column gap-2">
-                                    <a href="RecuperarSenha.aspx" class="text-decoration-none small text-center" target="_blank">
-                                        <i class="fas fa-key"></i> Recuperar Senha
-                                    </a>
-                                    <a href="Cadastro.aspx" class="text-decoration-none small text-center" target="_blank">
-                                        <i class="fas fa-user-plus"></i> Cadastrar Novo Usuário
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- ETAPA 2: Área de Reserva (só aparece após login) -->
-                        <div id="divDadosReserva" runat="server" style="display: none;">
-                            <div class="mb-3 p-3 bg-success text-white rounded">
-                                <p class="small mb-0"><i class="fas fa-check-circle"></i> Você está logado. Complete os dados da reserva.</p>
-                            </div>
-                            <div class="mb-3">
-                                <asp:Label ID="lblNome" runat="server" AssociatedControlID="txtNome" CssClass="form-label">Nome *</asp:Label>
-                                <asp:TextBox ID="txtNome" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" aria-label="Nome"></asp:TextBox>
-                                <asp:HiddenField ID="hdnNome" runat="server" />
-                                <small class="text-muted">Para alterar seus dados, acesse "Meus Dados" no menu</small>
-                            </div>
-                            <div class="mb-3">
-                                <asp:Label ID="lblEmail" runat="server" AssociatedControlID="txtEmail" CssClass="form-label">Email *</asp:Label>
-                                <asp:TextBox ID="txtEmail" runat="server" CssClass="form-control" TextMode="Email" ReadOnly="true" BackColor="#f8f9fa" aria-label="Email"></asp:TextBox>
-                                <asp:HiddenField ID="hdnEmail" runat="server" />
-                            </div>
-                            <div class="mb-3">
-                                <asp:Label ID="lblTelefone" runat="server" AssociatedControlID="txtTelefone" CssClass="form-label">Telefone/WhatsApp *</asp:Label>
-                                <asp:TextBox ID="txtTelefone" runat="server" CssClass="form-control" ReadOnly="true" BackColor="#f8f9fa" aria-label="Telefone/WhatsApp"></asp:TextBox>
-                                <asp:HiddenField ID="hdnTelefone" runat="server" />
-                            </div>
-                            <!-- Seção de Data de Retirada com destaque -->
-                            <div class="secao-data-retirada">
-                                <asp:Label ID="lblDataRetirada" runat="server" CssClass="form-label">
-                                    <i class="fas fa-calendar-alt"></i> Data de Retirada *
-                                </asp:Label>
-                                <div class="radio-group-datas" id="radioGroupDatas" runat="server">
-                                    <!-- Os radiobuttons serão gerados dinamicamente no code-behind -->
-                                </div>
-                                <asp:HiddenField ID="hdnDataRetirada" runat="server" />
-                            </div>
-                            
-                            <!-- Seção de Observações com destaque -->
-                            <div class="secao-observacoes">
-                                <asp:Label ID="lblObservacoes" runat="server" AssociatedControlID="txtObservacoes" CssClass="form-label">
-                                    <i class="fas fa-comment-alt"></i> Observações
-                                </asp:Label>
-                                <asp:TextBox ID="txtObservacoes" runat="server" CssClass="form-control" TextMode="MultiLine" Rows="4" 
-                                    placeholder="Adicione observações sobre sua reserva (opcional)" aria-label="Observações"></asp:TextBox>
-                                <small class="text-muted mt-2 d-block">
-                                    <i class="fas fa-info-circle"></i> Informe qualquer detalhe importante sobre sua reserva
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer" id="divBotoesReserva" style="justify-content: center; gap: 12px;">
-                        <button type="button" class="btn-cancelar-pedido" data-bs-dismiss="modal" title="Cancelar">
-                            <i class="fas fa-times"></i>
-                        </button>
-                        <asp:Button ID="btnConfirmarReserva" runat="server" 
-                            CssClass="btn-adicionar-pedido" 
-                            OnClick="btnConfirmarReserva_Click"
-                            OnClientClick="return validarFormularioReserva();"
-                            Style="display: none;"
-                            title="Confirmar Reserva"
-                            Text="" />
-                        <script type="text/javascript">
-                            function validarFormularioReserva() {
-                                console.log('Validando formulário de reserva...');
-                                
-                                // Validar data de retirada
-                                var hdnDataRetirada = document.getElementById('<%= hdnDataRetirada.ClientID %>');
-                                var radioGroupDatas = document.getElementById('<%= radioGroupDatas.ClientID %>');
-                                var dataSelecionada = false;
-                                var dataValor = '';
-                                
-                                // Tentar obter do hidden field
-                                if (hdnDataRetirada && hdnDataRetirada.value) {
-                                    dataSelecionada = true;
-                                    dataValor = hdnDataRetirada.value;
-                                    console.log('Data encontrada no hidden field:', dataValor);
-                                } 
-                                // Tentar obter dos radio buttons
-                                else if (radioGroupDatas) {
-                                    var radios = radioGroupDatas.querySelectorAll('input[type="radio"]:checked');
-                                    if (radios && radios.length > 0) {
-                                        dataSelecionada = true;
-                                        dataValor = radios[0].value;
-                                        // Atualizar hidden field se necessário
-                                        if (hdnDataRetirada) {
-                                            hdnDataRetirada.value = dataValor;
-                                        }
-                                        console.log('Data encontrada no radio button:', dataValor);
-                                    }
+                <script type="text/javascript">
+                    (function() {
+                        function configurarBotaoFlutuante() {
+                            var btnFlutuante = document.getElementById('btnFazerReservaFlutuante');
+                            if (btnFlutuante && typeof window.ClientIDs !== 'undefined' && window.ClientIDs.btnFazerReserva) {
+                                var btnReserva = document.getElementById(window.ClientIDs.btnFazerReserva);
+                                if (btnReserva) {
+                                    btnFlutuante.addEventListener('click', function() {
+                                        btnReserva.click();
+                                    });
+                                    return true;
                                 }
-                                
-                                // Tentar obter do formulário diretamente
-                                if (!dataSelecionada) {
-                                    var dataForm = document.querySelector('input[name="dataRetirada"]:checked');
-                                    if (dataForm && dataForm.value) {
-                                        dataSelecionada = true;
-                                        dataValor = dataForm.value;
-                                        if (hdnDataRetirada) {
-                                            hdnDataRetirada.value = dataValor;
-                                        }
-                                        console.log('Data encontrada no formulário:', dataValor);
-                                    }
-                                }
-                                
-                                if (!dataSelecionada) {
-                                    alert('Por favor, selecione uma data de retirada antes de confirmar a reserva.');
-                                    // Destacar a seção de data
-                                    if (radioGroupDatas) {
-                                        radioGroupDatas.style.border = '2px solid #dc3545';
-                                        radioGroupDatas.style.borderRadius = '4px';
-                                        radioGroupDatas.style.padding = '10px';
-                                        setTimeout(function() {
-                                            radioGroupDatas.style.border = '';
-                                            radioGroupDatas.style.padding = '';
-                                        }, 3000);
-                                    }
-                                    return false;
-                                }
-                                
-                                console.log('Validação passou. Data selecionada:', dataValor);
-                                return true;
                             }
-                        </script>
-                    </div>
-                </div>
+                            return false;
+                        }
+                        
+                        // Tentar configurar imediatamente
+                        if (!configurarBotaoFlutuante()) {
+                            // Se não funcionou, tentar após um delay
+                            setTimeout(function() {
+                                configurarBotaoFlutuante();
+                            }, 100);
+                        }
+                    })();
+                </script>
             </div>
-        </div>
 
-        <!-- Modal de Sucesso -->
-        <div class="modal fade" id="modalSucesso" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header bg-success text-white">
-                        <h5 class="modal-title"><i class="fas fa-check-circle"></i> Reserva Confirmada!</h5>
-                    </div>
-                    <div class="modal-body text-center">
-                        <i class="fas fa-check-circle text-success" style="font-size: 4rem; margin-bottom: 1rem;"></i>
-                        <p class="h5 mb-3">Sua reserva foi realizada com sucesso!</p>
-                        <p>Você receberá um email de confirmação em breve.</p>
-                        <p class="text-muted small mt-3">Redirecionando para Minhas Reservas em <span id="contadorRedirecionamento">3</span> segundos...</p>
-                    </div>
-                    <div class="modal-footer justify-content-center">
-                        <button type="button" class="btn btn-primary" onclick="window.location.href='MinhasReservas.aspx';">Ir para Minhas Reservas</button>
-                        <button type="button" class="btn btn-secondary" onclick="location.reload();">Fazer Nova Reserva</button>
-                    </div>
-                </div>
-            </div>
         </div>
+        
+        <!-- Controles Hidden para dados de reserva -->
+        <asp:HiddenField ID="hdnDataRetirada" runat="server" />
+        <div id="radioGroupDatas" runat="server" style="display: none;"></div>
     </form>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer crossorigin="anonymous" async></script>
+    <script src="Scripts/bootstrap/bootstrap.bundle.min.js" defer></script>
+    <script src="Scripts/navigation.js" defer></script>
     <!-- Garantir que __doPostBack esteja disponível antes de carregar os scripts -->
     <script type="text/javascript">
         // Função __doPostBack será gerada pelo ASP.NET automaticamente
@@ -1502,8 +1224,53 @@
             }
         }
     </script>
-    <!-- Scripts comuns da aplicação (sem defer - necessário para código inline) -->
-    <script src="Scripts/app.js"></script>
+    <!-- IMPORTANTE: Este script DEVE ser executado PRIMEIRO, antes de qualquer outro script -->
+    <script type="text/javascript">
+        // Definir ClientIDs como variáveis globais IMEDIATAMENTE
+        // Este script deve ser executado antes de qualquer outro que use ClientIDs
+        (function() {
+            try {
+                // Função helper para escapar strings JavaScript
+                function escapeJs(str) {
+                    if (!str) return '';
+                    return String(str)
+                        .replace(/\\/g, '\\\\')
+                        .replace(/'/g, "\\'")
+                        .replace(/"/g, '\\"')
+                        .replace(/\r/g, '\\r')
+                        .replace(/\n/g, '\\n')
+                        .replace(/\t/g, '\\t');
+                }
+                
+                window.ClientIDs = {
+                    btnFazerReserva: '<%= btnFazerReserva != null ? EscapeJavaScript(btnFazerReserva.ClientID) : "" %>',
+                    txtLoginDinamico: '<%= txtLoginDinamico != null ? EscapeJavaScript(txtLoginDinamico.ClientID) : "" %>',
+                    txtSenhaReserva: '<%= txtSenhaReserva != null ? EscapeJavaScript(txtSenhaReserva.ClientID) : "" %>',
+                    divSenhaReserva: '<%= divSenhaReserva != null ? EscapeJavaScript(divSenhaReserva.ClientID) : "" %>',
+                    divLoginDinamico: '<%= divLoginDinamico != null ? EscapeJavaScript(divLoginDinamico.ClientID) : "" %>',
+                    txtNome: '<%= txtNome != null ? EscapeJavaScript(txtNome.ClientID) : "" %>',
+                    txtEmail: '<%= txtEmail != null ? EscapeJavaScript(txtEmail.ClientID) : "" %>',
+                    txtTelefone: '<%= txtTelefone != null ? EscapeJavaScript(txtTelefone.ClientID) : "" %>',
+                    divDadosReserva: '<%= divDadosReserva != null ? EscapeJavaScript(divDadosReserva.ClientID) : "" %>',
+                    btnConfirmarReserva: '<%= btnConfirmarReserva != null ? EscapeJavaScript(btnConfirmarReserva.ClientID) : "" %>',
+                    hdnNome: '<%= hdnNome != null ? EscapeJavaScript(hdnNome.ClientID) : "" %>',
+                    hdnEmail: '<%= hdnEmail != null ? EscapeJavaScript(hdnEmail.ClientID) : "" %>',
+                    hdnTelefone: '<%= hdnTelefone != null ? EscapeJavaScript(hdnTelefone.ClientID) : "" %>',
+                    hdnDataRetirada: '<%= hdnDataRetirada != null ? EscapeJavaScript(hdnDataRetirada.ClientID) : "" %>',
+                    radioGroupDatas: '<%= radioGroupDatas != null ? EscapeJavaScript(radioGroupDatas.ClientID) : "" %>',
+                    produtosContainer: '<%= produtosContainer != null ? EscapeJavaScript(produtosContainer.ClientID) : "" %>',
+                    carrinhoContainer: '<%= carrinhoContainer != null ? EscapeJavaScript(carrinhoContainer.ClientID) : "" %>',
+                    totalPedido: '<%= totalPedido != null ? EscapeJavaScript(totalPedido.ClientID) : "" %>'
+                };
+            } catch (e) {
+                console.error('Erro ao definir ClientIDs:', e);
+                window.ClientIDs = {};
+            }
+        })();
+    </script>
+    <!-- Scripts comuns da aplicação -->
+    <script src="Scripts/ajax-helper.js" defer></script>
+    <script src="Scripts/app.js" defer></script>
     <!-- Scripts específicos da página principal -->
     <!-- Versão 2.0 - Forçar recarregamento para evitar cache -->
     <script src="Scripts/default.js?v=2.0" defer></script>
@@ -1513,276 +1280,361 @@
         
         // Aguardar carregamento do app.js antes de executar
         (function() {
+            var loginDinamicoInicializado = false;
+            var tentativasLoginDinamico = 0;
+            var maxTentativasLoginDinamico = 10; // Reduzido de 20 para 10 (máximo de 500ms)
+            
             function initLoginDinamico() {
+                if (loginDinamicoInicializado) return;
+                
+                // Verificar se scripts já carregaram
                 if (typeof KingdomConfeitaria === 'undefined' || !KingdomConfeitaria.Utils) {
-                    setTimeout(initLoginDinamico, 50);
+                    tentativasLoginDinamico++;
+                    if (tentativasLoginDinamico < maxTentativasLoginDinamico) {
+                        setTimeout(initLoginDinamico, 50);
+                    } else {
+                        console.warn('KingdomConfeitaria não carregou após ' + maxTentativasLoginDinamico + ' tentativas');
+                    }
                     return;
                 }
                 
-                // Configurar Login Dinâmico
-                KingdomConfeitaria.Utils.ready(function() {
-            var txtLoginDinamico = document.getElementById('<%= txtLoginDinamico.ClientID %>');
-            var txtSenhaReserva = document.getElementById('<%= txtSenhaReserva.ClientID %>');
-            var divSenhaReserva = document.getElementById('<%= divSenhaReserva.ClientID %>');
-            var divMensagemLogin = document.getElementById('divMensagemLogin');
-            var divDadosUsuario = document.getElementById('divDadosUsuario');
-            var txtNome = document.getElementById('<%= txtNome.ClientID %>');
-            var txtEmail = document.getElementById('<%= txtEmail.ClientID %>');
-            var txtTelefone = document.getElementById('<%= txtTelefone.ClientID %>');
-            var divDadosReserva = document.getElementById('<%= divDadosReserva.ClientID %>');
-            if (!divDadosReserva) {
-                divDadosReserva = document.querySelector('[id*="divDadosReserva"]');
-            }
-            var btnConfirmarReserva = document.getElementById('<%= btnConfirmarReserva.ClientID %>');
-            if (!btnConfirmarReserva) {
-                btnConfirmarReserva = document.querySelector('[id*="btnConfirmarReserva"]');
-            }
-            var nomeReserva = txtNome; // Alias para compatibilidade
-            var emailReserva = txtEmail; // Alias para compatibilidade
-            var telefoneReserva = txtTelefone; // Alias para compatibilidade
-            var estaLogado = window.usuarioLogado === true;
-            
-            var timeoutVerificacao = null;
-            var clienteEncontrado = null;
-            
-            // Função para mostrar mensagem
-            function mostrarMensagem(mensagem, tipo) {
-                if (!divMensagemLogin) return;
-                divMensagemLogin.style.display = 'block';
-                divMensagemLogin.className = 'mt-2 alert alert-' + (tipo || 'info');
-                divMensagemLogin.innerHTML = mensagem;
-            }
-            
-            // Função para ocultar mensagem
-            function ocultarMensagem() {
-                if (divMensagemLogin) {
-                    divMensagemLogin.style.display = 'none';
+                loginDinamicoInicializado = true;
+                
+                // Configurar Login Dinâmico - usar DOMContentLoaded se já carregou
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initLoginDinamicoReady);
+                } else {
+                    // DOM já carregou, executar imediatamente
+                    initLoginDinamicoReady();
                 }
             }
             
-            // Função para verificar cliente enquanto digita
-            function verificarClienteDinamico() {
-                if (estaLogado) return;
-                
-                var login = txtLoginDinamico ? txtLoginDinamico.value.trim() : '';
-                if (!login) {
-                    ocultarMensagem();
-                    var divSenhaReservaElement = document.getElementById('<%= divSenhaReserva.ClientID %>');
-                    if (divSenhaReservaElement) divSenhaReservaElement.style.display = 'none';
-                    clienteEncontrado = null;
+            // Variáveis globais dentro da IIFE para acesso em toda a função
+            var txtNome, txtEmail, txtTelefone, nomeReserva, emailReserva, telefoneReserva, txtLoginDinamico;
+            
+            function initLoginDinamicoReady() {
+                // Verificar se ClientIDs está disponível
+                if (typeof window.ClientIDs === 'undefined') {
+                    console.error('ClientIDs não está definido. Aguardando...');
+                    setTimeout(initLoginDinamicoReady, 100);
                     return;
                 }
                 
-                // Detectar se é email ou telefone
-                var isEmail = login.indexOf('@') > -1;
-                var loginLimpo = isEmail ? login.toLowerCase() : login.replace(/\D/g, '');
+                var ClientIDs = window.ClientIDs;
                 
-                // Verificando login
-                
-                // Só verificar se tiver informação suficiente
-                if (isEmail && login.length < 5) {
-                    return;
-                }
-                if (!isEmail && loginLimpo.length < 10) {
+                // Se os controles de login dinâmico não existem, não há problema - apenas retornar silenciosamente
+                // Isso pode acontecer se a página não tiver esses controles (ex: Default.aspx não usa mais login dinâmico)
+                if (!ClientIDs || !ClientIDs.txtLoginDinamico || ClientIDs.txtLoginDinamico === '') {
+                    // Não logar como erro - é esperado se os controles não existem
                     return;
                 }
                 
-                // Chamar PageMethod para verificar cliente
-                if (typeof PageMethods !== 'undefined') {
-                    mostrarMensagem('<i class="fas fa-spinner fa-spin"></i> Verificando...', 'info');
+                txtLoginDinamico = document.getElementById(ClientIDs.txtLoginDinamico);
+                if (!txtLoginDinamico) {
+                    // Se o elemento não existe no DOM, não há problema - apenas retornar
+                    return;
+                }
+                var txtSenhaReserva = document.getElementById(ClientIDs.txtSenhaReserva);
+                var divSenhaReserva = document.getElementById(ClientIDs.divSenhaReserva);
+                var divMensagemLogin = document.getElementById('divMensagemLogin');
+                var divDadosUsuario = document.getElementById('divDadosUsuario');
+                txtNome = document.getElementById(ClientIDs.txtNome);
+                txtEmail = document.getElementById(ClientIDs.txtEmail);
+                txtTelefone = document.getElementById(ClientIDs.txtTelefone);
+                var divDadosReserva = document.getElementById(ClientIDs.divDadosReserva);
+                if (!divDadosReserva) {
+                    divDadosReserva = document.querySelector('[id*="divDadosReserva"]');
+                }
+                var btnConfirmarReserva = document.getElementById(ClientIDs.btnConfirmarReserva);
+                if (!btnConfirmarReserva) {
+                    btnConfirmarReserva = document.querySelector('[id*="btnConfirmarReserva"]');
+                }
+                nomeReserva = txtNome; // Alias para compatibilidade
+                emailReserva = txtEmail; // Alias para compatibilidade
+                telefoneReserva = txtTelefone; // Alias para compatibilidade
+                var estaLogado = window.usuarioLogado === true;
+                
+                var clienteEncontrado = null;
+                // Tornar global para acesso fora da IIFE
+                window.clienteEncontrado = clienteEncontrado;
+                
+                // Função para mostrar mensagem
+                function mostrarMensagem(mensagem, tipo) {
+                    if (!divMensagemLogin) return;
+                    divMensagemLogin.style.display = 'block';
+                    divMensagemLogin.className = 'mt-2 alert alert-' + (tipo || 'info');
+                    divMensagemLogin.innerHTML = mensagem;
+                }
+                // Tornar global para acesso fora da IIFE
+                window.mostrarMensagem = mostrarMensagem;
+                
+                // Função para ocultar mensagem
+                function ocultarMensagem() {
+                    if (divMensagemLogin) {
+                        divMensagemLogin.style.display = 'none';
+                    }
+                }
+                // Tornar global para acesso fora da IIFE
+                window.ocultarMensagem = ocultarMensagem;
+                
+                // Função para verificar cliente enquanto digita - com debounce
+                var verificacaoEmAndamento = false;
+                var timeoutVerificacaoCliente = null;
+                
+                function verificarClienteDinamico() {
+                    if (estaLogado || verificacaoEmAndamento) return;
                     
-                    PageMethods.VerificarClienteCadastrado(login, function(result) {
-                        ocultarMensagem();
+                    // Limpar timeout anterior
+                    if (timeoutVerificacaoCliente) {
+                        clearTimeout(timeoutVerificacaoCliente);
+                    }
+                    
+                    // Debounce - aguardar 500ms após parar de digitar
+                    timeoutVerificacaoCliente = setTimeout(function() {
+                        var login = txtLoginDinamico ? txtLoginDinamico.value.trim() : '';
+                        if (!login) {
+                            ocultarMensagem();
+                            var divSenhaReservaElement = document.getElementById(ClientIDs.divSenhaReserva);
+                            if (divSenhaReservaElement) divSenhaReservaElement.style.display = 'none';
+                            clienteEncontrado = null;
+                            window.clienteEncontrado = null;
+                            verificacaoEmAndamento = false;
+                            return;
+                        }
                         
-                        if (result && result.existe) {
-                            clienteEncontrado = result.cliente;
-                            
-                            // Hide cadastro option
-                            var divOpcaoCadastro = document.getElementById('divOpcaoCadastro');
-                            if (divOpcaoCadastro) divOpcaoCadastro.style.display = 'none';
-                            
-                            // Ocultar botões de login inicialmente (serão mostrados se tiver senha)
-                            var divBotoesLoginInicial = document.getElementById('divBotoesLogin');
-                            if (divBotoesLoginInicial) {
-                                divBotoesLoginInicial.style.display = 'none';
-                            }
-                            
-                            if (result.temSenha) {
-                                // Cliente encontrado e tem senha - MOSTRAR CAMPO DE SENHA IMEDIATAMENTE
+                        // Detectar se é email ou telefone
+                        var isEmail = login.indexOf('@') > -1;
+                        var loginLimpo = isEmail ? login.toLowerCase() : login.replace(/\D/g, '');
+                        
+                        // Só verificar se tiver informação suficiente
+                        if (isEmail && login.length < 5) {
+                            verificacaoEmAndamento = false;
+                            return;
+                        }
+                        if (!isEmail && loginLimpo.length < 10) {
+                            verificacaoEmAndamento = false;
+                            return;
+                        }
+                        
+                        verificacaoEmAndamento = true;
+                        
+                        // Chamar Handler para verificar cliente (sem ScriptManager)
+                        mostrarMensagem('<i class="fas fa-spinner fa-spin"></i> Verificando...', 'info');
+                        
+                        KingdomConfeitaria.Ajax.callHandler(
+                            'Handlers/CallbackHandler.ashx',
+                            {
+                                acao: 'verificarcliente',
+                                login: login
+                            },
+                            'POST',
+                            function(result) {
+                                verificacaoEmAndamento = false;
+                                ocultarMensagem();
                                 
-                                // Função para mostrar campo de senha
-                                function mostrarCampoSenha() {
-                                    // Garantir que o divLoginDinamico esteja visível
-                                    var divLoginDinamicoElement = document.getElementById('<%= divLoginDinamico.ClientID %>');
-                                    if (!divLoginDinamicoElement) {
-                                        divLoginDinamicoElement = document.querySelector('[id*="divLoginDinamico"]');
-                                    }
-                                    if (divLoginDinamicoElement) {
-                                        divLoginDinamicoElement.style.display = 'block';
-                                    }
+                                if (result && result.existe) {
+                                    clienteEncontrado = result.cliente;
+                                    window.clienteEncontrado = clienteEncontrado;
                                     
-                                    // Encontrar o campo de senha - tentar múltiplas formas
-                                    var divSenhaReservaElement = document.getElementById('<%= divSenhaReserva.ClientID %>');
+                                    // Hide cadastro option
+                                    var divOpcaoCadastro = document.getElementById('divOpcaoCadastro');
+                                    if (divOpcaoCadastro) divOpcaoCadastro.style.display = 'none';
                                     
-                                    if (!divSenhaReservaElement) {
-                                        divSenhaReservaElement = document.querySelector('[id*="divSenhaReserva"]');
+                                    // Ocultar botões de login inicialmente (serão mostrados se tiver senha)
+                                    var divBotoesLoginInicial = document.getElementById('divBotoesLogin');
+                                    if (divBotoesLoginInicial) {
+                                        divBotoesLoginInicial.style.display = 'none';
                                     }
                                     
-                                    if (!divSenhaReservaElement) {
-                                        // Tentar encontrar todos os elementos com "Senha" no ID
-                                        var todosElementos = document.querySelectorAll('[id*="Senha"]');
-                                        if (todosElementos.length > 0) {
-                                            divSenhaReservaElement = todosElementos[0];
-                                        }
-                                    }
-                                    
-                                    if (divSenhaReservaElement) {
-                                        // FORÇAR EXIBIÇÃO - método mais direto
-                                        divSenhaReservaElement.removeAttribute('style');
-                                        divSenhaReservaElement.style.display = 'block';
-                                        divSenhaReservaElement.style.visibility = 'visible';
-                                        divSenhaReservaElement.style.marginTop = '1.5rem';
-                                        divSenhaReservaElement.style.marginBottom = '1.5rem';
-                                        divSenhaReservaElement.style.padding = '1rem';
-                                        divSenhaReservaElement.style.backgroundColor = '#f8f9fa';
-                                        divSenhaReservaElement.style.borderRadius = '8px';
-                                        divSenhaReservaElement.style.border = '1px solid #dee2e6';
-                                        divSenhaReservaElement.classList.add('show');
-                                        divSenhaReservaElement.removeAttribute('hidden');
+                                    if (result.temSenha) {
+                                        // Cliente encontrado e tem senha - MOSTRAR CAMPO DE SENHA IMEDIATAMENTE
                                         
-                                        // Criar estilo dinâmico para garantir que fique visível
-                                        var styleId = 'style-for-divSenhaReserva';
-                                        var existingStyle = document.getElementById(styleId);
-                                        if (existingStyle) {
-                                            existingStyle.remove();
-                                        }
-                                        var style = document.createElement('style');
-                                        style.id = styleId;
-                                        style.textContent = '#' + divSenhaReservaElement.id + ' { display: block !important; visibility: visible !important; }';
-                                        document.head.appendChild(style);
-                                        
-                                        // Scroll para o campo
-                                        setTimeout(function() {
-                                            divSenhaReservaElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                                            
-                                            // Focar no campo de senha
-                                            var txtSenhaReservaElement = document.getElementById('<%= txtSenhaReserva.ClientID %>');
-                                            if (!txtSenhaReservaElement) {
-                                                txtSenhaReservaElement = document.querySelector('[id*="txtSenhaReserva"]');
+                                        // Função para mostrar campo de senha
+                                        function mostrarCampoSenha() {
+                                            // Garantir que o divLoginDinamico esteja visível
+                                            var divLoginDinamicoElement = document.getElementById(ClientIDs.divLoginDinamico);
+                                            if (!divLoginDinamicoElement) {
+                                                divLoginDinamicoElement = document.querySelector('[id*="divLoginDinamico"]');
                                             }
-                                            if (txtSenhaReservaElement) {
-                                                txtSenhaReservaElement.required = true;
-                                                txtSenhaReservaElement.focus();
+                                            if (divLoginDinamicoElement) {
+                                                divLoginDinamicoElement.style.display = 'block';
+                                            }
+                                            
+                                            // Encontrar o campo de senha - tentar múltiplas formas
+                                            var divSenhaReservaElement = document.getElementById(ClientIDs.divSenhaReserva);
+                                            
+                                            if (!divSenhaReservaElement) {
+                                                divSenhaReservaElement = document.querySelector('[id*="divSenhaReserva"]');
+                                            }
+                                            
+                                            if (!divSenhaReservaElement) {
+                                                // Tentar encontrar todos os elementos com "Senha" no ID
+                                                var todosElementos = document.querySelectorAll('[id*="Senha"]');
+                                                if (todosElementos.length > 0) {
+                                                    divSenhaReservaElement = todosElementos[0];
+                                                }
+                                            }
+                                            
+                                            if (divSenhaReservaElement) {
+                                                // FORÇAR EXIBIÇÃO - método mais direto
+                                                divSenhaReservaElement.removeAttribute('style');
+                                                divSenhaReservaElement.style.display = 'block';
+                                                divSenhaReservaElement.style.visibility = 'visible';
+                                                divSenhaReservaElement.style.marginTop = '1.5rem';
+                                                divSenhaReservaElement.style.marginBottom = '1.5rem';
+                                                divSenhaReservaElement.style.padding = '1rem';
+                                                divSenhaReservaElement.style.backgroundColor = '#f8f9fa';
+                                                divSenhaReservaElement.style.borderRadius = '8px';
+                                                divSenhaReservaElement.style.border = '1px solid #dee2e6';
+                                                divSenhaReservaElement.classList.add('show');
+                                                divSenhaReservaElement.removeAttribute('hidden');
+                                                
+                                                // Criar estilo dinâmico para garantir que fique visível
+                                                var styleId = 'style-for-divSenhaReserva';
+                                                var existingStyle = document.getElementById(styleId);
+                                                if (existingStyle) {
+                                                    existingStyle.remove();
+                                                }
+                                                var style = document.createElement('style');
+                                                style.id = styleId;
+                                                style.textContent = '#' + divSenhaReservaElement.id + ' { display: block !important; visibility: visible !important; }';
+                                                document.head.appendChild(style);
+                                                
+                                                // Scroll para o campo
+                                                setTimeout(function() {
+                                                    divSenhaReservaElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                                    
+                                                    // Focar no campo de senha
+                                                    var txtSenhaReservaElement = document.getElementById(ClientIDs.txtSenhaReserva);
+                                                    if (!txtSenhaReservaElement) {
+                                                        txtSenhaReservaElement = document.querySelector('[id*="txtSenhaReserva"]');
+                                                    }
+                                                    if (txtSenhaReservaElement) {
+                                                        txtSenhaReservaElement.required = true;
+                                                        txtSenhaReservaElement.focus();
+                                                    }
+                                                }, 100);
+                                                
+                                                return true;
+                                            } else {
+                                                return false;
+                                            }
+                                        }
+                                    
+                                        // Mostrar campo de senha IMEDIATAMENTE
+                                        mostrarCampoSenha();
+                                        
+                                        // Mostrar botões de login (Confirmar, Cancelar)
+                                        var divBotoesLogin = document.getElementById('divBotoesLogin');
+                                        if (divBotoesLogin) {
+                                            divBotoesLogin.style.display = 'flex';
+                                        }
+                                        
+                                        // Ocultar botões de reserva
+                                        var divBotoesReserva = document.getElementById('divBotoesReserva');
+                                        if (divBotoesReserva) {
+                                            divBotoesReserva.style.display = 'none';
+                                        }
+                                        
+                                        // Tentar novamente após um pequeno delay para garantir
+                                        setTimeout(function() {
+                                            var divSenhaReservaElement = document.getElementById(ClientIDs.divSenhaReserva);
+                                            if (!divSenhaReservaElement) {
+                                                divSenhaReservaElement = document.querySelector('[id*="divSenhaReserva"]');
+                                            }
+                                            if (divSenhaReservaElement && window.getComputedStyle(divSenhaReservaElement).display === 'none') {
+                                                mostrarCampoSenha();
                                             }
                                         }, 100);
                                         
-                                        return true;
+                                        // Atualizar link de recuperar senha com email/telefone
+                                        var linkRecuperarSenha = document.getElementById('linkRecuperarSenha');
+                                        if (linkRecuperarSenha) {
+                                            var isEmail = login.indexOf('@') > -1;
+                                            var loginParam = isEmail ? 'email' : 'telefone';
+                                            linkRecuperarSenha.href = 'paginas/RecuperarSenha.aspx?' + loginParam + '=' + encodeURIComponent(login);
+                                        }
+                                        
+                                        // Cliente encontrado, aguardando senha
                                     } else {
-                                        return false;
+                                        // Cliente encontrado mas não tem senha - fazer login automático e mostrar área de reserva
+                                        // Continuar direto para a tela de reserva sem confirmação
+                                        ocultarMensagem();
+                                        preencherDadosCliente(result.cliente);
                                     }
-                                }
-                                
-                                // Mostrar campo de senha IMEDIATAMENTE
-                                mostrarCampoSenha();
-                                
-                                // Mostrar botões de login (Confirmar, Cancelar)
-                                var divBotoesLogin = document.getElementById('divBotoesLogin');
-                                if (divBotoesLogin) {
-                                    divBotoesLogin.style.display = 'flex';
-                                }
-                                
-                                // Ocultar botões de reserva
-                                var divBotoesReserva = document.getElementById('divBotoesReserva');
-                                if (divBotoesReserva) {
-                                    divBotoesReserva.style.display = 'none';
-                                }
-                                
-                                // Tentar novamente após um pequeno delay para garantir
-                                setTimeout(function() {
-                                    var divSenhaReservaElement = document.getElementById('<%= divSenhaReserva.ClientID %>');
-                                    if (!divSenhaReservaElement) {
-                                        divSenhaReservaElement = document.querySelector('[id*="divSenhaReserva"]');
+                                } else {
+                                    // Cliente não encontrado - mostrar opção de cadastro
+                                    clienteEncontrado = null;
+                                    window.clienteEncontrado = null;
+                                    var divSenhaReservaElement = document.getElementById(ClientIDs.divSenhaReserva);
+                                    var txtSenhaReservaElement = document.getElementById(ClientIDs.txtSenhaReserva);
+                                    
+                                    if (divSenhaReservaElement) {
+                                        divSenhaReservaElement.style.display = 'none';
+                                        if (txtSenhaReservaElement) {
+                                            txtSenhaReservaElement.value = '';
+                                            txtSenhaReservaElement.required = false;
+                                        }
                                     }
-                                    if (divSenhaReservaElement && window.getComputedStyle(divSenhaReservaElement).display === 'none') {
-                                        mostrarCampoSenha();
+                                    
+                                    // Ocultar botões de login
+                                    var divBotoesLogin = document.getElementById('divBotoesLogin');
+                                    if (divBotoesLogin) {
+                                        divBotoesLogin.style.display = 'none';
                                     }
-                                }, 100);
-                                
-                                // Atualizar link de recuperar senha com email/telefone
-                                var linkRecuperarSenha = document.getElementById('linkRecuperarSenha');
-                                if (linkRecuperarSenha) {
-                                    var isEmail = login.indexOf('@') > -1;
-                                    var loginParam = isEmail ? 'email' : 'telefone';
-                                    linkRecuperarSenha.href = 'RecuperarSenha.aspx?' + loginParam + '=' + encodeURIComponent(login);
+                                    
+                                    // Mostrar opção de cadastro
+                                    var divOpcaoCadastro = document.getElementById('divOpcaoCadastro');
+                                    var linkIrCadastro = document.getElementById('linkIrCadastro');
+                                    if (divOpcaoCadastro) {
+                                        divOpcaoCadastro.style.display = 'block';
+                                    }
+                                    if (linkIrCadastro) {
+                                        // Detectar se é email ou telefone
+                                        var isEmail = login.indexOf('@') > -1;
+                                        var loginParam = isEmail ? 'email' : 'telefone';
+                                        linkIrCadastro.href = 'paginas/Cadastro.aspx?' + loginParam + '=' + encodeURIComponent(login);
+                                    }
+                                    
+                                    mostrarMensagem('<i class="fas fa-info-circle"></i> Cliente não encontrado. Clique no botão abaixo para se cadastrar.', 'info');
                                 }
-                                
-                                // Cliente encontrado, aguardando senha
-                            } else {
-                                // Cliente encontrado mas não tem senha - fazer login automático e mostrar área de reserva
-                                // Continuar direto para a tela de reserva sem confirmação
+                            }, function(error) {
+                                verificacaoEmAndamento = false;
                                 ocultarMensagem();
-                                preencherDadosCliente(result.cliente);
+                                mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao verificar cliente. Tente novamente.', 'danger');
                             }
-                        } else {
-                            // Cliente não encontrado - mostrar opção de cadastro
-                            clienteEncontrado = null;
-                            var divSenhaReservaElement = document.getElementById('<%= divSenhaReserva.ClientID %>');
-                            var txtSenhaReservaElement = document.getElementById('<%= txtSenhaReserva.ClientID %>');
-                            
-                            if (divSenhaReservaElement) {
-                                divSenhaReservaElement.style.display = 'none';
-                                if (txtSenhaReservaElement) {
-                                    txtSenhaReservaElement.value = '';
-                                    txtSenhaReservaElement.required = false;
-                                }
-                            }
-                            
-                            // Ocultar botões de login
-                            var divBotoesLogin = document.getElementById('divBotoesLogin');
-                            if (divBotoesLogin) {
-                                divBotoesLogin.style.display = 'none';
-                            }
-                            
-                            // Mostrar opção de cadastro
-                            var divOpcaoCadastro = document.getElementById('divOpcaoCadastro');
-                            var linkIrCadastro = document.getElementById('linkIrCadastro');
-                            if (divOpcaoCadastro) {
-                                divOpcaoCadastro.style.display = 'block';
-                            }
-                            if (linkIrCadastro) {
-                                // Detectar se é email ou telefone
-                                var isEmail = login.indexOf('@') > -1;
-                                var loginParam = isEmail ? 'email' : 'telefone';
-                                linkIrCadastro.href = 'Cadastro.aspx?' + loginParam + '=' + encodeURIComponent(login);
-                            }
-                            
-                            mostrarMensagem('<i class="fas fa-info-circle"></i> Cliente não encontrado. Clique no botão abaixo para se cadastrar.', 'info');
-                        }
-                    }, function(error) {
-                        ocultarMensagem();
-                        mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao verificar cliente. Tente novamente.', 'danger');
-                    });
+                        );
+                    }, 500);
                 }
             }
             
             // Função para preencher dados do cliente e mostrar área de reserva AUTOMATICAMENTE
             // Esta função é chamada após login bem-sucedido e continua direto para a tela de reserva
             function preencherDadosCliente(cliente) {
+                // Tornar global para acesso fora da IIFE
+                window.preencherDadosCliente = preencherDadosCliente;
+                
                 if (!cliente) return;
                 
-                // Fazer login na sessão via PageMethod
+                // Fazer login na sessão via Handler (sem ScriptManager)
                 var login = txtLoginDinamico ? txtLoginDinamico.value.trim() : '';
                 
-                // Chamar método para fazer login na sessão
-                if (typeof PageMethods !== 'undefined') {
-                    PageMethods.FazerLoginSessao(cliente.id, function(result) {
+                // Chamar Handler para fazer login na sessão
+                KingdomConfeitaria.Ajax.callHandler(
+                    'Handlers/CallbackHandler.ashx',
+                    {
+                        acao: 'fazerlogin',
+                        clienteId: cliente.id
+                    },
+                    'POST',
+                    function(result) {
                         if (result && result.sucesso) {
                             
                             // Preencher campos do formulário IMEDIATAMENTE (visuais e hidden)
                             if (txtNome && cliente.nome) {
                                 txtNome.value = cliente.nome;
                                 // Preencher campo hidden para garantir que o valor seja enviado no postback
-                                var hdnNome = document.getElementById('<%= hdnNome.ClientID %>');
+                                var hdnNome = document.getElementById(ClientIDs.hdnNome);
                                 if (hdnNome) {
                                     hdnNome.value = cliente.nome;
                                 }
@@ -1790,7 +1642,7 @@
                             if (txtEmail && cliente.email) {
                                 txtEmail.value = cliente.email;
                                 // Preencher campo hidden para garantir que o valor seja enviado no postback
-                                var hdnEmail = document.getElementById('<%= hdnEmail.ClientID %>');
+                                var hdnEmail = document.getElementById(ClientIDs.hdnEmail);
                                 if (hdnEmail) {
                                     hdnEmail.value = cliente.email;
                                 }
@@ -1805,14 +1657,14 @@
                                 }
                                 txtTelefone.value = telFormatado;
                                 // Preencher campo hidden com telefone sem formatação para garantir que o valor seja enviado no postback
-                                var hdnTelefone = document.getElementById('<%= hdnTelefone.ClientID %>');
+                                var hdnTelefone = document.getElementById(ClientIDs.hdnTelefone);
                                 if (hdnTelefone) {
                                     hdnTelefone.value = cliente.telefone.replace(/\D/g, '');
                                 }
                             }
                             
                             // Ocultar área de login IMEDIATAMENTE
-                            var divLoginDinamicoElement = document.getElementById('<%= divLoginDinamico.ClientID %>');
+                            var divLoginDinamicoElement = document.getElementById(ClientIDs.divLoginDinamico);
                             if (divLoginDinamicoElement) {
                                 divLoginDinamicoElement.style.display = 'none';
                             }
@@ -1831,14 +1683,9 @@
                             // Ocultar mensagem de login
                             ocultarMensagem();
                             
-                            // Atualizar título do modal para "Finalizar Reserva"
-                            var modalReservaLabel = document.getElementById('modalReservaLabel');
-                            if (modalReservaLabel) {
-                                modalReservaLabel.textContent = 'Finalizar Reserva';
-                            }
                             
                             // Mostrar área de reserva IMEDIATAMENTE (sem confirmação)
-                            var divDadosReserva = document.getElementById('<%= divDadosReserva.ClientID %>');
+                            var divDadosReserva = document.getElementById(ClientIDs.divDadosReserva);
                             if (!divDadosReserva) {
                                 divDadosReserva = document.querySelector('[id*="divDadosReserva"]');
                             }
@@ -1869,7 +1716,7 @@
                             } else {
                                 // Tentar novamente após um pequeno delay
                                 setTimeout(function() {
-                                    divDadosReserva = document.getElementById('<%= divDadosReserva.ClientID %>');
+                                    divDadosReserva = document.getElementById(ClientIDs.divDadosReserva);
                                     if (!divDadosReserva) {
                                         divDadosReserva = document.querySelector('[id*="divDadosReserva"]');
                                     }
@@ -1888,7 +1735,7 @@
                             }
                             
                             // Mostrar botão Confirmar Reserva
-                            var btnConfirmarReserva = document.getElementById('<%= btnConfirmarReserva.ClientID %>');
+                            var btnConfirmarReserva = document.getElementById(ClientIDs.btnConfirmarReserva);
                             if (!btnConfirmarReserva) {
                                 btnConfirmarReserva = document.querySelector('[id*="btnConfirmarReserva"]');
                             }
@@ -1945,57 +1792,84 @@
                     }, function(error) {
                         // Erro ao fazer login
                         mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login. Tente novamente.', 'danger');
-                    });
-                }
+                    }
+                );
             }
             
             // Função para validar senha (tornada global para ser acessível via onclick)
             window.validarSenha = function() {
-                if (!clienteEncontrado) {
-                    mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Cliente não encontrado. Por favor, digite seu email ou telefone primeiro.', 'warning');
+                if (!window.clienteEncontrado) {
+                    alert('Cliente não encontrado. Por favor, digite seu email ou telefone primeiro.');
                     return;
                 }
                 
                 // Usar ClientID para garantir que encontre o elemento correto
-                var txtSenhaReservaElement = document.getElementById('<%= txtSenhaReserva.ClientID %>');
-                var txtLoginDinamicoElement = document.getElementById('<%= txtLoginDinamico.ClientID %>');
+                var ClientIDs = window.ClientIDs || {};
+                var txtSenhaReservaElement = document.getElementById(ClientIDs.txtSenhaReserva);
+                var txtLoginDinamicoElement = document.getElementById(ClientIDs.txtLoginDinamico);
                 
                 var senha = txtSenhaReservaElement ? txtSenhaReservaElement.value : '';
                 var login = txtLoginDinamicoElement ? txtLoginDinamicoElement.value.trim() : '';
                 
                 if (!senha) {
-                    mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Por favor, digite sua senha.', 'warning');
+                    if (window.mostrarMensagem) {
+                        window.mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Por favor, digite sua senha.', 'warning');
+                    } else {
+                        alert('Por favor, digite sua senha.');
+                    }
                     if (txtSenhaReservaElement) {
                         txtSenhaReservaElement.focus();
                     }
                     return;
                 }
                 
-                if (typeof PageMethods !== 'undefined') {
-                    mostrarMensagem('<i class="fas fa-spinner fa-spin"></i> Validando senha...', 'info');
-                    
-                    PageMethods.ValidarSenhaCliente(login, senha, function(result) {
+                // Chamar Handler para validar senha (sem ScriptManager)
+                if (window.mostrarMensagem) {
+                    window.mostrarMensagem('<i class="fas fa-spinner fa-spin"></i> Validando senha...', 'info');
+                }
+                
+                KingdomConfeitaria.Ajax.callHandler(
+                    'Handlers/CallbackHandler.ashx',
+                    {
+                        acao: 'validarsenha',
+                        login: login,
+                        senha: senha
+                    },
+                    'POST',
+                    function(result) {
                         if (result && result.valido) {
                             // Senha válida - fazer login e mostrar área de reserva AUTOMATICAMENTE
                             // Sem pedir confirmação, continuar direto para a tela de reserva
-                            ocultarMensagem();
-                            preencherDadosCliente(result.cliente);
+                            if (window.ocultarMensagem) {
+                                window.ocultarMensagem();
+                            }
+                            if (window.preencherDadosCliente) {
+                                window.preencherDadosCliente(result.cliente);
+                            }
                         } else {
                             // Senha inválida
-                            mostrarMensagem('<i class="fas fa-times-circle"></i> ' + (result.mensagem || 'Senha incorreta.'), 'danger');
+                            if (window.mostrarMensagem) {
+                                window.mostrarMensagem('<i class="fas fa-times-circle"></i> ' + (result.mensagem || 'Senha incorreta.'), 'danger');
+                            } else {
+                                alert(result.mensagem || 'Senha incorreta.');
+                            }
                             if (txtSenhaReservaElement) {
                                 txtSenhaReservaElement.value = '';
                                 txtSenhaReservaElement.focus();
                             }
                         }
                     }, function(error) {
-                        ocultarMensagem();
+                        if (window.ocultarMensagem) {
+                            window.ocultarMensagem();
+                        }
                         // Erro ao validar senha
-                        mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao validar senha. Tente novamente.', 'danger');
-                    });
-                } else {
-                    mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro: PageMethods não está disponível. Por favor, recarregue a página.', 'danger');
-                }
+                        if (window.mostrarMensagem) {
+                            window.mostrarMensagem('<i class="fas fa-exclamation-triangle"></i> Erro ao validar senha. Tente novamente.', 'danger');
+                        } else {
+                            alert('Erro ao validar senha. Tente novamente.');
+                        }
+                    }
+                );
             };
             
             // Função para filtrar e normalizar entrada do login
@@ -2077,14 +1951,43 @@
                 txtLoginDinamico.addEventListener('keypress', function(e) {
                     // Permitir teclas especiais (Backspace, Delete, Tab, Arrow keys, etc.)
                     var keyCode = e.which || e.keyCode;
-                    if (keyCode === 8 || keyCode === 46 || keyCode === 9 || keyCode === 13 || keyCode === 27 || // Backspace, Delete, Tab, Enter, Esc
-                        (keyCode >= 35 && keyCode <= 40) || // Home, End, Arrow keys
-                        (e.ctrlKey || e.metaKey)) { // Ctrl/Cmd + qualquer tecla (para copiar, colar, etc.)
+                    
+                    // Verificar teclas de controle
+                    var isControlKey = (keyCode === 8 || keyCode === 46 || keyCode === 9 || keyCode === 13 || keyCode === 27);
+                    var isNavigationKey = (keyCode >= 35 && keyCode <= 40);
+                    var isModifierKey = (e.ctrlKey || e.metaKey || false);
+                    var isSpecialKey = isControlKey || isNavigationKey || isModifierKey;
+                    
+                    if (isSpecialKey) {
                         return true;
                     }
                     
-                    var char = String.fromCharCode(keyCode);
-                    var charCode = char.charCodeAt(0);
+                    // Validar keyCode antes de processar
+                    if (!keyCode || keyCode < 0 || keyCode > 255) {
+                        return true; // Permitir teclas inválidas
+                    }
+                    
+                    var char = '';
+                    var charCode = 0;
+                    
+                    try {
+                        if (typeof String.fromCharCode !== 'function') {
+                            return true; // Função não disponível
+                        }
+                        char = String.fromCharCode(keyCode);
+                        if (!char || char.length === 0) {
+                            return true; // Caractere inválido
+                        }
+                        charCode = char.charCodeAt(0);
+                        
+                        // Validar charCode antes de usar
+                        if (isNaN(charCode) || charCode < 0) {
+                            return true; // Permitir caracteres inválidos
+                        }
+                    } catch (err) {
+                        return true; // Erro ao processar caractere
+                    }
+                    
                     var valorAtual = e.target.value;
                     var temArroba = valorAtual.indexOf('@') > -1;
                     var temLetras = /[a-zA-Z]/.test(valorAtual);
@@ -2095,28 +1998,33 @@
                     // Mas permitir mudança de telefone para email se digitar @ ou letras
                     if (valorAtual.length === 0) {
                         // Campo vazio: aceitar letras, números, @ (será detectado automaticamente)
-                        var valido = (charCode >= 65 && charCode <= 90) ||  // A-Z
-                                     (charCode >= 97 && charCode <= 122) ||  // a-z
-                                     (charCode >= 48 && charCode <= 57) ||   // 0-9
-                                     char === '@';
+                        var isLetter = (charCode >= 65 && charCode <= 90) || (charCode >= 97 && charCode <= 122);
+                        var isNumber = (charCode >= 48 && charCode <= 57);
+                        var isAtSymbol = (char === '@');
+                        var valido = isLetter || isNumber || isAtSymbol;
                         if (!valido) {
                             e.preventDefault();
                         }
                     } else if (isEmail) {
                         // Email: aceitar letras, números, @, ., _, -, +
-                        var valido = (charCode >= 65 && charCode <= 90) ||  // A-Z (será convertido para minúscula)
-                                     (charCode >= 97 && charCode <= 122) ||  // a-z
-                                     (charCode >= 48 && charCode <= 57) ||   // 0-9
-                                     char === '@' || char === '.' || char === '_' || char === '-' || char === '+';
+                        var isLetter = (charCode >= 65 && charCode <= 90) || (charCode >= 97 && charCode <= 122);
+                        var isNumber = (charCode >= 48 && charCode <= 57);
+                        var isAt = (char === '@');
+                        var isDot = (char === '.');
+                        var isUnderscore = (char === '_');
+                        var isDash = (char === '-');
+                        var isPlus = (char === '+');
+                        var isEmailChar = isAt || isDot || isUnderscore || isDash || isPlus;
+                        var valido = isLetter || isNumber || isEmailChar;
                         if (!valido) {
                             e.preventDefault();
                         }
                     } else {
                         // Telefone: aceitar números, mas também permitir @ ou letras para mudar para email
-                        var valido = (charCode >= 48 && charCode <= 57) ||   // 0-9
-                                     (charCode >= 65 && charCode <= 90) ||   // A-Z (mudará para email)
-                                     (charCode >= 97 && charCode <= 122) ||  // a-z (mudará para email)
-                                     char === '@';                            // @ (mudará para email)
+                        var isNumber = (charCode >= 48 && charCode <= 57);
+                        var isLetter = (charCode >= 65 && charCode <= 90) || (charCode >= 97 && charCode <= 122);
+                        var isAtSymbol = (char === '@');
+                        var valido = isNumber || isLetter || isAtSymbol;
                         if (!valido) {
                             e.preventDefault();
                         }
@@ -2128,13 +2036,8 @@
                     // Filtrar e normalizar entrada
                     var novoValor = filtrarEntradaLogin(e.target);
                     
-                    // Limpar timeout anterior
-                    if (timeoutVerificacao) {
-                        clearTimeout(timeoutVerificacao);
-                    }
-                    
-                    // Aguardar 500ms após parar de digitar para verificar cliente
-                    timeoutVerificacao = setTimeout(verificarClienteDinamico, 500);
+                    // Verificar cliente com debounce (já implementado na função)
+                    verificarClienteDinamico();
                 });
                 
                 // Prevenir colar conteúdo inválido
@@ -2176,10 +2079,10 @@
                 // Permitir Enter para validar senha se campo de senha estiver visível
                 txtLoginDinamico.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
-                        var divSenhaReservaCheck = document.getElementById('<%= divSenhaReserva.ClientID %>');
+                        var divSenhaReservaCheck = document.getElementById(ClientIDs.divSenhaReserva);
                         if (divSenhaReservaCheck && divSenhaReservaCheck.style.display !== 'none') {
                             e.preventDefault();
-                            var txtSenhaReservaCheck = document.getElementById('<%= txtSenhaReserva.ClientID %>');
+                            var txtSenhaReservaCheck = document.getElementById(ClientIDs.txtSenhaReserva);
                             if (txtSenhaReservaCheck) {
                                 txtSenhaReservaCheck.focus();
                             }
@@ -2190,7 +2093,7 @@
             
             // Event listener para campo de senha
             // Usar ClientID para garantir que encontre o elemento correto
-            var txtSenhaReservaElement = document.getElementById('<%= txtSenhaReserva.ClientID %>');
+            var txtSenhaReservaElement = document.getElementById(ClientIDs.txtSenhaReserva);
             
             if (txtSenhaReservaElement) {
                 txtSenhaReservaElement.addEventListener('keypress', function(e) {
@@ -2204,7 +2107,7 @@
                 
                 // Botão para validar senha (pode ser adicionado depois)
                 txtSenhaReservaElement.addEventListener('blur', function() {
-                    if (this.value && clienteEncontrado) {
+                    if (this.value && window.clienteEncontrado) {
                         if (window.validarSenha) {
                             window.validarSenha();
                         }
@@ -2290,17 +2193,18 @@
                         return true;
                     }
 
-                    var nome = document.getElementById('<%= txtNome.ClientID %>');
-                    var email = document.getElementById('<%= txtEmail.ClientID %>');
-                    var telefone = document.getElementById('<%= txtTelefone.ClientID %>');
+                    var nome = document.getElementById(ClientIDs.txtNome);
+                    var email = document.getElementById(ClientIDs.txtEmail);
+                    var telefone = document.getElementById(ClientIDs.txtTelefone);
                     // Verificar data de retirada selecionada
                     var dataRetirada = document.querySelector('input[name="dataRetirada"]:checked');
-                    var hdnDataRetirada = document.getElementById('<%= hdnDataRetirada.ClientID %>');
+                    var hdnDataRetirada = document.getElementById(ClientIDs.hdnDataRetirada);
+                    var radioGroupDatas = document.getElementById(ClientIDs.radioGroupDatas);
                     
                     // Verificar também os hidden fields (caso os campos readonly estejam vazios)
-                    var hdnNome = document.getElementById('<%= hdnNome.ClientID %>');
-                    var hdnEmail = document.getElementById('<%= hdnEmail.ClientID %>');
-                    var hdnTelefone = document.getElementById('<%= hdnTelefone.ClientID %>');
+                    var hdnNome = document.getElementById(ClientIDs.hdnNome);
+                    var hdnEmail = document.getElementById(ClientIDs.hdnEmail);
+                    var hdnTelefone = document.getElementById(ClientIDs.hdnTelefone);
                     
                     // Se os campos visuais estiverem vazios (readonly), verificar hidden fields
                     var nomeValor = (nome && nome.value) ? nome.value.trim() : (hdnNome ? hdnNome.value : '');
@@ -2315,14 +2219,40 @@
                     var telefoneValorLimpo = telefoneValor.replace(/\D/g, '');
                     var telefoneValido = telefoneValorLimpo.length >= 10 && telefoneValorLimpo.length <= 11;
                     if (!telefoneValido && !primeiroInvalido) primeiroInvalido = telefone || hdnTelefone;
-                    var dataValida = dataRetirada && dataRetirada.value && dataRetirada.value !== '';
+                    
+                    // Validar data de retirada
+                    var dataValida = false;
+                    var dataValor = '';
+                    if (hdnDataRetirada && hdnDataRetirada.value) {
+                        dataValida = true;
+                        dataValor = hdnDataRetirada.value;
+                    } else if (radioGroupDatas) {
+                        var radios = radioGroupDatas.querySelectorAll('input[type="radio"]:checked');
+                        if (radios && radios.length > 0) {
+                            dataValida = true;
+                            dataValor = radios[0].value;
+                        }
+                    } else if (dataRetirada && dataRetirada.value) {
+                        dataValida = true;
+                        dataValor = dataRetirada.value;
+                    }
+                    
                     if (!dataValida && !primeiroInvalido) {
-                        primeiroInvalido = dataRetirada;
+                        primeiroInvalido = dataRetirada || radioGroupDatas;
                         // Destacar a seção de data de retirada
                         var secaoData = document.querySelector('.secao-data-retirada');
                         if (secaoData) {
                             secaoData.style.animation = 'shake 0.5s';
                             setTimeout(function() { secaoData.style.animation = ''; }, 500);
+                        }
+                        if (radioGroupDatas) {
+                            radioGroupDatas.style.border = '2px solid #dc3545';
+                            radioGroupDatas.style.borderRadius = '4px';
+                            radioGroupDatas.style.padding = '10px';
+                            setTimeout(function() {
+                                radioGroupDatas.style.border = '';
+                                radioGroupDatas.style.padding = '';
+                            }, 3000);
                         }
                     }
 
@@ -2333,61 +2263,60 @@
                                 primeiroInvalido.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             } catch (e) {}
                         }
-                        alert('Por favor, preencha todos os campos obrigatórios corretamente.');
+                        if (!dataValida) {
+                            alert('Por favor, selecione uma data de retirada antes de confirmar a reserva.');
+                        } else {
+                            alert('Por favor, preencha todos os campos obrigatórios corretamente.');
+                        }
                         return false;
                     }
                     return true;
                 };
             }
-        });
-            }
+            
+            // Função global para validação do formulário de reserva (usada pelo OnClientClick)
+            window.validarFormularioReserva = function() {
+                // Validação será feita na página de reserva
+                return true;
+            };
+            
+            // Iniciar a função de login dinâmico
             initLoginDinamico();
         })();
     </script>
     
     <!-- Componente Modal de Login Dinâmico -->
     <script>
-        // Função global para abrir modal de login
+        // Função global para abrir modal de login (redireciona para Login.aspx)
         function abrirModalLogin() {
-            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
-                KingdomConfeitaria.Modal.show('modalLoginDinamico');
-                // Resetar campos
-                var txtLogin = document.getElementById('txtLoginDinamicoStandalone');
-                var divSenha = document.getElementById('divSenhaStandalone');
-                var divOpcaoCadastro = document.getElementById('divOpcaoCadastroStandalone');
-                var divBotoesLogin = document.getElementById('divBotoesLoginStandalone');
-                var divMensagem = document.getElementById('divMensagemLoginStandalone');
-                
-                if (txtLogin) txtLogin.value = '';
-                if (divSenha) divSenha.style.display = 'none';
-                if (divOpcaoCadastro) divOpcaoCadastro.style.display = 'none';
-                if (divBotoesLogin) divBotoesLogin.style.display = 'none';
-                if (divMensagem) {
-                    divMensagem.style.display = 'none';
-                    divMensagem.innerHTML = '';
-                }
-                
-                // Focar no campo de login
-                setTimeout(function() {
-                    if (txtLogin) txtLogin.focus();
-                }, 300);
-            }
+            window.location.href = 'paginas/Login.aspx';
         }
         
-        // Função global para fechar modal de login
+        // Função global para fechar modal de login (não mais necessária, mas mantida para compatibilidade)
         function fecharModalLogin() {
-            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
-                KingdomConfeitaria.Modal.hide('modalLoginDinamico');
-            }
+            // Não faz nada, mantida apenas para compatibilidade
         }
         
         // Inicializar componente de login dinâmico standalone
         (function() {
+            var loginStandaloneInicializado = false;
+            var tentativasLoginStandalone = 0;
+            var maxTentativasLoginStandalone = 20; // Máximo de 1 segundo (20 * 50ms)
+            
             function initLoginStandalone() {
+                if (loginStandaloneInicializado) return;
+                
                 if (typeof KingdomConfeitaria === 'undefined' || !KingdomConfeitaria.Utils) {
-                    setTimeout(initLoginStandalone, 50);
+                    tentativasLoginStandalone++;
+                    if (tentativasLoginStandalone < maxTentativasLoginStandalone) {
+                        setTimeout(initLoginStandalone, 50);
+                    } else {
+                        console.warn('KingdomConfeitaria não carregou para login standalone após ' + maxTentativasLoginStandalone + ' tentativas');
+                    }
                     return;
                 }
+                
+                loginStandaloneInicializado = true;
                 
                 KingdomConfeitaria.Utils.ready(function() {
             var txtLoginStandalone = document.getElementById('txtLoginDinamicoStandalone');
@@ -2421,15 +2350,18 @@
                     return;
                 }
                 
-                if (typeof PageMethods === 'undefined') {
-                    // PageMethods não disponível
-                    return;
-                }
-                
+                // Chamar Handler para verificar cliente (sem ScriptManager)
                 mostrarMensagemStandalone('<i class="fas fa-spinner fa-spin"></i> Verificando...', 'info');
                 
-                PageMethods.VerificarClienteCadastrado(login, function(result) {
-                    if (result && result.existe) {
+                KingdomConfeitaria.Ajax.callHandler(
+                    'Handlers/CallbackHandler.ashx',
+                    {
+                        acao: 'verificarcliente',
+                        login: login
+                    },
+                    'POST',
+                    function(result) {
+                        if (result && result.existe) {
                         clienteEncontradoStandalone = result.cliente;
                         
                         var divOpcaoCadastro = document.getElementById('divOpcaoCadastroStandalone');
@@ -2479,15 +2411,18 @@
             function fazerLoginStandalone(cliente) {
                 if (!cliente) return;
                 
-                if (typeof PageMethods === 'undefined') {
-                    // PageMethods não disponível
-                    return;
-                }
-                
+                // Chamar Handler para fazer login (sem ScriptManager)
                 mostrarMensagemStandalone('<i class="fas fa-spinner fa-spin"></i> Fazendo login...', 'info');
                 
-                PageMethods.FazerLoginSessao(cliente.id, function(result) {
-                    if (result && result.sucesso) {
+                KingdomConfeitaria.Ajax.callHandler(
+                    'Handlers/CallbackHandler.ashx',
+                    {
+                        acao: 'fazerlogin',
+                        clienteId: cliente.id
+                    },
+                    'POST',
+                    function(result) {
+                        if (result && result.sucesso) {
                         ocultarMensagemStandalone();
                         
                         // Atualizar variável global
@@ -2524,9 +2459,8 @@
                             }
                         }, 100);
                         
-                        // Fechar modal e redirecionar para Minhas Reservas imediatamente
-                        fecharModalLogin();
-                        window.location.href = 'MinhasReservas.aspx';
+                        // Redirecionar para Minhas Reservas imediatamente
+                        window.location.href = 'paginas/MinhasReservas.aspx';
                     } else {
                         mostrarMensagemStandalone('<i class="fas fa-exclamation-triangle"></i> Erro ao fazer login: ' + (result.mensagem || 'Erro desconhecido'), 'danger');
                     }
@@ -2552,15 +2486,19 @@
                     return;
                 }
                 
-                if (typeof PageMethods === 'undefined') {
-                    // PageMethods não disponível
-                    return;
-                }
-                
+                // Chamar Handler para validar senha (sem ScriptManager)
                 mostrarMensagemStandalone('<i class="fas fa-spinner fa-spin"></i> Validando senha...', 'info');
                 
-                PageMethods.ValidarSenhaCliente(login, senha, function(result) {
-                    if (result && result.valido) {
+                KingdomConfeitaria.Ajax.callHandler(
+                    'Handlers/CallbackHandler.ashx',
+                    {
+                        acao: 'validarsenha',
+                        login: login,
+                        senha: senha
+                    },
+                    'POST',
+                    function(result) {
+                        if (result && result.valido) {
                         fazerLoginStandalone(result.cliente);
                     } else {
                         mostrarMensagemStandalone('<i class="fas fa-times-circle"></i> ' + (result.mensagem || 'Senha incorreta.'), 'danger');
@@ -2635,11 +2573,11 @@
         function abrirModalProdutoFromCard(cardElement) {
             var produtoJson = cardElement.getAttribute('data-produto-json');
             if (produtoJson) {
-                abrirModalProduto(produtoJson);
+                navegarParaProduto(produtoJson);
             }
         }
         
-        function abrirModalProduto(produtoJson) {
+        function navegarParaProduto(produtoJson) {
             try {
                 var produto;
                 if (typeof produtoJson === 'string') {
@@ -2654,303 +2592,24 @@
                 } else {
                     produto = produtoJson;
                 }
-                produtoAtual = produto;
-                quantidadeAtual = 1;
-                
-                var modalBody = document.getElementById('modalProdutoDetalheBody');
-                var modalFooter = document.getElementById('modalProdutoDetalheFooter');
-                if (!modalBody || !modalFooter) return;
-                
-                var html = '';
-                
-                // Função helper para escapar HTML
-                function escapeHtml(text) {
-                    if (!text) return '';
-                    var div = document.createElement('div');
-                    div.textContent = text;
-                    return div.innerHTML;
-                }
-                
-                // Função helper para escapar atributos HTML
-                function escapeAttr(text) {
-                    if (!text) return '';
-                    return String(text)
-                        .replace(/&/g, '&amp;')
-                        .replace(/"/g, '&quot;')
-                        .replace(/'/g, '&#39;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;');
-                }
-                
-                // Imagem
-                html += '<img src="' + escapeAttr(produto.imagem) + '" alt="' + escapeAttr(produto.nome) + '" class="produto-imagem-detalhe" />';
-                
-                // Nome
-                html += '<h2 class="produto-nome-detalhe">' + escapeHtml(produto.nome) + '</h2>';
-                
-                // Descrição
-                if (produto.descricao && produto.descricao !== '') {
-                    html += '<p class="produto-descricao-detalhe">' + escapeHtml(produto.descricao) + '</p>';
-                }
-                
-                // Preço unitário
-                html += '<div class="produto-preco-detalhe">Preço Unitário: R$ ' + parseFloat(produto.preco).toFixed(2).replace('.', ',') + '</div>';
-                
-                // Se for saco promocional, mostrar seletores de produtos
-                if (produto.ehSaco && produto.produtosPermitidos && produto.produtosPermitidos.length > 0) {
-                    html += '<div class="saco-produtos-selector" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">';
-                    html += '<h4 style="font-size: 16px; margin-bottom: 15px; color: #1a4d2e;">Selecione os produtos do saco:</h4>';
-                    html += '<p style="font-size: 13px; color: #666; margin-bottom: 15px;">Selecione ' + produto.quantidadeSaco + ' produto(s) para incluir no saco promocional.</p>';
-                    
-                    for (var i = 0; i < produto.quantidadeSaco; i++) {
-                        html += '<div class="mb-3" style="margin-bottom: 12px;">';
-                        html += '<label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Produto ' + (i + 1) + ':</label>';
-                        html += '<select class="form-control seletor-produto-saco-modal" data-saco-id="' + produto.id + '" data-indice="' + i + '" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">';
-                        html += '<option value="">Selecione um produto...</option>';
-                        
-                        for (var j = 0; j < produto.produtosPermitidos.length; j++) {
-                            var prodPermitido = produto.produtosPermitidos[j];
-                            html += '<option value="' + escapeAttr(prodPermitido.id) + '">' + escapeHtml(prodPermitido.nome) + ' - R$ ' + parseFloat(prodPermitido.preco).toFixed(2).replace('.', ',') + '</option>';
-                        }
-                        
-                        html += '</select>';
-                        html += '</div>';
-                    }
-                    
-                    html += '</div>';
-                }
-                
-                // Seletor de quantidade
-                html += '<div class="quantidade-selector" style="margin-top: 20px;">';
-                html += '<label style="display: block; margin-bottom: 8px; font-weight: 600;">Quantidade de sacos:</label>';
-                html += '<div class="quantidade-controls" style="display: flex; align-items: center; gap: 10px;">';
-                html += '<button type="button" class="btn-quantidade" onclick="diminuirQuantidadeModal()" style="width: 35px; height: 35px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">-</button>';
-                html += '<span class="quantidade-value" id="quantidadeModal" style="font-size: 18px; font-weight: 600; min-width: 30px; text-align: center;">' + quantidadeAtual + '</span>';
-                html += '<button type="button" class="btn-quantidade" onclick="aumentarQuantidadeModal()" style="width: 35px; height: 35px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;">+</button>';
-                html += '</div>';
-                html += '</div>';
-                
-                // Preço total
-                html += '<div class="preco-total-modal" id="precoTotalModal" style="margin-top: 20px; padding: 15px; background: #1a4d2e; color: white; border-radius: 8px; font-size: 18px; font-weight: 700; text-align: center;">';
-                html += 'Total: R$ <span id="valorTotalModal">' + parseFloat(produto.preco).toFixed(2).replace('.', ',') + '</span>';
-                html += '</div>';
-                
-                modalBody.innerHTML = html;
-                
-                // Footer com botões
-                var footerHtml = '';
-                footerHtml += '<div style="display: flex; gap: 12px; justify-content: center; align-items: center;">';
-                footerHtml += '<button type="button" class="btn-cancelar-pedido" onclick="fecharModalProduto()" title="Cancelar">';
-                footerHtml += '<i class="fas fa-times"></i>';
-                footerHtml += '</button>';
-                footerHtml += '<button type="button" class="btn-adicionar-pedido" onclick="adicionarProdutoAoCarrinho()" title="Confirmar">';
-                footerHtml += '<i class="fas fa-check"></i>';
-                footerHtml += '</button>';
-                footerHtml += '</div>';
-                
-                modalFooter.innerHTML = footerHtml;
-                
-                // Abrir modal
-                if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
-                    KingdomConfeitaria.Modal.show('modalProdutoDetalhe');
-                } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                    var modalElement = document.getElementById('modalProdutoDetalhe');
-                    var modal = new bootstrap.Modal(modalElement);
-                    modal.show();
+                // Navegar para página do produto (produto já está salvo na sessão pelo servidor)
+                if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Navigation) {
+                    KingdomConfeitaria.Navigation.navegar('paginas/Produto.aspx?id=' + produto.id);
+                } else {
+                    window.location.href = 'paginas/Produto.aspx?id=' + produto.id;
                 }
             } catch (e) {
-                console.error('Erro ao abrir modal de produto:', e);
+                console.error('Erro ao navegar para produto:', e);
                 alert('Erro ao abrir detalhes do produto. Tente novamente.');
             }
         }
         
-        function fecharModalProduto() {
-            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
-                KingdomConfeitaria.Modal.hide('modalProdutoDetalhe');
-            } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                var modalElement = document.getElementById('modalProdutoDetalhe');
-                var modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) {
-                    modal.hide();
-                } else {
-                    // Se não houver instância, criar e fechar
-                    var newModal = new bootstrap.Modal(modalElement);
-                    newModal.hide();
-                }
-            }
-            // Resetar variáveis
-            produtoAtual = null;
-            quantidadeAtual = 1;
-        }
-        
-        function aumentarQuantidadeModal() {
-            if (!produtoAtual) return;
-            quantidadeAtual++;
-            atualizarQuantidadeModal();
-        }
-        
-        function diminuirQuantidadeModal() {
-            if (!produtoAtual) return;
-            if (quantidadeAtual > 1) {
-                quantidadeAtual--;
-                atualizarQuantidadeModal();
-            }
-        }
-        
-        function atualizarQuantidadeModal() {
-            if (!produtoAtual) return;
-            
-            var qtdElement = document.getElementById('quantidadeModal');
-            var valorTotalElement = document.getElementById('valorTotalModal');
-            
-            if (qtdElement) {
-                qtdElement.textContent = quantidadeAtual;
-            }
-            
-            if (valorTotalElement) {
-                var precoUnitario = parseFloat(produtoAtual.preco);
-                var total = precoUnitario * quantidadeAtual;
-                valorTotalElement.textContent = total.toFixed(2).replace('.', ',');
-            }
-        }
-        
-        function adicionarProdutoAoCarrinho() {
-            if (!produtoAtual) return;
-            
-            // Se for saco promocional, usar lógica específica
-            if (produtoAtual.ehSaco && produtoAtual.produtosPermitidos && produtoAtual.produtosPermitidos.length > 0) {
-                adicionarSacoAoCarrinhoDoModal();
-                return;
-            }
-            
-            var tamanho = produtoAtual.tamanho || '';
-            var nome = produtoAtual.nome;
-            var preco = produtoAtual.preco;
-            var quantidade = quantidadeAtual;
-            
-            // Validar preço
-            if (!preco || preco === '' || preco === 'undefined' || preco === 'null') {
-                alert('Erro: Preço inválido. Por favor, verifique os dados do produto.');
-                return;
-            }
-            
-            // Normalizar preço (garantir que use ponto como separador decimal)
-            var precoNormalizado = String(preco).replace(',', '.').trim();
-            
-            // Validar se é um número válido
-            if (isNaN(parseFloat(precoNormalizado))) {
-                alert('Erro: Preço inválido: ' + preco);
-                return;
-            }
-            
-            // Adicionar ao carrinho usando postBack diretamente com o preço
-            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Utils && KingdomConfeitaria.Utils.postBack) {
-                KingdomConfeitaria.Utils.postBack('AdicionarAoCarrinho', produtoAtual.id + '|' + nome + '|' + tamanho + '|' + precoNormalizado + '|' + quantidade);
-            } else if (typeof adicionarAoCarrinho === 'function') {
-                // Passar o preço normalizado como parâmetro
-                adicionarAoCarrinho(produtoAtual.id, nome, tamanho, quantidade, precoNormalizado);
-            } else if (typeof DefaultPage !== 'undefined' && DefaultPage.Carrinho) {
-                // Se não conseguir usar postBack diretamente, tentar usar a função do carrinho
-                // mas passar o preço como parâmetro adicional
-                DefaultPage.Carrinho.adicionar(produtoAtual.id, nome, tamanho, quantidade, precoNormalizado);
-            }
-            
-            // Fechar modal
-            fecharModalProduto();
-        }
-        
-        function adicionarSacoAoCarrinhoDoModal() {
-            if (!produtoAtual) return;
-            
-            var seletores = document.querySelectorAll('.seletor-produto-saco-modal[data-saco-id="' + produtoAtual.id + '"]');
-            var produtosSelecionados = [];
-            var todosPreenchidos = true;
-            var seletoresVazios = [];
-            
-            seletores.forEach(function(select, index) {
-                if (select.value && select.value !== '') {
-                    produtosSelecionados.push(select.value);
-                } else {
-                    todosPreenchidos = false;
-                    seletoresVazios.push(index + 1);
-                }
-            });
-            
-            if (!todosPreenchidos || produtosSelecionados.length !== produtoAtual.quantidadeSaco) {
-                var mensagem = 'Por favor, selecione todos os ' + produtoAtual.quantidadeSaco + ' produtos para o saco promocional.';
-                if (seletoresVazios.length > 0) {
-                    mensagem += ' Faltam selecionar: ' + seletoresVazios.join(', ');
-                }
-                alert(mensagem);
-                // Destacar os seletores vazios
-                seletores.forEach(function(select, index) {
-                    if (!select.value || select.value === '') {
-                        select.style.borderColor = '#dc3545';
-                        select.style.borderWidth = '2px';
-                        select.focus();
-                    } else {
-                        select.style.borderColor = '#ddd';
-                        select.style.borderWidth = '1px';
-                    }
-                });
-                return;
-            }
-            
-            // Validar preço
-            var preco = produtoAtual.preco;
-            if (!preco || preco === '' || preco === 'undefined' || preco === 'null') {
-                alert('Erro: Preço inválido. Por favor, verifique os dados do produto.');
-                return;
-            }
-            
-            // Normalizar preço
-            var precoNormalizado = String(preco).replace(',', '.').trim();
-            
-            if (isNaN(parseFloat(precoNormalizado))) {
-                alert('Erro: Preço inválido: ' + preco);
-                return;
-            }
-            
-            // Enviar os dados: sacoId|nomeSaco|preco|quantidade|produtosSelecionados
-            var dados = produtoAtual.id + '|' + produtoAtual.nome + '|' + precoNormalizado + '|' + quantidadeAtual + '|' + produtosSelecionados.join(',');
-            
-            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Utils && KingdomConfeitaria.Utils.postBack) {
-                KingdomConfeitaria.Utils.postBack('AdicionarSacoAoCarrinho', dados);
-            }
-            
-            // Fechar modal
-            fecharModalProduto();
-        }
-        
         function abrirModalCarrinho() {
-            // Verificar se está em mobile (largura menor que 992px)
-            if (window.innerWidth < 992) {
-                // Mobile: abrir modal
-                if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Modal) {
-                    KingdomConfeitaria.Modal.show('modalCarrinho');
-                } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                    var modalElement = document.getElementById('modalCarrinho');
-                    var modal = new bootstrap.Modal(modalElement);
-                    modal.show();
-                }
+            // Navegar para página do carrinho
+            if (typeof KingdomConfeitaria !== 'undefined' && KingdomConfeitaria.Navigation) {
+                KingdomConfeitaria.Navigation.navegar('paginas/Carrinho.aspx');
             } else {
-                // Desktop: rolar até o carrinho e destacá-lo
-                var carrinhoFixo = document.getElementById('carrinhoFixo');
-                if (carrinhoFixo) {
-                    // Adicionar classe de destaque
-                    carrinhoFixo.style.transition = 'all 0.3s ease';
-                    carrinhoFixo.style.boxShadow = '0 0 20px rgba(26, 77, 46, 0.5)';
-                    carrinhoFixo.style.transform = 'scale(1.02)';
-                    
-                    // Rolar até o carrinho
-                    carrinhoFixo.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    
-                    // Remover destaque após 2 segundos
-                    setTimeout(function() {
-                        carrinhoFixo.style.boxShadow = '';
-                        carrinhoFixo.style.transform = '';
-                    }, 2000);
-                }
+                window.location.href = 'paginas/Carrinho.aspx';
             }
         }
         
@@ -2995,37 +2654,108 @@
         }
         
         // Ajustar após um pequeno delay para garantir que o DOM esteja totalmente renderizado
-        setTimeout(ajustarEspacamentoHeader, 100);
-        setTimeout(ajustarEspacamentoHeader, 500);
-        setTimeout(ajustarEspacamentoHeader, 1000);
+        var headerAjustado = false;
+        function ajustarEspacamentoHeaderOnce() {
+            if (headerAjustado) return;
+            headerAjustado = true;
+            ajustarEspacamentoHeader();
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(ajustarEspacamentoHeaderOnce, 100);
+            });
+        } else {
+            setTimeout(ajustarEspacamentoHeaderOnce, 100);
+        }
         
         // Adicionar ícone ao botão ASP.NET de confirmar reserva
         function adicionarIconeBotaoReserva() {
-            var btnConfirmarReserva = document.getElementById('<%= btnConfirmarReserva.ClientID %>');
-            if (btnConfirmarReserva && !btnConfirmarReserva.querySelector('i')) {
-                // Limpar texto e adicionar ícone
-                btnConfirmarReserva.innerHTML = '<i class="fas fa-check"></i>';
+            try {
+                // Verificar se ClientIDs está definido
+                if (typeof window.ClientIDs === 'undefined' || !window.ClientIDs.btnConfirmarReserva) {
+                    console.warn('ClientIDs não está definido ainda. Tentando novamente...');
+                    return false;
+                }
+                
+                var btnConfirmarReserva = document.getElementById(window.ClientIDs.btnConfirmarReserva);
+                if (btnConfirmarReserva) {
+                    var textoAtual = btnConfirmarReserva.textContent || btnConfirmarReserva.innerText || '';
+                    if (!btnConfirmarReserva.querySelector('i')) {
+                        // Preservar o texto "Confirma" e adicionar ícone
+                        if (textoAtual.trim() === '' || textoAtual.trim() === 'Confirma') {
+                            btnConfirmarReserva.innerHTML = '<i class="fas fa-check"></i> Confirma';
+                        } else {
+                            btnConfirmarReserva.innerHTML = '<i class="fas fa-check"></i> ' + textoAtual.trim();
+                        }
+                    } else {
+                        // Se já tem ícone, garantir que o texto está presente
+                        var textoComIcone = btnConfirmarReserva.innerHTML || '';
+                        if (textoComIcone.indexOf('Confirma') === -1) {
+                            btnConfirmarReserva.innerHTML = '<i class="fas fa-check"></i> Confirma';
+                        }
+                    }
+                    return true;
+                }
+            } catch (e) {
+                console.error('Erro ao adicionar ícone ao botão:', e);
+            }
+            return false;
+        }
+        
+        // Executar quando a página carregar - apenas uma vez
+        var iconeBotaoAdicionado = false;
+        var tentativasIcone = 0;
+        var maxTentativasIcone = 20; // Aumentar tentativas
+        function adicionarIconeBotaoReservaOnce() {
+            if (iconeBotaoAdicionado) return;
+            
+            // Verificar se ClientIDs está disponível
+            if (typeof window.ClientIDs === 'undefined' || !window.ClientIDs) {
+                tentativasIcone++;
+                if (tentativasIcone < maxTentativasIcone) {
+                    setTimeout(adicionarIconeBotaoReservaOnce, 300);
+                } else {
+                    console.warn('ClientIDs não foi definido após ' + maxTentativasIcone + ' tentativas');
+                }
+                return;
+            }
+            
+            // Verificar se btnConfirmarReserva existe (pode ser string vazia se o controle não existir)
+            if (!window.ClientIDs.btnConfirmarReserva || window.ClientIDs.btnConfirmarReserva === '') {
+                // Se o controle não existe, não há problema - apenas retornar
+                return;
+            }
+            
+            if (adicionarIconeBotaoReserva()) {
+                iconeBotaoAdicionado = true;
+            } else {
+                tentativasIcone++;
+                if (tentativasIcone < maxTentativasIcone) {
+                    setTimeout(adicionarIconeBotaoReservaOnce, 300);
+                }
             }
         }
         
-        // Executar quando a página carregar
+        // Aguardar um pouco mais antes de tentar pela primeira vez
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', adicionarIconeBotaoReserva);
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(adicionarIconeBotaoReservaOnce, 500);
+            });
         } else {
-            adicionarIconeBotaoReserva();
+            setTimeout(adicionarIconeBotaoReservaOnce, 500);
         }
         
-        // Executar após delays para garantir que o botão esteja renderizado
-        setTimeout(adicionarIconeBotaoReserva, 100);
-        setTimeout(adicionarIconeBotaoReserva, 500);
-        setTimeout(adicionarIconeBotaoReserva, 1000);
-        
-        // Observar mudanças no botão
+        // Observar mudanças no botão - com debounce
+        var btnObserverTimeout = null;
         var btnObserver = new MutationObserver(function(mutations) {
-            adicionarIconeBotaoReserva();
+            if (btnObserverTimeout) clearTimeout(btnObserverTimeout);
+            btnObserverTimeout = setTimeout(function() {
+                adicionarIconeBotaoReserva();
+            }, 100);
         });
         
-        var btnElement = document.getElementById('<%= btnConfirmarReserva.ClientID %>');
+        var btnElement = document.getElementById(ClientIDs.btnConfirmarReserva);
         if (btnElement) {
             btnObserver.observe(btnElement, {
                 childList: true,
@@ -3037,7 +2767,7 @@
         // Animação da mãozinha clicando
         function iniciarAnimacaoMao() {
             var maozinha = document.getElementById('maozinhaClique');
-            var produtosContainer = document.getElementById('<%= produtosContainer.ClientID %>');
+            var produtosContainer = document.getElementById(ClientIDs.produtosContainer);
             
             if (!maozinha || !produtosContainer) return;
             
@@ -3089,13 +2819,35 @@
             });
         }
         
-        // Iniciar animação quando a página carregar
+        // Iniciar animação quando a página carregar - apenas uma vez
+        var animacaoMaoIniciada = false;
+        var tentativasAnimacaoMao = 0;
+        var maxTentativasAnimacaoMao = 10; // Máximo de 5 segundos (10 * 500ms)
+        
+        function iniciarAnimacaoMaoOnce() {
+            if (animacaoMaoIniciada) return;
+            
+            var produtosContainer = document.getElementById(ClientIDs.produtosContainer);
+            var produtos = produtosContainer ? produtosContainer.querySelectorAll('.produto-card-carrossel') : [];
+            
+            if (produtos.length === 0) {
+                tentativasAnimacaoMao++;
+                if (tentativasAnimacaoMao < maxTentativasAnimacaoMao) {
+                    setTimeout(iniciarAnimacaoMaoOnce, 500);
+                }
+                return;
+            }
+            
+            animacaoMaoIniciada = true;
+            iniciarAnimacaoMao();
+        }
+        
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function() {
-                setTimeout(iniciarAnimacaoMao, 500);
+                setTimeout(iniciarAnimacaoMaoOnce, 500);
             });
         } else {
-            setTimeout(iniciarAnimacaoMao, 500);
+            setTimeout(iniciarAnimacaoMaoOnce, 500);
         }
         
         // Ajustar posição quando a janela redimensionar
@@ -3107,23 +2859,33 @@
         });
         // Função JavaScript para atualizar hidden field
         function atualizarDataRetirada(valor) {
-            var hdnDataRetirada = document.getElementById('<%= hdnDataRetirada.ClientID %>');
+            var hdnDataRetirada = document.getElementById(ClientIDs.hdnDataRetirada);
             if (hdnDataRetirada) {
                 hdnDataRetirada.value = valor;
             }
         }
         
         // Navegação do carrossel de produtos
+        var navegacaoCarrosselInicializada = false;
+        var tentativasNavegacaoCarrossel = 0;
+        var maxTentativasNavegacaoCarrossel = 10; // Máximo de 5 segundos (10 * 500ms)
+        
         function inicializarNavegacaoCarrossel() {
-            var produtosContainer = document.getElementById('<%= produtosContainer.ClientID %>');
+            if (navegacaoCarrosselInicializada) return;
+            
+            var produtosContainer = document.getElementById(ClientIDs.produtosContainer);
             var btnEsquerda = document.getElementById('btnCarrosselEsquerda');
             var btnDireita = document.getElementById('btnCarrosselDireita');
             
             if (!produtosContainer || !btnEsquerda || !btnDireita) {
-                // Tentar novamente após um delay se os elementos ainda não existirem
-                setTimeout(inicializarNavegacaoCarrossel, 500);
+                tentativasNavegacaoCarrossel++;
+                if (tentativasNavegacaoCarrossel < maxTentativasNavegacaoCarrossel) {
+                    setTimeout(inicializarNavegacaoCarrossel, 500);
+                }
                 return;
             }
+            
+            navegacaoCarrosselInicializada = true;
             
             // Função para atualizar visibilidade dos botões
             function atualizarBotoesNavegacao() {
@@ -3172,88 +2934,37 @@
             // Atualizar botões quando o scroll mudar
             produtosContainer.addEventListener('scroll', atualizarBotoesNavegacao);
             
-            // Atualizar botões quando a janela redimensionar
+            // Atualizar botões quando a janela redimensionar - com debounce
+            var resizeTimeout = null;
             window.addEventListener('resize', function() {
-                setTimeout(atualizarBotoesNavegacao, 100);
+                if (resizeTimeout) clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(atualizarBotoesNavegacao, 100);
             });
             
             // Atualizar botões inicialmente
-            setTimeout(atualizarBotoesNavegacao, 500);
+            setTimeout(atualizarBotoesNavegacao, 100);
         }
         
-        // Inicializar navegação quando a página carregar
+        // Inicializar navegação quando a página carregar - apenas uma vez
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', inicializarNavegacaoCarrossel);
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(inicializarNavegacaoCarrossel, 100);
+            });
         } else {
-            inicializarNavegacaoCarrossel();
+            setTimeout(inicializarNavegacaoCarrossel, 100);
         }
         
         // Funções para controle de quantidade no carrinho
-        // Salvar estado do modal antes do postback
-        function salvarEstadoModalCarrinho() {
-            var modalCarrinho = document.getElementById('modalCarrinho');
-            if (modalCarrinho) {
-                var estaAberto = false;
-                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                    var bsModal = bootstrap.Modal.getInstance(modalCarrinho);
-                    estaAberto = bsModal && document.body.classList.contains('modal-open');
-                } else {
-                    // Fallback: verificar apenas pela classe do body
-                    estaAberto = document.body.classList.contains('modal-open');
-                }
-                if (typeof(Storage) !== 'undefined') {
-                    sessionStorage.setItem('modalCarrinhoAberto', estaAberto ? 'true' : 'false');
-                }
-            }
-        }
-        
-        // Restaurar estado do modal após postback
-        function restaurarEstadoModalCarrinho() {
-            if (typeof(Storage) !== 'undefined') {
-                var modalAberto = sessionStorage.getItem('modalCarrinhoAberto');
-                if (modalAberto === 'true') {
-                    var modalCarrinho = document.getElementById('modalCarrinho');
-                    if (modalCarrinho) {
-                        setTimeout(function() {
-                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                                var bsModal = new bootstrap.Modal(modalCarrinho);
-                                bsModal.show();
-                            } else {
-                                // Fallback: usar jQuery se disponível, ou mostrar diretamente
-                                if (typeof $ !== 'undefined' && $.fn.modal) {
-                                    $(modalCarrinho).modal('show');
-                                } else {
-                                    modalCarrinho.style.display = 'block';
-                                    modalCarrinho.classList.add('show');
-                                    document.body.classList.add('modal-open');
-                                }
-                            }
-                            sessionStorage.removeItem('modalCarrinhoAberto');
-                        }, 200);
-                    }
-                }
-            }
-        }
-        
-        // Executar ao carregar a página
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', restaurarEstadoModalCarrinho);
-        } else {
-            restaurarEstadoModalCarrinho();
-        }
-        
         function aumentarQuantidadeCarrinho(produtoId, tamanho) {
-            salvarEstadoModalCarrinho();
             DefaultPage.Carrinho.atualizarQuantidade(produtoId, tamanho, 1);
         }
         
         function diminuirQuantidadeCarrinho(produtoId, tamanho) {
-            salvarEstadoModalCarrinho();
             DefaultPage.Carrinho.atualizarQuantidade(produtoId, tamanho, -1);
         }
         
         function adicionarMaisItem(produtoId, tamanho) {
-            DefaultPage.Carrinho.adicionarMais(produtoId, tamanho);
+            DefaultPage.Carrinho.atualizarQuantidade(produtoId, tamanho, 1);
         }
         
         /**

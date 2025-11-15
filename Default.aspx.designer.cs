@@ -32,10 +32,11 @@ namespace KingdomConfeitaria
         protected global::System.Web.UI.HtmlControls.HtmlGenericControl divDadosReserva;
         protected global::System.Web.UI.WebControls.Label lblDataRetirada;
         protected global::System.Web.UI.WebControls.DropDownList ddlDataRetirada;
+        protected global::System.Web.UI.WebControls.HiddenField hdnDataRetirada;
+        protected global::System.Web.UI.HtmlControls.HtmlGenericControl radioGroupDatas;
         protected global::System.Web.UI.WebControls.Label lblObservacoes;
         protected global::System.Web.UI.WebControls.TextBox txtObservacoes;
         protected global::System.Web.UI.WebControls.Button btnConfirmarReserva;
-        protected global::System.Web.UI.ScriptManager ScriptManager1;
     }
 }
 

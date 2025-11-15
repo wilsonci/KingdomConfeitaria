@@ -448,30 +448,41 @@ DefaultPage.Imagens = {
     }
 };
 
-// Inicialização quando a página carregar
+// Inicialização quando a página carregar - com flag para evitar múltiplas execuções
+var defaultPageInicializado = false;
+
 KingdomConfeitaria.Utils.ready(function() {
+    if (defaultPageInicializado) return;
+    defaultPageInicializado = true;
+    
     // Carregar imagens silenciosamente
     DefaultPage.Imagens.carregarSilenciosamente();
 
-    // Suprimir erros 404 de imagens no console
-    window.addEventListener('error', function(e) {
-        if (e.target && e.target.tagName === 'IMG') {
-            if (e.target.classList.contains('produto-imagem')) {
-                var placeholderSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' fill='%23999999' text-anchor='middle' dy='.3em'%3EImagem N%26atilde%3Bo Disponível%3C/text%3E%3C/svg%3E";
-                if (e.target.src !== placeholderSvg) {
-                    e.target.src = placeholderSvg;
+    // Suprimir erros 404 de imagens no console - apenas uma vez
+    if (!window.imagemErrorHandlerAdicionado) {
+        window.imagemErrorHandlerAdicionado = true;
+        window.addEventListener('error', function(e) {
+            if (e.target && e.target.tagName === 'IMG') {
+                if (e.target.classList.contains('produto-imagem')) {
+                    var placeholderSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%23e9ecef'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='14' fill='%23999999' text-anchor='middle' dy='.3em'%3EImagem N%26atilde%3Bo Disponível%3C/text%3E%3C/svg%3E";
+                    if (e.target.src !== placeholderSvg) {
+                        e.target.src = placeholderSvg;
+                    }
+                    e.preventDefault();
+                    return true;
                 }
-                e.preventDefault();
-                return true;
             }
-        }
-    }, true);
+        }, true);
+    }
 
-    // Re-inicializar após postback
-    window.addEventListener('pageshow', function(event) {
-        DefaultPage.Imagens.carregarSilenciosamente();
-        KingdomConfeitaria.Modal.initCloseButtons('modalReserva');
-    });
+    // Re-inicializar após postback - apenas uma vez
+    if (!window.pageshowHandlerAdicionado) {
+        window.pageshowHandlerAdicionado = true;
+        window.addEventListener('pageshow', function(event) {
+            DefaultPage.Imagens.carregarSilenciosamente();
+            KingdomConfeitaria.Modal.initCloseButtons('modalReserva');
+        });
+    }
 });
 
 // Funções globais para compatibilidade com código inline

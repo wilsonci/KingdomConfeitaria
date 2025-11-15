@@ -1569,6 +1569,33 @@ namespace KingdomConfeitaria.Services
             try
             {
                 // Tentar iniciar o LocalDB usando sqllocaldb
+                // Primeiro, tentar parar a instância se estiver em estado ruim
+                try
+                {
+                    ProcessStartInfo stopInfo = new ProcessStartInfo
+                    {
+                        FileName = "sqllocaldb",
+                        Arguments = "stop MSSQLLocalDB",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    };
+                    
+                    using (Process stopProcess = Process.Start(stopInfo))
+                    {
+                        if (stopProcess != null)
+                        {
+                            stopProcess.WaitForExit(3000); // Aguardar até 3 segundos
+                        }
+                    }
+                }
+                catch
+                {
+                    // Ignorar erro ao parar
+                }
+                
+                // Agora tentar iniciar
                 ProcessStartInfo startInfo = new ProcessStartInfo
                 {
                     FileName = "sqllocaldb",
@@ -1583,7 +1610,10 @@ namespace KingdomConfeitaria.Services
                 {
                     if (process != null)
                     {
-                        process.WaitForExit(5000); // Aguardar até 5 segundos
+                        process.WaitForExit(10000); // Aguardar até 10 segundos
+                        
+                        // Aguardar um pouco mais para garantir que o LocalDB está pronto
+                        System.Threading.Thread.Sleep(2000);
                     }
                 }
             }
@@ -1666,9 +1696,44 @@ namespace KingdomConfeitaria.Services
                 // Se falhar na verificação, continuar e tentar attach mesmo assim
             }
             
+            // Tentar iniciar o LocalDB antes de conectar
+            TentarIniciarLocalDB();
+            
+            // Aguardar um pouco para o LocalDB iniciar completamente
+            System.Threading.Thread.Sleep(1000);
+            
             using (var masterConnection = new SqlConnection(masterConnectionString))
             {
-                masterConnection.Open();
+                // Tentar conectar com retry
+                int maxRetries = 3;
+                int retryDelay = 2000; // 2 segundos
+                
+                for (int retry = 0; retry < maxRetries; retry++)
+                {
+                    try
+                    {
+                        masterConnection.Open();
+                        break; // Sucesso, sair do loop
+                    }
+                    catch (SqlException sqlEx)
+                    {
+                        // Se for erro de LocalDB não iniciado, tentar iniciar novamente
+                        if (sqlEx.Message.Contains("Local Database Runtime") || 
+                            sqlEx.Message.Contains("failed to start") ||
+                            sqlEx.Message.Contains("error: 50"))
+                        {
+                            if (retry < maxRetries - 1)
+                            {
+                                System.Threading.Thread.Sleep(retryDelay);
+                                TentarIniciarLocalDB();
+                                System.Threading.Thread.Sleep(retryDelay);
+                                continue; // Tentar novamente
+                            }
+                        }
+                        throw; // Re-lançar se não for erro de LocalDB ou se esgotaram as tentativas
+                    }
+                }
+                
                 string logPath = attachDbPath.Replace(".mdf", "_log.ldf");
                 
                 // Tentar ATTACH com log file
@@ -2497,48 +2562,21 @@ namespace KingdomConfeitaria.Services
 
             string telefoneFormatado = FormatarTelefone(telefone);
             
+            // Se o telefone formatado estiver vazio ou muito curto, retornar null
+            if (string.IsNullOrEmpty(telefoneFormatado) || telefoneFormatado.Length < 10)
+                return null;
+            
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
-                // Otimização: Primeiro tentar busca exata (mais rápida e usa índice)
+                
+                // Buscar removendo formatação do banco e comparando apenas números
+                // Isso garante que funcione independente de como o telefone está armazenado
                 var command = new SqlCommand(@"
                     SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso 
                     FROM Clientes 
-                    WHERE LTRIM(RTRIM(Telefone)) = @Telefone", connection);
-                command.Parameters.AddWithValue("@Telefone", telefoneFormatado);
-                
-                using (var reader = command.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        return new Cliente
-                        {
-                            Id = reader.GetInt32(0),
-                            Nome = reader.GetString(1),
-                            Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                            Senha = reader.IsDBNull(3) ? null : reader.GetString(3),
-                            Telefone = reader.IsDBNull(4) ? "" : reader.GetString(4),
-                            TemWhatsApp = reader.GetBoolean(5),
-                            // Provider e ProviderId não são mais usados (linhas 6 e 7 ignoradas)
-                            TokenConfirmacao = reader.IsDBNull(8) ? null : reader.GetString(8),
-                            TokenRecuperacaoSenha = reader.IsDBNull(9) ? null : reader.GetString(9),
-                            DataExpiracaoRecuperacaoSenha = reader.IsDBNull(10) ? (DateTime?)null : reader.GetDateTime(10),
-                            EmailConfirmado = reader.GetBoolean(11),
-                            WhatsAppConfirmado = reader.GetBoolean(12),
-                            IsAdmin = reader.GetBoolean(13),
-                            DataCadastro = reader.GetDateTime(14),
-                            UltimoAcesso = reader.IsDBNull(15) ? (DateTime?)null : reader.GetDateTime(15)
-                        };
-                    }
-                }
-                
-                // Se não encontrou com busca exata, tentar busca com formatação (fallback)
-                // Isso é mais lento, mas necessário para telefones com formatação diferente
-                command.CommandText = @"
-                    SELECT Id, Nome, Email, Senha, Telefone, TemWhatsApp, Provider, ProviderId, TokenConfirmacao, TokenRecuperacaoSenha, DataExpiracaoRecuperacaoSenha, EmailConfirmado, WhatsAppConfirmado, IsAdmin, DataCadastro, UltimoAcesso 
-                    FROM Clientes 
-                    WHERE LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefone, ''), '(', ''), ')', ''), '-', ''), ' ', ''), '.', ''), '/', ''))) = @Telefone";
-                command.Parameters.Clear();
+                    WHERE Telefone IS NOT NULL 
+                    AND LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(ISNULL(Telefone, ''), '(', ''), ')', ''), '-', ''), ' ', ''), '.', ''), '/', ''), '+', ''), ' ', ''))) = @Telefone", connection);
                 command.Parameters.AddWithValue("@Telefone", telefoneFormatado);
                 
                 using (var reader = command.ExecuteReader())
